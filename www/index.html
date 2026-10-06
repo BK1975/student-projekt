@@ -10,37 +10,6 @@
   <meta name="theme-color" content="#0f172a" />
   <title>Zdravje+</title>
 
-  <script>
-    /*
-     * DIAGNOSTIKA: če se katerikoli JavaScript ustavi z napako, jo izpišemo
-     * v rdečem okvirju na dnu zaslona. Na telefonu konzola ni vidna, zato
-     * tako takoj vidimo, kaj je šlo narobe. Dotik okvirja ga zapre.
-     */
-    (function () {
-      function showError(message) {
-        var box = document.getElementById('error-box');
-        if (!box) {
-          box = document.createElement('div');
-          box.id = 'error-box';
-          box.setAttribute('role', 'alert');
-          box.style.cssText =
-            'position:fixed;left:8px;right:8px;bottom:8px;z-index:99;padding:12px 14px;' +
-            'background:#b91c1c;color:#fff;font:14px/1.4 system-ui,sans-serif;' +
-            'border-radius:12px;white-space:pre-wrap;max-height:40vh;overflow:auto';
-          box.addEventListener('click', function () { box.remove(); });
-          (document.body || document.documentElement).appendChild(box);
-        }
-        box.textContent += (box.textContent ? '\n' : '') + 'Napaka: ' + message;
-      }
-      window.addEventListener('error', function (e) {
-        showError(e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''));
-      });
-      window.addEventListener('unhandledrejection', function (e) {
-        showError(e.reason && e.reason.message ? e.reason.message : String(e.reason));
-      });
-    })();
-  </script>
-
   <style>
     /* =========================================================
        1. OBLIKOVNI ŽETONI (barve, razmiki, zaobljenost)
@@ -83,9 +52,14 @@
       --gap: clamp(16px, 4vw, 28px);
       --shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
 
-      /* Varni odmiki za telefone z izrezom (notch) */
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      /*
+       * Varni odmiki za izrez (notch) in sistemske vrstice.
+       * Na Androidu 15+ aplikacija sega od roba do roba; Capacitor tam vstavi
+       * spremenljivke --safe-area-inset-*, ker jih starejši WebView ne pozna
+       * kot env(). Na iOS jih ni, zato uporabimo env().
+       */
+      --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+      --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     }
 
     /* Temni način sistema */
@@ -168,10 +142,65 @@
       color: var(--text-muted);
     }
 
+    .home-footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
     .version {
       text-align: center;
       font-size: 0.85rem;
       color: var(--text-muted);
+    }
+
+    /* Gumb, ki je videti kot povezava */
+    .link-btn {
+      min-height: 44px;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .link-btn:focus-visible {
+      outline: 3px solid var(--text);
+      outline-offset: 2px;
+    }
+
+    /* Zaslon "O aplikaciji" */
+    .about p,
+    .about li {
+      font-size: 1.2rem;
+      line-height: 1.5;
+    }
+
+    .about-box {
+      padding: 18px;
+      border: 3px solid var(--v-border);
+      border-radius: 18px;
+    }
+
+    .about-box h3 {
+      margin-bottom: 8px;
+      font-size: 1.35rem;
+    }
+
+    .about-box p + p {
+      margin-top: 10px;
+    }
+
+    .about-box ul {
+      padding-left: 1.2em;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     /* Mreža gumbov: na telefonu eden pod drugim, na tablici (≥ 700px) drug ob drugem */
@@ -432,19 +461,6 @@
       font-size: 1.4rem;
       color: var(--study);
       font-variant-numeric: tabular-nums;
-    }
-
-    /* Majhen gumb samo za testiranje (skrajša čas na 5 s) */
-    .btn--test {
-      margin-top: 20px;
-      min-height: 40px;
-      min-width: 0;
-      padding: 8px 16px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      background: transparent;
-      color: var(--text-muted);
-      border: 1px dashed var(--text-muted);
     }
 
     /* =========================================================
@@ -1370,17 +1386,6 @@
       50% { box-shadow: 0 0 0 14px rgba(234, 179, 8, 0); }
     }
 
-    .vital .btn--test {
-      color: var(--v-text);
-      border-color: var(--v-text);
-    }
-
-    /* Na rumeni opozorilni kartici je tekst vedno črn (tudi v temnem načinu) */
-    .vital-card.alerting .btn--test {
-      color: #000000;
-      border-color: #000000;
-    }
-
     .undo-btn:disabled {
       opacity: 0.4;
       cursor: default;
@@ -1429,9 +1434,51 @@
       </button>
     </section>
 
-    <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.2.0</p>
+    <footer class="home-footer">
+      <button id="about-btn" class="link-btn" type="button">ℹ️ O aplikaciji in zasebnost</button>
+      <!-- Številka različice – preizkuševalci jo navedejo pri prijavi napake -->
+      <p class="version">Različica 1.0.0</p>
+    </footer>
   </main>
+
+  <!-- =========================================================
+       O APLIKACIJI – zdravstvena izjava in zasebnost
+       (zahtevi Apple 1.4.1 / 5.1.1 in Google Play: izjava v aplikaciji)
+       ========================================================= -->
+  <div id="about" class="med-editor about hidden" role="dialog" aria-modal="true"
+       aria-labelledby="about-title">
+    <div class="med-editor-inner">
+      <button id="about-close" class="back-btn" type="button">← Nazaj</button>
+      <h2 id="about-title" tabindex="-1">O aplikaciji</h2>
+
+      <p>Zdravje+ pomaga študentom pri zbranem učenju in odmorih, starejšim pa pri vsakdanjih
+        opomnikih za zdravila, vodo in gibanje.</p>
+
+      <section class="about-box">
+        <h3>⚕️ Ni medicinski pripomoček</h3>
+        <p>Zdravje+ je pripomoček za vsakdanje navade in opomnike. Ni medicinski pripomoček,
+          ne postavlja diagnoz in ne nadomešča nasveta zdravnika ali farmacevta. Zdravila jemljite
+          po navodilih zdravnika. Vaje izvajajte v udobnem obsegu; ob bolečinah se posvetujte
+          z zdravnikom ali fizioterapevtom.</p>
+        <p><strong>V nujnih primerih pokličite 112.</strong></p>
+      </section>
+
+      <section class="about-box">
+        <h3>🔒 Zasebnost</h3>
+        <ul>
+          <li>Vsi podatki (zdravila, zgodovina, stiki, nastavitve) so shranjeni
+            <strong>samo na tej napravi</strong>.</li>
+          <li>Aplikacija ne zbira, ne pošilja in ne deli nobenih podatkov. Nima računa,
+            oglasov, sledenja ali analitike in ne potrebuje interneta.</li>
+          <li>Dovoljenje za obvestila se uporablja samo za opomnike, ki jih nastavite sami.</li>
+          <li>Gumb za klic odpre telefonsko aplikacijo naprave – klic vedno potrdite sami.</li>
+          <li>Podatke izbrišete s spodnjim gumbom ali tako, da aplikacijo odstranite.</li>
+        </ul>
+      </section>
+
+      <button id="about-delete" class="sos-btn" type="button">🗑️ Izbriši vse podatke</button>
+    </div>
+  </div>
 
   <!-- =========================================================
        VITALNI NAČIN – za starejše (velik tekst, visok kontrast)
@@ -1502,8 +1549,6 @@
 
       <button id="move-done-btn" class="big-btn" type="button">Opravljeno!</button>
 
-      <!-- Samo za testiranje: opomnik čez 10 sekund -->
-      <button id="move-test-btn" class="btn btn--test" type="button">Test: 10 sekund</button>
     </section>
   </main>
 
@@ -1636,9 +1681,6 @@
       <p class="sessions">
         🍅 Danes opravljenih intervalov: <strong id="sessions-count">0</strong>
       </p>
-
-      <!-- Samo za testiranje: nastavi časovnik na 5 sekund -->
-      <button id="test-btn" class="btn btn--test" type="button">Test: 5 sekund</button>
     </section>
 
     <!-- Vodene vaje za hrbtenico – na voljo kadarkoli med učenjem -->
@@ -2011,13 +2053,11 @@
     };
     const DEFAULT_RHYTHM = '45-15';
     const RHYTHM_KEY = 'zdravje.ucenje.ritem';
-    const TEST_CYCLE = { focus: 5, rest: 5 }; // za testiranje: 5 s učenja, 5 s odmora
 
     const timerDisplay = document.getElementById('timer-display');
     const timerStatus = document.getElementById('timer-status');
     const startBtn = document.getElementById('start-btn');
     const resetBtn = document.getElementById('reset-btn');
-    const testBtn = document.getElementById('test-btn');
     const rhythmButtons = document.querySelectorAll('[data-rhythm]');
     const rhythmHint = document.getElementById('rhythm-hint');
 
@@ -2029,8 +2069,7 @@
 
     const savedRhythm = loadJSON(RHYTHM_KEY, DEFAULT_RHYTHM);
     let rhythmKey = RHYTHMS[savedRhythm] ? savedRhythm : DEFAULT_RHYTHM;
-    let cycle = RHYTHMS[rhythmKey]; // trenutni ritem (ali testni)
-    let testMode = false;
+    let cycle = RHYTHMS[rhythmKey]; // trenutni ritem
 
     let durationSeconds = cycle.focus; // trajanje trenutnega intervala učenja
     let remainingSeconds = cycle.focus;
@@ -2055,21 +2094,17 @@
         : remainingSeconds < durationSeconds ? 'Nadaljuj' : 'Začni';
 
       rhythmButtons.forEach((button) => {
-        button.setAttribute('aria-checked', String(!testMode && button.dataset.rhythm === rhythmKey));
+        button.setAttribute('aria-checked', String(button.dataset.rhythm === rhythmKey));
         button.disabled = inProgress();
       });
-      rhythmHint.textContent = testMode
-        ? 'Test: 5 s učenja / 5 s odmora'
-        : inProgress()
-          ? 'Ritem lahko zamenjaš, ko ponastaviš časovnik.'
-          : 'minut učenja / minut odmora';
+      rhythmHint.textContent = inProgress()
+        ? 'Ritem lahko zamenjaš, ko ponastaviš časovnik.'
+        : 'minut učenja / minut odmora';
     }
 
     /** Besedilo stanja, ko časovnik čaka na začetek. */
     function readyStatus() {
-      return testMode
-        ? 'Pripravljen na test'
-        : `Pripravljen na učenje · odmor ${cycle.rest / 60} min`;
+      return `Pripravljen na učenje · odmor ${cycle.rest / 60} min`;
     }
 
     /**
@@ -2111,9 +2146,9 @@
       render();
     }
 
-    /** "15 minut" / "5 sekund" – za besedilo obvestila. */
+    /** "15 minut" – za besedilo obvestila. */
     function formatBreakLength() {
-      return cycle.rest >= 60 ? `${cycle.rest / 60} minut` : `${cycle.rest} sekund`;
+      return `${cycle.rest / 60} minut`;
     }
 
     function pauseTimer() {
@@ -2142,15 +2177,7 @@
       if (inProgress() || !RHYTHMS[key]) return;
       rhythmKey = key;
       cycle = RHYTHMS[key];
-      testMode = false;
       saveJSON(RHYTHM_KEY, key);
-      resetTimer();
-    }
-
-    /** Testni način: 5 s učenja in 5 s odmora. "Ponastavi" ga izklopi. */
-    function startTestMode() {
-      testMode = true;
-      cycle = TEST_CYCLE;
       resetTimer();
     }
 
@@ -2165,8 +2192,6 @@
      * Učenje je končano: zabeleži interval, pisk in začni odmor.
      * Odmor se začne ob dejanskem koncu učenja (endTime) – tudi če je bila
      * aplikacija medtem v ozadju.
-     * Opomba: šteje tudi testni interval, da lahko števec preizkusiva.
-     * Za pravo uporabo dodaj pogoj `if (!testMode)`.
      */
     function finishTimer() {
       clearInterval(intervalId);
@@ -2180,13 +2205,7 @@
     }
 
     startBtn.addEventListener('click', toggleTimer);
-    resetBtn.addEventListener('click', () => {
-      // Ponastavi izklopi tudi testni način
-      testMode = false;
-      cycle = RHYTHMS[rhythmKey];
-      resetTimer();
-    });
-    testBtn.addEventListener('click', startTestMode);
+    resetBtn.addEventListener('click', () => resetTimer());
     rhythmButtons.forEach((button) => {
       button.addEventListener('click', () => setRhythm(button.dataset.rhythm));
     });
@@ -2800,6 +2819,45 @@
     });
     sleepRemind.addEventListener('change', () => saveSleep({ remind: sleepRemind.checked }));
     sleepNowBtn.addEventListener('click', showWakeTimes);
+
+    // =========================================================
+    // 4e. O APLIKACIJI – zasebnost in brisanje podatkov
+    // =========================================================
+
+    const aboutDialog = document.getElementById('about');
+    const aboutBtn = document.getElementById('about-btn');
+
+    aboutBtn.addEventListener('click', () => {
+      aboutDialog.classList.remove('hidden');
+      document.getElementById('about-title').focus();
+    });
+
+    document.getElementById('about-close').addEventListener('click', () => {
+      aboutDialog.classList.add('hidden');
+      aboutBtn.focus();
+    });
+
+    /** Izbriše vse podatke aplikacije in prekliče vsa načrtovana obvestila. */
+    document.getElementById('about-delete').addEventListener('click', () => {
+      if (!window.confirm('Ali res želite izbrisati VSE podatke (zdravila, zgodovino, stike in nastavitve)? Tega ni mogoče razveljaviti.')) return;
+
+      // Najprej uskladimo obvestila s praznim stanjem, nato počistimo pomnilnik
+      saveJSON(MEDS_KEY, []);
+      saveJSON(SLEEP_KEY, { remind: false });
+      syncMedNotifications();
+      syncSleepNotification();
+      [NOTIFY_STUDY_ID, NOTIFY_BREAK_END_ID, NOTIFY_MOVE_ID].forEach(cancelNotification);
+
+      enqueueNotify(() => {
+        try {
+          Object.keys(localStorage)
+            .filter((key) => key.startsWith('zdravje.'))
+            .forEach((key) => localStorage.removeItem(key));
+        } catch (e) { /* pomnilnik ni dosegljiv */ }
+        Object.keys(memoryStore).forEach((key) => delete memoryStore[key]);
+        window.location.reload();
+      });
+    });
 
     // =========================================================
     // 5. VITALNI NAČIN – hidracija
@@ -3500,7 +3558,6 @@
     // =========================================================
 
     const MOVE_DEFAULT_SECONDS = 2 * 60 * 60; // vsaki 2 uri
-    const MOVE_TEST_SECONDS = 10;             // za testiranje
     const MOVE_REPEAT_MS = 30 * 1000;         // pisk ponovimo vsakih 30 s, dokler ni "Opravljeno!"
 
     const moveCard = document.getElementById('move-card');
@@ -3508,7 +3565,6 @@
     const moveTime = document.getElementById('move-time');
     const moveAlert = document.getElementById('move-alert');
     const moveDoneBtn = document.getElementById('move-done-btn');
-    const moveTestBtn = document.getElementById('move-test-btn');
 
     let moveIntervalSeconds = MOVE_DEFAULT_SECONDS;
     let moveEndTime = null;
@@ -3577,12 +3633,8 @@
       moveRepeatId = setInterval(playMoveBeep, MOVE_REPEAT_MS);
     }
 
-    // "Opravljeno!" ponastavi časovnik na isti interval (2 h ali testnih 10 s)
+    // "Opravljeno!" ponastavi časovnik na novi 2-urni interval
     moveDoneBtn.addEventListener('click', () => startMoveReminder());
-    moveTestBtn.addEventListener('click', () => {
-      unlockAudio();
-      startMoveReminder(MOVE_TEST_SECONDS);
-    });
 
     /**
      * Ob odprtju vitalnega načina: osveži zdravila in vodo iz pomnilnika naprave,

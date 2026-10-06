@@ -54,6 +54,20 @@ V navadnem brskalniku lahko `www/index.html` odprete neposredno – vse deluje, 
 | Pot | Opis |
 | --- | --- |
 | `www/index.html` | Celotna spletna aplikacija (HTML, CSS, JS) |
+| `assets/` | Izvorne slike ikone in začetnega zaslona (`npx capacitor-assets generate` iz njih ustvari vse velikosti) |
+| `docs/zasebnost.html` | Politika zasebnosti za objavo na spletu (povezava za App Store in Google Play) |
 | `capacitor.config.json` | Nastavitve Capacitorja (ID aplikacije `si.zdravjeplus.app`) |
 | `android/` | Android projekt (Android Studio) |
 | `ios/` | iOS projekt (Xcode) |
+
+## Objava
+
+- Številko različice povečajte pred vsakim nalaganjem: iOS `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`
+  (Xcode → App → General), Android `versionName` / `versionCode` (`android/app/build.gradle`) in napis
+  »Različica« na dnu začetnega zaslona v `www/index.html`. Številka gradnje (build) mora biti vsakič večja.
+- **App Store** (od 28. 4. 2026): gradnja z Xcode 26 in iOS 26 SDK. `ITSAppUsesNonExemptEncryption = false`
+  je že nastavljen, zato TestFlight ne sprašuje o šifriranju.
+- **Google Play**: `targetSdkVersion = 36` (zahteva od 31. 8. 2026). Izpolniti je treba izjavo
+  »Health apps« in »Data safety« (aplikacija ne zbira podatkov).
+- Pred objavo v `docs/zasebnost.html` vpišite ime in e-naslov za stik ter stran objavite na javnem
+  naslovu (npr. GitHub Pages ali Google Sites).
