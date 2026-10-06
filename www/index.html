@@ -29,6 +29,13 @@
       --vital: #15803d;
       --vital-dark: #14532d;
 
+      /* Vitalni način: najvišji kontrast (čisto belo / čisto črno) */
+      --v-bg: #ffffff;
+      --v-text: #000000;
+      --v-border: #000000;
+      --v-green: #14532d;     /* temno zelena: kontrast z belim > 9:1 */
+      --v-alert-bg: #fde047;  /* rumena opozorilna podlaga */
+
       --radius: 24px;
       --gap: clamp(16px, 4vw, 28px);
       --shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
@@ -46,6 +53,11 @@
         --text: #f8fafc;
         --text-muted: #cbd5e1;
         --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+        --v-bg: #000000;
+        --v-text: #ffffff;
+        --v-border: #ffffff;
+        --v-green: #22c55e;   /* svetlejša zelena za črno ozadje */
       }
     }
 
@@ -204,36 +216,9 @@
     }
 
     /* =========================================================
-       5. ZASLON PO IZBIRI NAČINA
+       5. GUMB "NAZAJ" (skupen vsem načinom)
        ========================================================= */
-    .result {
-      align-items: center;
-      text-align: center;
-    }
-
-    .result-card {
-      width: 100%;
-      max-width: 560px;
-      padding: 40px 24px;
-      background: var(--surface);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      border-top: 8px solid var(--accent, var(--study));
-    }
-
-    .result-card h2 {
-      font-size: clamp(1.5rem, 5.5vw, 2rem);
-      font-weight: 700;
-    }
-
-    /* Večje besedilo, če je izbran vitalni način */
-    .result--vital .result-card h2 {
-      font-size: clamp(2rem, 7vw, 2.6rem);
-      font-weight: 800;
-    }
-
     .back-btn {
-      margin-top: 28px;
       padding: 14px 28px;
       min-height: 48px; /* priporočena najmanjša velikost cilja za dotik */
       border: 2px solid var(--text-muted);
@@ -264,11 +249,6 @@
       width: 100%;
       max-width: 560px;
       display: flex;
-    }
-
-    /* Gumb "Nazaj" na vrhu ni treba odmikati od vsebine nad njim */
-    .topbar .back-btn {
-      margin-top: 0;
     }
 
     .study h1 {
@@ -404,6 +384,193 @@
       to { opacity: 1; }
     }
 
+    /* =========================================================
+       8. VITALNI NAČIN – za starejše
+       Čisto belo/črno ozadje, velik tekst, debele obrobe, velike tarče
+       za dotik. Ima lastne barvne žetone z najvišjim kontrastom.
+       ========================================================= */
+    .vital {
+      max-width: 720px;
+      justify-content: flex-start;
+      background: var(--v-bg);
+      color: var(--v-text);
+      font-size: 1.35rem; /* osnovna pisava je večja kot drugod */
+    }
+
+    /* Vitalni zaslon naj pokrije celo ozadje, ne le osrednji stolpec */
+    body:has(#vital-screen:not(.hidden)) {
+      background: var(--v-bg);
+    }
+
+    .vital .back-btn {
+      font-size: 1.35rem;
+      min-height: 60px;
+      border: 3px solid var(--v-border);
+      color: var(--v-text);
+    }
+
+    .vital .back-btn:focus-visible,
+    .vital .big-btn:focus-visible {
+      outline: 4px solid var(--v-text);
+      outline-offset: 4px;
+    }
+
+    .vital h1 {
+      font-size: clamp(2rem, 8vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .vital-card {
+      padding: 28px 24px;
+      background: var(--v-bg);
+      border: 3px solid var(--v-border);
+      border-radius: var(--radius);
+      text-align: center;
+    }
+
+    .vital-card h2 {
+      font-size: clamp(1.7rem, 6.5vw, 2.2rem);
+      font-weight: 800;
+    }
+
+    .vital-goal {
+      margin-top: 8px;
+      font-size: clamp(1.35rem, 5vw, 1.6rem);
+      font-weight: 600;
+    }
+
+    /* Velik števec, npr. "2 / 8" */
+    .vital-counter {
+      margin: 16px 0;
+      font-size: clamp(3.5rem, 16vw, 5rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    /* Vrsta kozarcev – hitra vizualna predstava napredka */
+    .glasses {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .glass {
+      width: 30px;
+      height: 40px;
+      border: 3px solid var(--v-border);
+      border-top-width: 0;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .glass.full {
+      background: #0284c7; /* modra voda */
+    }
+
+    /* Veliki gumbi za starejše: celotna širina, vsaj 80 px visoki */
+    .big-btn {
+      display: block;
+      width: 100%;
+      min-height: 84px;
+      padding: 16px 20px;
+      border: none;
+      border-radius: 20px;
+      background: var(--v-green);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: clamp(1.6rem, 6.5vw, 2rem);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .vital .big-btn {
+        color: #000000; /* črn tekst na svetlejši zeleni */
+      }
+    }
+
+    .big-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Manjši, a še vedno dovolj velik gumb za popravek napake */
+    .undo-btn {
+      margin-top: 14px;
+      min-height: 52px;
+      padding: 8px 20px;
+      border: 2px solid var(--v-border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--v-text);
+      font-family: inherit;
+      font-size: 1.15rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .vital-success {
+      margin-top: 12px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--v-green);
+    }
+
+    /* Odštevanje do naslednjega opomnika */
+    .move-countdown {
+      margin: 12px 0 20px;
+      font-size: clamp(1.35rem, 5vw, 1.6rem);
+    }
+
+    .move-countdown strong {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Opomnik je aktiven: kartica se obarva rumeno, da jo je težko spregledati */
+    .vital-card.alerting {
+      background: var(--v-alert-bg);
+      color: #000000;
+      border-color: #000000;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .vital-card.alerting .big-btn {
+      background: #14532d;
+      color: #ffffff;
+    }
+
+    .move-alert {
+      margin: 12px 0 20px;
+      font-size: clamp(1.6rem, 6.5vw, 2.1rem);
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+      50% { box-shadow: 0 0 0 14px rgba(234, 179, 8, 0); }
+    }
+
+    .vital .btn--test {
+      color: var(--v-text);
+      border-color: var(--v-text);
+    }
+
+    /* Na rumeni opozorilni kartici je tekst vedno črn (tudi v temnem načinu) */
+    .vital-card.alerting .btn--test {
+      color: #000000;
+      border-color: #000000;
+    }
+
+    .undo-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
     /* Spoštuj nastavitev "zmanjšaj gibanje" */
     @media (prefers-reduced-motion: reduce) {
       * {
@@ -449,13 +616,48 @@
   </main>
 
   <!-- =========================================================
-       ZASLON Z REZULTATOM – prikaže se po kliku na gumb
+       VITALNI NAČIN – za starejše (velik tekst, visok kontrast)
        ========================================================= -->
-  <main id="result-screen" class="screen result hidden" aria-live="polite">
-    <div class="result-card">
-      <h2 id="result-text"></h2>
-      <button id="back-btn" class="back-btn" type="button">← Nazaj</button>
+  <main id="vital-screen" class="screen vital hidden">
+    <div class="topbar">
+      <button id="vital-back-btn" class="back-btn" type="button">← Nazaj</button>
     </div>
+
+    <h1>Moj dnevni navigator zdravja</h1>
+
+    <!-- Sekcija: hidracija -->
+    <section class="vital-card" aria-labelledby="water-title">
+      <h2 id="water-title">💧 Voda</h2>
+      <p class="vital-goal">Popij 8 kozarcev vode danes</p>
+
+      <!-- aria-live: bralnik zaslona prebere nov števec po vsakem kliku -->
+      <p id="water-counter" class="vital-counter" aria-live="polite">0 / 8</p>
+      <div id="glasses" class="glasses" aria-hidden="true"></div>
+
+      <button id="water-add-btn" class="big-btn" type="button">+ Dodaj kozarec vode</button>
+      <p id="water-success" class="vital-success hidden">Bravo! Današnji cilj je dosežen.</p>
+      <button id="water-undo-btn" class="undo-btn" type="button">Odštej kozarec</button>
+    </section>
+
+    <!-- Sekcija: gibanje -->
+    <section id="move-card" class="vital-card" aria-labelledby="move-title">
+      <h2 id="move-title">🚶 Gibanje</h2>
+
+      <!-- Prikazano, dokler opomnik še ni aktiven -->
+      <p id="move-countdown" class="move-countdown">
+        Naslednji opomnik čez <strong id="move-time">2:00:00</strong>
+      </p>
+
+      <!-- Prikazano, ko je čas za gibanje -->
+      <p id="move-alert" class="move-alert hidden" role="alert">
+        Čas je za krajši sprehod ali raztezanje!
+      </p>
+
+      <button id="move-done-btn" class="big-btn" type="button">Opravljeno!</button>
+
+      <!-- Samo za testiranje: opomnik čez 10 sekund -->
+      <button id="move-test-btn" class="btn btn--test" type="button">Test: 10 sekund</button>
+    </section>
   </main>
 
   <!-- =========================================================
@@ -500,40 +702,35 @@
 
     // Reference na elemente, ki jih potrebujemo
     const homeScreen = document.getElementById('home-screen');
-    const resultScreen = document.getElementById('result-screen');
     const studyScreen = document.getElementById('study-screen');
-    const resultText = document.getElementById('result-text');
-    const backBtn = document.getElementById('back-btn');
+    const vitalScreen = document.getElementById('vital-screen');
     const modeButtons = document.querySelectorAll('.mode-btn');
 
     /**
-     * Odpre izbrani način. Študijski način ima svoj zaslon s časovnikom,
-     * Vitalni način (zaenkrat) pokaže samo preprosto sporočilo.
-     * @param {string} mode - ime načina, npr. "Študijski" ali "Vitalni"
+     * Odpre izbrani način in skrije začetni zaslon.
+     * @param {string} mode - ime načina, "Študijski" ali "Vitalni"
      */
     function loadMode(mode) {
       homeScreen.classList.add('hidden');
+      window.scrollTo(0, 0);
 
       if (mode === 'Študijski') {
         studyScreen.classList.remove('hidden');
-        startBtn.focus();
-        return;
+        startBtn.focus(); // fokus na glavni gumb – pomaga pri dostopnosti
+      } else {
+        vitalScreen.classList.remove('hidden');
+        openVitalMode();
       }
-
-      // Vitalni način – začasni zaslon s sporočilom
-      resultText.textContent = `Naložen je ${mode} način`;
-      resultScreen.style.setProperty('--accent', 'var(--vital)');
-      resultScreen.classList.add('result--vital');
-      resultScreen.classList.remove('hidden');
-      backBtn.focus(); // fokus na "Nazaj" – pomaga pri dostopnosti
     }
 
-    /** Vrne uporabnika na začetni zaslon in ustavi morebitni časovnik. */
+    /** Vrne uporabnika na začetni zaslon in ustavi vse časovnike. */
     function goHome() {
       resetTimer();
-      resultScreen.classList.add('hidden');
+      stopMoveReminder();
       studyScreen.classList.add('hidden');
+      vitalScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
+      window.scrollTo(0, 0);
     }
 
     // Ime načina preberemo iz atributa data-mode na gumbu
@@ -541,8 +738,8 @@
       button.addEventListener('click', () => loadMode(button.dataset.mode));
     });
 
-    backBtn.addEventListener('click', goHome);
     document.getElementById('study-back-btn').addEventListener('click', goHome);
+    document.getElementById('vital-back-btn').addEventListener('click', goHome);
 
     // =========================================================
     // 2. POMODORO ČASOVNIK
@@ -647,27 +844,34 @@
       if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
-    /** Predvaja tri kratke piske (880 Hz). */
-    function playBeep() {
+    /**
+     * Predvaja serijo kratkih piskov.
+     * @param {object} [options]
+     * @param {number} [options.frequency=880] - višina tona v Hz
+     * @param {number} [options.count=3]       - število piskov
+     * @param {number} [options.length=0.2]    - dolžina enega piska v sekundah
+     */
+    function playBeep({ frequency = 880, count = 3, length = 0.2 } = {}) {
       if (!audioCtx) return;
       const now = audioCtx.currentTime;
+      const spacing = length + 0.1; // kratka tišina med piski
 
-      for (let i = 0; i < 3; i++) {
-        const start = now + i * 0.3;
+      for (let i = 0; i < count; i++) {
+        const start = now + i * spacing;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
 
         osc.type = 'sine';
-        osc.frequency.value = 880;
+        osc.frequency.value = frequency;
 
         // Kratek dvig in upad glasnosti prepreči "klikanje" zvočnika
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.4, start + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.5, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
 
         osc.connect(gain).connect(audioCtx.destination);
         osc.start(start);
-        osc.stop(start + 0.22);
+        osc.stop(start + length + 0.02);
       }
     }
 
@@ -705,6 +909,170 @@
       resetTimer();
       startBtn.focus();
     });
+
+    // =========================================================
+    // 5. VITALNI NAČIN – hidracija
+    // =========================================================
+
+    const WATER_GOAL = 8;
+    const WATER_STORAGE_KEY = 'zdravje.voda';
+
+    const waterCounter = document.getElementById('water-counter');
+    const glassesEl = document.getElementById('glasses');
+    const waterAddBtn = document.getElementById('water-add-btn');
+    const waterUndoBtn = document.getElementById('water-undo-btn');
+    const waterSuccess = document.getElementById('water-success');
+
+    /** Današnji datum kot "LLLL-MM-DD" (lokalni čas). */
+    function todayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    /**
+     * Prebere današnje število kozarcev iz pomnilnika naprave.
+     * Če je shranjen podatek od včeraj, začnemo znova pri 0.
+     * localStorage je lahko nedosegljiv (zasebni način), zato try/catch.
+     */
+    function loadWater() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(WATER_STORAGE_KEY));
+        if (saved && saved.date === todayKey()) return saved.count;
+      } catch (e) { /* ni shranjenih podatkov – začnemo pri 0 */ }
+      return 0;
+    }
+
+    function saveWater() {
+      try {
+        localStorage.setItem(WATER_STORAGE_KEY, JSON.stringify({ date: todayKey(), count: waterCount }));
+      } catch (e) { /* shranjevanje ni mogoče – števec deluje le do zaprtja */ }
+    }
+
+    let waterCount = loadWater();
+
+    /** Osveži števec, kozarce in sporočilo o doseženem cilju. */
+    function renderWater() {
+      waterCounter.textContent = `${waterCount} / ${WATER_GOAL}`;
+
+      // Narišemo 8 kozarcev (ali več, če je oseba popila več od cilja)
+      glassesEl.innerHTML = '';
+      for (let i = 0; i < Math.max(WATER_GOAL, waterCount); i++) {
+        const glass = document.createElement('span');
+        glass.className = i < waterCount ? 'glass full' : 'glass';
+        glassesEl.appendChild(glass);
+      }
+
+      waterSuccess.classList.toggle('hidden', waterCount < WATER_GOAL);
+      waterUndoBtn.disabled = waterCount === 0;
+    }
+
+    waterAddBtn.addEventListener('click', () => {
+      waterCount++;
+      saveWater();
+      renderWater();
+    });
+
+    // Popravek, če je oseba pomotoma pritisnila preveč
+    waterUndoBtn.addEventListener('click', () => {
+      if (waterCount > 0) waterCount--;
+      saveWater();
+      renderWater();
+    });
+
+    // =========================================================
+    // 6. VITALNI NAČIN – opomnik za gibanje
+    // =========================================================
+
+    const MOVE_DEFAULT_SECONDS = 2 * 60 * 60; // vsaki 2 uri
+    const MOVE_TEST_SECONDS = 10;             // za testiranje
+    const MOVE_REPEAT_MS = 30 * 1000;         // pisk ponovimo vsakih 30 s, dokler ni "Opravljeno!"
+
+    const moveCard = document.getElementById('move-card');
+    const moveCountdown = document.getElementById('move-countdown');
+    const moveTime = document.getElementById('move-time');
+    const moveAlert = document.getElementById('move-alert');
+    const moveDoneBtn = document.getElementById('move-done-btn');
+    const moveTestBtn = document.getElementById('move-test-btn');
+
+    let moveIntervalSeconds = MOVE_DEFAULT_SECONDS;
+    let moveEndTime = null;
+    let moveTickId = null;
+    let moveRepeatId = null;
+
+    /** Pretvori sekunde v obliko U:MM:SS. */
+    function formatHms(totalSeconds) {
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    /** Nizek, daljši pisk – starejši nizke tone slišijo bolje kot visoke. */
+    function playMoveBeep() {
+      playBeep({ frequency: 660, count: 3, length: 0.4 });
+    }
+
+    /** (Ponovno) zažene odštevanje do naslednjega opomnika. */
+    function startMoveReminder(seconds = moveIntervalSeconds) {
+      stopMoveReminder();
+      moveIntervalSeconds = seconds;
+      moveEndTime = Date.now() + seconds * 1000;
+
+      moveCard.classList.remove('alerting');
+      moveAlert.classList.add('hidden');
+      moveCountdown.classList.remove('hidden');
+
+      moveTime.textContent = formatHms(seconds);
+      moveTickId = setInterval(moveTick, 250);
+    }
+
+    /** Ustavi vse časovnike opomnika (npr. ob odhodu na začetni zaslon). */
+    function stopMoveReminder() {
+      clearInterval(moveTickId);
+      clearInterval(moveRepeatId);
+      moveTickId = null;
+      moveRepeatId = null;
+    }
+
+    function moveTick() {
+      const remaining = Math.max(0, Math.ceil((moveEndTime - Date.now()) / 1000));
+      moveTime.textContent = formatHms(remaining);
+      if (remaining === 0) showMoveAlert();
+    }
+
+    /** Čas za gibanje: rumena kartica, sporočilo in ponavljajoč se pisk. */
+    function showMoveAlert() {
+      clearInterval(moveTickId);
+      moveTickId = null;
+
+      moveCountdown.classList.add('hidden');
+      moveAlert.classList.remove('hidden');
+      moveCard.classList.add('alerting');
+      moveCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      playMoveBeep();
+      moveRepeatId = setInterval(playMoveBeep, MOVE_REPEAT_MS);
+    }
+
+    // "Opravljeno!" ponastavi časovnik na isti interval (2 h ali testnih 10 s)
+    moveDoneBtn.addEventListener('click', () => startMoveReminder());
+    moveTestBtn.addEventListener('click', () => {
+      unlockAudio();
+      startMoveReminder(MOVE_TEST_SECONDS);
+    });
+
+    /**
+     * Ob odprtju vitalnega načina: osveži vodo (morda je nov dan),
+     * odkleni zvok (klik na gumb načina je dejanje uporabnika)
+     * in zaženi opomnik za gibanje.
+     */
+    function openVitalMode() {
+      waterCount = loadWater();
+      renderWater();
+      unlockAudio();
+      startMoveReminder(MOVE_DEFAULT_SECONDS);
+      document.getElementById('vital-back-btn').focus();
+    }
 
     // Začetni prikaz
     render();
