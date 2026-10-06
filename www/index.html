@@ -251,10 +251,164 @@
       outline-offset: 3px;
     }
 
+    /* =========================================================
+       6. ŠTUDIJSKI NAČIN – Pomodoro časovnik
+       ========================================================= */
+    .study {
+      align-items: center;
+      text-align: center;
+    }
+
+    /* Vrstica z gumbom "Nazaj" na vrhu zaslona */
+    .topbar {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+    }
+
+    /* Gumb "Nazaj" na vrhu ni treba odmikati od vsebine nad njim */
+    .topbar .back-btn {
+      margin-top: 0;
+    }
+
+    .study h1 {
+      font-size: clamp(1.8rem, 6vw, 2.4rem);
+      font-weight: 800;
+      color: var(--study);
+    }
+
+    .timer-card {
+      width: 100%;
+      max-width: 560px;
+      padding: 32px 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border-top: 8px solid var(--study);
+    }
+
+    /* Velike številke; tabular-nums prepreči "poskakovanje" števk */
+    .timer-display {
+      font-size: clamp(4rem, 20vw, 7rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .timer-status {
+      margin-top: 4px;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .timer-controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    .btn {
+      min-width: 140px;
+      min-height: 52px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn:focus-visible {
+      outline: 3px solid var(--text);
+      outline-offset: 3px;
+    }
+
+    .btn--primary {
+      background: var(--study);
+      color: #ffffff;
+    }
+
+    .btn--secondary {
+      background: transparent;
+      color: var(--text);
+      border: 2px solid var(--text-muted);
+    }
+
+    /* Majhen gumb samo za testiranje (skrajša čas na 5 s) */
+    .btn--test {
+      margin-top: 20px;
+      min-height: 40px;
+      min-width: 0;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px dashed var(--text-muted);
+    }
+
+    /* =========================================================
+       7. ODMOR – prekrivni sloj čez cel zaslon
+       ========================================================= */
+    .break-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: calc(32px + var(--safe-top)) 24px calc(32px + var(--safe-bottom));
+      background: linear-gradient(135deg, var(--study), var(--study-dark));
+      color: #ffffff;
+      text-align: center;
+      animation: fade-in 0.3s ease;
+    }
+
+    .break-overlay .break-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.85;
+    }
+
+    .break-overlay .break-tip {
+      max-width: 640px;
+      font-size: clamp(1.8rem, 7vw, 3rem);
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .break-overlay .btn {
+      background: #ffffff;
+      color: var(--study-dark);
+    }
+
+    .break-overlay .btn:focus-visible {
+      outline-color: #ffffff;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
     /* Spoštuj nastavitev "zmanjšaj gibanje" */
     @media (prefers-reduced-motion: reduce) {
       * {
         transition: none !important;
+        animation: none !important;
       }
     }
   </style>
@@ -304,56 +458,256 @@
     </div>
   </main>
 
+  <!-- =========================================================
+       ŠTUDIJSKI NAČIN – Pomodoro časovnik
+       ========================================================= -->
+  <main id="study-screen" class="screen study hidden">
+    <div class="topbar">
+      <button id="study-back-btn" class="back-btn" type="button">← Nazaj</button>
+    </div>
+
+    <h1>Študijski fokus</h1>
+
+    <section class="timer-card" aria-label="Pomodoro časovnik">
+      <!-- role="timer" bralnikom zaslona pove, da gre za odštevalnik -->
+      <div id="timer-display" class="timer-display" role="timer">45:00</div>
+      <p id="timer-status" class="timer-status">Pripravljen na učenje</p>
+
+      <div class="timer-controls">
+        <button id="start-btn" class="btn btn--primary" type="button">Začni</button>
+        <button id="reset-btn" class="btn btn--secondary" type="button">Ponastavi</button>
+      </div>
+
+      <!-- Samo za testiranje: nastavi časovnik na 5 sekund -->
+      <button id="test-btn" class="btn btn--test" type="button">Test: 5 sekund</button>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       ODMOR – prikaže se čez cel zaslon, ko se čas izteče
+       ========================================================= -->
+  <div id="break-overlay" class="break-overlay hidden" role="alertdialog"
+       aria-modal="true" aria-labelledby="break-tip">
+    <p class="break-label">Čas za odmor</p>
+    <p id="break-tip" class="break-tip"></p>
+    <button id="break-back-btn" class="btn" type="button">Nazaj na učenje</button>
+  </div>
+
   <script>
     // =========================================================
-    // LOGIKA APLIKACIJE
+    // 1. NAVIGACIJA MED ZASLONI
     // =========================================================
 
     // Reference na elemente, ki jih potrebujemo
     const homeScreen = document.getElementById('home-screen');
     const resultScreen = document.getElementById('result-screen');
+    const studyScreen = document.getElementById('study-screen');
     const resultText = document.getElementById('result-text');
     const backBtn = document.getElementById('back-btn');
     const modeButtons = document.querySelectorAll('.mode-btn');
 
-    // Barva poudarka na kartici glede na izbrani način
-    const accentColors = {
-      'Študijski': 'var(--study)',
-      'Vitalni': 'var(--vital)'
-    };
-
     /**
-     * Skrije začetni zaslon in prikaže sporočilo o izbranem načinu.
+     * Odpre izbrani način. Študijski način ima svoj zaslon s časovnikom,
+     * Vitalni način (zaenkrat) pokaže samo preprosto sporočilo.
      * @param {string} mode - ime načina, npr. "Študijski" ali "Vitalni"
      */
     function loadMode(mode) {
-      resultText.textContent = `Naložen je ${mode} način`;
-
-      // Nastavi barvo poudarka in (za vitalni način) večje besedilo
-      resultScreen.style.setProperty('--accent', accentColors[mode]);
-      resultScreen.classList.toggle('result--vital', mode === 'Vitalni');
-
-      // Zamenjaj zaslona
       homeScreen.classList.add('hidden');
-      resultScreen.classList.remove('hidden');
 
-      // Fokus na gumb "Nazaj" – pomaga pri dostopnosti
-      backBtn.focus();
+      if (mode === 'Študijski') {
+        studyScreen.classList.remove('hidden');
+        startBtn.focus();
+        return;
+      }
+
+      // Vitalni način – začasni zaslon s sporočilom
+      resultText.textContent = `Naložen je ${mode} način`;
+      resultScreen.style.setProperty('--accent', 'var(--vital)');
+      resultScreen.classList.add('result--vital');
+      resultScreen.classList.remove('hidden');
+      backBtn.focus(); // fokus na "Nazaj" – pomaga pri dostopnosti
     }
 
-    /** Vrne uporabnika na začetni zaslon. */
+    /** Vrne uporabnika na začetni zaslon in ustavi morebitni časovnik. */
     function goHome() {
+      resetTimer();
       resultScreen.classList.add('hidden');
+      studyScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
     }
 
-    // Vsakemu gumbu za način dodamo poslušalca klikov.
-    // Ime načina preberemo iz atributa data-mode.
+    // Ime načina preberemo iz atributa data-mode na gumbu
     modeButtons.forEach((button) => {
       button.addEventListener('click', () => loadMode(button.dataset.mode));
     });
 
     backBtn.addEventListener('click', goHome);
+    document.getElementById('study-back-btn').addEventListener('click', goHome);
+
+    // =========================================================
+    // 2. POMODORO ČASOVNIK
+    // =========================================================
+
+    const DEFAULT_SECONDS = 45 * 60; // privzeto 45 minut
+    const TEST_SECONDS = 5;          // za testiranje
+
+    const timerDisplay = document.getElementById('timer-display');
+    const timerStatus = document.getElementById('timer-status');
+    const startBtn = document.getElementById('start-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const testBtn = document.getElementById('test-btn');
+
+    let durationSeconds = DEFAULT_SECONDS; // trajanje trenutnega cikla
+    let remainingSeconds = DEFAULT_SECONDS;
+    let endTime = null;   // časovni žig konca (ms), ko časovnik teče
+    let intervalId = null;
+
+    /** Pretvori sekunde v obliko MM:SS. */
+    function formatTime(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    /** Osveži prikaz časa in besedilo gumba "Začni". */
+    function render() {
+      timerDisplay.textContent = formatTime(remainingSeconds);
+      startBtn.textContent = intervalId
+        ? 'Pavza'
+        : remainingSeconds < durationSeconds ? 'Nadaljuj' : 'Začni';
+    }
+
+    /**
+     * En "tik" časovnika. Preostanek računamo iz končnega časa namesto
+     * odštevanja po 1 s – tako časovnik ostane točen, tudi če brskalnik
+     * v ozadju upočasni setInterval.
+     */
+    function tick() {
+      remainingSeconds = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      render();
+      if (remainingSeconds === 0) finishTimer();
+    }
+
+    /** Zažene ali začasno ustavi časovnik (gumb "Začni" / "Pavza"). */
+    function toggleTimer() {
+      if (intervalId) {
+        pauseTimer();
+        return;
+      }
+      unlockAudio(); // zvok mora biti "odklenjen" ob kliku uporabnika
+      endTime = Date.now() + remainingSeconds * 1000;
+      intervalId = setInterval(tick, 250);
+      timerStatus.textContent = 'Učenje poteka …';
+      render();
+    }
+
+    function pauseTimer() {
+      clearInterval(intervalId);
+      intervalId = null;
+      timerStatus.textContent = 'Na pavzi';
+      render();
+    }
+
+    /** Ustavi časovnik in ga vrne na začetno trajanje. */
+    function resetTimer(seconds = durationSeconds) {
+      clearInterval(intervalId);
+      intervalId = null;
+      durationSeconds = seconds;
+      remainingSeconds = seconds;
+      timerStatus.textContent = 'Pripravljen na učenje';
+      render();
+    }
+
+    /** Čas je potekel: pisk + prikaz odmora. */
+    function finishTimer() {
+      clearInterval(intervalId);
+      intervalId = null;
+      playBeep();
+      showBreak();
+    }
+
+    startBtn.addEventListener('click', toggleTimer);
+    resetBtn.addEventListener('click', () => resetTimer(DEFAULT_SECONDS));
+    testBtn.addEventListener('click', () => resetTimer(TEST_SECONDS));
+
+    // =========================================================
+    // 3. ZVOK – pisk z Web Audio API (brez mp3 datotek)
+    // =========================================================
+
+    let audioCtx = null;
+
+    /**
+     * Brskalniki (zlasti iOS/Android WebView) dovolijo zvok šele po
+     * dejanju uporabnika, zato AudioContext ustvarimo ob kliku "Začni".
+     */
+    function unlockAudio() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return; // zelo stari brskalniki – brez zvoka
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    /** Predvaja tri kratke piske (880 Hz). */
+    function playBeep() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+
+      for (let i = 0; i < 3; i++) {
+        const start = now + i * 0.3;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+
+        // Kratek dvig in upad glasnosti prepreči "klikanje" zvočnika
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.4, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.2);
+
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + 0.22);
+      }
+    }
+
+    // =========================================================
+    // 4. ODMOR – naključno zdravstveno navodilo
+    // =========================================================
+
+    const breakTips = [
+      'Vstani in naredi 5 predklonov.',
+      'Glej v daljavo 20 sekund, da spočiješ oči.',
+      'Popij kozarec vode.',
+      'Petkrat počasi in globoko vdihni ter izdihni.',
+      'Nežno zakroži z rameni 10-krat naprej in 10-krat nazaj.',
+      'Sprehodi se po prostoru vsaj 2 minuti.',
+      'Raztegni roke visoko nad glavo in zadrži 10 sekund.',
+      'Počasi obrni glavo levo in desno, da sprostiš vrat.',
+      'Odpri okno in zadihaj svež zrak.',
+      'Naredi 10 počepov, da poženeš kri po telesu.'
+    ];
+
+    const breakOverlay = document.getElementById('break-overlay');
+    const breakTip = document.getElementById('break-tip');
+    const breakBackBtn = document.getElementById('break-back-btn');
+
+    /** Prikaže prekrivni zaslon z naključnim navodilom. */
+    function showBreak() {
+      breakTip.textContent = breakTips[Math.floor(Math.random() * breakTips.length)];
+      breakOverlay.classList.remove('hidden');
+      breakBackBtn.focus();
+    }
+
+    /** "Nazaj na učenje": skrije odmor in ponastavi časovnik. */
+    breakBackBtn.addEventListener('click', () => {
+      breakOverlay.classList.add('hidden');
+      resetTimer();
+      startBtn.focus();
+    });
+
+    // Začetni prikaz
+    render();
   </script>
 </body>
 </html>
