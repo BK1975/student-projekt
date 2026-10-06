@@ -323,6 +323,20 @@
       border: 2px solid var(--text-muted);
     }
 
+    /* Števec današnjih intervalov */
+    .sessions {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(100, 116, 139, 0.3);
+      font-size: 1.1rem;
+    }
+
+    .sessions strong {
+      font-size: 1.4rem;
+      color: var(--study);
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Majhen gumb samo za testiranje (skrajša čas na 5 s) */
     .btn--test {
       margin-top: 20px;
@@ -368,6 +382,11 @@
       font-size: clamp(1.8rem, 7vw, 3rem);
       font-weight: 800;
       line-height: 1.25;
+    }
+
+    .break-overlay .break-sessions {
+      font-size: 1.15rem;
+      opacity: 0.9;
     }
 
     .break-overlay .btn {
@@ -680,6 +699,11 @@
         <button id="reset-btn" class="btn btn--secondary" type="button">Ponastavi</button>
       </div>
 
+      <!-- Števec uspešnih intervalov danes (shranjen v localStorage) -->
+      <p class="sessions">
+        🍅 Danes opravljenih intervalov: <strong id="sessions-count">0</strong>
+      </p>
+
       <!-- Samo za testiranje: nastavi časovnik na 5 sekund -->
       <button id="test-btn" class="btn btn--test" type="button">Test: 5 sekund</button>
     </section>
@@ -692,10 +716,53 @@
        aria-modal="true" aria-labelledby="break-tip">
     <p class="break-label">Čas za odmor</p>
     <p id="break-tip" class="break-tip"></p>
+    <p id="break-sessions" class="break-sessions"></p>
     <button id="break-back-btn" class="btn" type="button">Nazaj na učenje</button>
   </div>
 
   <script>
+    // =========================================================
+    // 0. SHRANJEVANJE – dnevni števci v localStorage
+    // =========================================================
+
+    /** Današnji datum kot "LLLL-MM-DD" (lokalni čas). */
+    function todayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    /**
+     * Ustvari števec, ki se shrani v pomnilnik naprave (localStorage) in
+     * ostane po osvežitvi ali zaprtju aplikacije. Shranimo tudi datum:
+     * če je zapisani datum včerajšnji, števec vrne 0 (nov dan = nov začetek).
+     *
+     * localStorage je lahko nedosegljiv (npr. zasebni način brskalnika),
+     * zato je vsak dostop v try/catch – takrat števec deluje le v pomnilniku,
+     * dokler je aplikacija odprta.
+     *
+     * @param {string} storageKey - ime ključa v localStorage
+     * @returns {{ get: () => number, set: (n: number) => void }}
+     */
+    function createDailyCounter(storageKey) {
+      let fallback = { date: todayKey(), count: 0 };
+
+      return {
+        get() {
+          let saved = fallback;
+          try {
+            saved = JSON.parse(localStorage.getItem(storageKey)) || saved;
+          } catch (e) { /* uporabimo vrednost iz pomnilnika */ }
+          return saved.date === todayKey() ? saved.count : 0;
+        },
+        set(count) {
+          fallback = { date: todayKey(), count };
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(fallback));
+          } catch (e) { /* shranjevanje ni mogoče – ostane le v pomnilniku */ }
+        }
+      };
+    }
+
     // =========================================================
     // 1. NAVIGACIJA MED ZASLONI
     // =========================================================
@@ -716,6 +783,7 @@
 
       if (mode === 'Študijski') {
         studyScreen.classList.remove('hidden');
+        renderSessions(); // morda je medtem nastopil nov dan
         startBtn.focus(); // fokus na glavni gumb – pomaga pri dostopnosti
       } else {
         vitalScreen.classList.remove('hidden');
@@ -753,6 +821,12 @@
     const startBtn = document.getElementById('start-btn');
     const resetBtn = document.getElementById('reset-btn');
     const testBtn = document.getElementById('test-btn');
+
+    const sessionsCount = document.getElementById('sessions-count');
+    const breakSessions = document.getElementById('break-sessions');
+
+    // Število uspešno zaključenih intervalov učenja danes
+    const studySessions = createDailyCounter('zdravje.ucenje');
 
     let durationSeconds = DEFAULT_SECONDS; // trajanje trenutnega cikla
     let remainingSeconds = DEFAULT_SECONDS;
@@ -815,10 +889,24 @@
       render();
     }
 
-    /** Čas je potekel: pisk + prikaz odmora. */
+    /** Prikaže, koliko intervalov je študent danes že opravil. */
+    function renderSessions() {
+      const count = studySessions.get();
+      sessionsCount.textContent = count;
+      breakSessions.textContent = `Danes opravljenih intervalov: ${count}`;
+    }
+
+    /**
+     * Čas je potekel: zabeleži uspešen interval, pisk + prikaz odmora.
+     * Opomba: šteje tudi testni interval (5 s), da lahko števec preizkusiva
+     * brez 45-minutnega čakanja. Za pravo uporabo zamenjaj pogoj z
+     * `if (durationSeconds === DEFAULT_SECONDS)`.
+     */
     function finishTimer() {
       clearInterval(intervalId);
       intervalId = null;
+      studySessions.set(studySessions.get() + 1);
+      renderSessions();
       playBeep();
       showBreak();
     }
@@ -915,7 +1003,6 @@
     // =========================================================
 
     const WATER_GOAL = 8;
-    const WATER_STORAGE_KEY = 'zdravje.voda';
 
     const waterCounter = document.getElementById('water-counter');
     const glassesEl = document.getElementById('glasses');
@@ -923,35 +1010,12 @@
     const waterUndoBtn = document.getElementById('water-undo-btn');
     const waterSuccess = document.getElementById('water-success');
 
-    /** Današnji datum kot "LLLL-MM-DD" (lokalni čas). */
-    function todayKey() {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    /**
-     * Prebere današnje število kozarcev iz pomnilnika naprave.
-     * Če je shranjen podatek od včeraj, začnemo znova pri 0.
-     * localStorage je lahko nedosegljiv (zasebni način), zato try/catch.
-     */
-    function loadWater() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(WATER_STORAGE_KEY));
-        if (saved && saved.date === todayKey()) return saved.count;
-      } catch (e) { /* ni shranjenih podatkov – začnemo pri 0 */ }
-      return 0;
-    }
-
-    function saveWater() {
-      try {
-        localStorage.setItem(WATER_STORAGE_KEY, JSON.stringify({ date: todayKey(), count: waterCount }));
-      } catch (e) { /* shranjevanje ni mogoče – števec deluje le do zaprtja */ }
-    }
-
-    let waterCount = loadWater();
+    // Število popitih kozarcev danes (ključ ostane enak, da se ohranijo že shranjeni podatki)
+    const water = createDailyCounter('zdravje.voda');
 
     /** Osveži števec, kozarce in sporočilo o doseženem cilju. */
     function renderWater() {
+      const waterCount = water.get();
       waterCounter.textContent = `${waterCount} / ${WATER_GOAL}`;
 
       // Narišemo 8 kozarcev (ali več, če je oseba popila več od cilja)
@@ -967,15 +1031,13 @@
     }
 
     waterAddBtn.addEventListener('click', () => {
-      waterCount++;
-      saveWater();
+      water.set(water.get() + 1);
       renderWater();
     });
 
     // Popravek, če je oseba pomotoma pritisnila preveč
     waterUndoBtn.addEventListener('click', () => {
-      if (waterCount > 0) waterCount--;
-      saveWater();
+      water.set(Math.max(0, water.get() - 1));
       renderWater();
     });
 
@@ -1062,13 +1124,12 @@
     });
 
     /**
-     * Ob odprtju vitalnega načina: osveži vodo (morda je nov dan),
+     * Ob odprtju vitalnega načina: osveži vodo iz pomnilnika naprave,
      * odkleni zvok (klik na gumb načina je dejanje uporabnika)
      * in zaženi opomnik za gibanje.
      */
     function openVitalMode() {
-      waterCount = loadWater();
-      renderWater();
+      renderWater(); // prebere shranjeno stanje (in ga ob novem dnevu ponastavi)
       unlockAudio();
       startMoveReminder(MOVE_DEFAULT_SECONDS);
       document.getElementById('vital-back-btn').focus();
@@ -1076,6 +1137,7 @@
 
     // Začetni prikaz
     render();
+    renderSessions();
   </script>
 </body>
 </html>
