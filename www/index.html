@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    viewport-fit=cover: vsebina se razširi pod "notch" / zaobljene robove (iOS),
+    odmike pa nato uredimo z env(safe-area-inset-*).
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Zdravje+</title>
+
+  <style>
+    /* =========================================================
+       1. OBLIKOVNI ŽETONI (barve, razmiki, zaobljenost)
+       ========================================================= */
+    :root {
+      /* Ozadje in besedilo */
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+
+      /* Študijski način – modra */
+      --study: #2563eb;
+      --study-dark: #1e40af;
+
+      /* Vitalni način – zelena (temnejši odtenek za visok kontrast z belim besedilom) */
+      --vital: #15803d;
+      --vital-dark: #14532d;
+
+      --radius: 24px;
+      --gap: clamp(16px, 4vw, 28px);
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+
+      /* Varni odmiki za telefone z izrezom (notch) */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Temni način sistema */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-muted: #cbd5e1;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    /* =========================================================
+       2. OSNOVNI SLOGI
+       ========================================================= */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      /* Prepreči modro "bliskanje" ob dotiku na Androidu */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Pomožni razred za skrivanje zaslonov */
+    .hidden {
+      display: none !important;
+    }
+
+    /* =========================================================
+       3. ZAČETNI ZASLON
+       ========================================================= */
+    .screen {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: var(--gap);
+      padding: calc(var(--gap) + var(--safe-top)) var(--gap) calc(var(--gap) + var(--safe-bottom));
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: clamp(1.8rem, 6vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .header p {
+      margin-top: 6px;
+      font-size: clamp(1rem, 3.5vw, 1.2rem);
+      color: var(--text-muted);
+    }
+
+    /* Mreža gumbov: na telefonu eden pod drugim, na tablici (≥ 700px) drug ob drugem */
+    .modes {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--gap);
+    }
+
+    @media (min-width: 700px) {
+      .modes {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* =========================================================
+       4. VELIKA GUMBA ZA IZBIRO NAČINA
+       ========================================================= */
+    .mode-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+      min-height: clamp(200px, 32vh, 320px);
+      padding: 28px 20px;
+      border: none;
+      border-radius: var(--radius);
+      color: #ffffff;
+      font-family: inherit;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+
+    .mode-btn:hover {
+      filter: brightness(1.05);
+    }
+
+    /* Občutek "pritiska" ob dotiku */
+    .mode-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Jasen fokus za uporabo s tipkovnico / bralniki zaslona */
+    .mode-btn:focus-visible {
+      outline: 4px solid var(--text);
+      outline-offset: 4px;
+    }
+
+    .mode-btn svg {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+    }
+
+    .mode-btn .title {
+      font-size: clamp(1.5rem, 5vw, 1.9rem);
+      font-weight: 700;
+    }
+
+    .mode-btn .subtitle {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    /* --- Študijski način: moderen modri gradient --- */
+    .mode-btn--study {
+      background: linear-gradient(135deg, var(--study), var(--study-dark));
+    }
+
+    /* --- Vitalni način: večji tekst, visok kontrast, debela obroba --- */
+    .mode-btn--vital {
+      background: var(--vital);
+      border: 4px solid var(--vital-dark);
+    }
+
+    .mode-btn--vital svg {
+      width: 80px;
+      height: 80px;
+    }
+
+    .mode-btn--vital .title {
+      font-size: clamp(2rem, 7vw, 2.6rem);
+      font-weight: 800;
+    }
+
+    .mode-btn--vital .subtitle {
+      font-size: clamp(1.25rem, 4.5vw, 1.45rem);
+      font-weight: 600;
+      opacity: 1; /* brez prosojnosti = boljši kontrast */
+    }
+
+    /* =========================================================
+       5. ZASLON PO IZBIRI NAČINA
+       ========================================================= */
+    .result {
+      align-items: center;
+      text-align: center;
+    }
+
+    .result-card {
+      width: 100%;
+      max-width: 560px;
+      padding: 40px 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border-top: 8px solid var(--accent, var(--study));
+    }
+
+    .result-card h2 {
+      font-size: clamp(1.5rem, 5.5vw, 2rem);
+      font-weight: 700;
+    }
+
+    /* Večje besedilo, če je izbran vitalni način */
+    .result--vital .result-card h2 {
+      font-size: clamp(2rem, 7vw, 2.6rem);
+      font-weight: 800;
+    }
+
+    .back-btn {
+      margin-top: 28px;
+      padding: 14px 28px;
+      min-height: 48px; /* priporočena najmanjša velikost cilja za dotik */
+      border: 2px solid var(--text-muted);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .back-btn:focus-visible {
+      outline: 3px solid var(--text);
+      outline-offset: 3px;
+    }
+
+    /* Spoštuj nastavitev "zmanjšaj gibanje" */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- =========================================================
+       ZAČETNI ZASLON – izbira načina
+       ========================================================= -->
+  <main id="home-screen" class="screen">
+    <header class="header">
+      <h1>Zdravje+</h1>
+      <p>Izberite način uporabe</p>
+    </header>
+
+    <section class="modes" aria-label="Izbira načina">
+      <!-- Gumb 1: Študijski način (ikona ure) -->
+      <button class="mode-btn mode-btn--study" type="button" data-mode="Študijski">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <polyline points="12 7 12 12 15.5 14" />
+        </svg>
+        <span class="title">Študijski način</span>
+        <span class="subtitle">Fokus, odmori in spanec</span>
+      </button>
+
+      <!-- Gumb 2: Vitalni način (ikona srca) – prilagojen starejšim -->
+      <button class="mode-btn mode-btn--vital" type="button" data-mode="Vitalni">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z" />
+        </svg>
+        <span class="title">Vitalni način</span>
+        <span class="subtitle">Zdravila in počutje</span>
+      </button>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       ZASLON Z REZULTATOM – prikaže se po kliku na gumb
+       ========================================================= -->
+  <main id="result-screen" class="screen result hidden" aria-live="polite">
+    <div class="result-card">
+      <h2 id="result-text"></h2>
+      <button id="back-btn" class="back-btn" type="button">← Nazaj</button>
+    </div>
+  </main>
+
+  <script>
+    // =========================================================
+    // LOGIKA APLIKACIJE
+    // =========================================================
+
+    // Reference na elemente, ki jih potrebujemo
+    const homeScreen = document.getElementById('home-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const resultText = document.getElementById('result-text');
+    const backBtn = document.getElementById('back-btn');
+    const modeButtons = document.querySelectorAll('.mode-btn');
+
+    // Barva poudarka na kartici glede na izbrani način
+    const accentColors = {
+      'Študijski': 'var(--study)',
+      'Vitalni': 'var(--vital)'
+    };
+
+    /**
+     * Skrije začetni zaslon in prikaže sporočilo o izbranem načinu.
+     * @param {string} mode - ime načina, npr. "Študijski" ali "Vitalni"
+     */
+    function loadMode(mode) {
+      resultText.textContent = `Naložen je ${mode} način`;
+
+      // Nastavi barvo poudarka in (za vitalni način) večje besedilo
+      resultScreen.style.setProperty('--accent', accentColors[mode]);
+      resultScreen.classList.toggle('result--vital', mode === 'Vitalni');
+
+      // Zamenjaj zaslona
+      homeScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+
+      // Fokus na gumb "Nazaj" – pomaga pri dostopnosti
+      backBtn.focus();
+    }
+
+    /** Vrne uporabnika na začetni zaslon. */
+    function goHome() {
+      resultScreen.classList.add('hidden');
+      homeScreen.classList.remove('hidden');
+    }
+
+    // Vsakemu gumbu za način dodamo poslušalca klikov.
+    // Ime načina preberemo iz atributa data-mode.
+    modeButtons.forEach((button) => {
+      button.addEventListener('click', () => loadMode(button.dataset.mode));
+    });
+
+    backBtn.addEventListener('click', goHome);
+  </script>
+</body>
+</html>
