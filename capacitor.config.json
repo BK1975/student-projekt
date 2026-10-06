@@ -1,0 +1,10 @@
+{
+  "appId": "si.zdravjeplus.app",
+  "appName": "Zdravje+",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#15803d"
+    }
+  }
+}

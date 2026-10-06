@@ -764,6 +764,94 @@
     }
 
     // =========================================================
+    // 0b. SISTEMSKA OBVESTILA – Capacitor Local Notifications
+    // =========================================================
+
+    /*
+     * V mobilni aplikaciji (Android/iOS) Capacitor vstavi globalni objekt
+     * window.Capacitor. Ker aplikacija nima "bundlerja", vtičnik dobimo z
+     * Capacitor.registerPlugin namesto z `import`. V navadnem brskalniku
+     * vtičnika ni – takrat so spodnje funkcije prazne in aplikacija deluje
+     * kot prej (pisk in sporočilo na zaslonu).
+     *
+     * Obvestilo je načrtovano v sistemu, zato se prikaže tudi, ko je
+     * aplikacija v ozadju, zaprta ali je zaslon zaklenjen.
+     */
+    const NOTIFY_STUDY_ID = 1; // konec intervala učenja
+    const NOTIFY_MOVE_ID = 2;  // opomnik za gibanje
+
+    const cap = window.Capacitor;
+    const LocalNotifications =
+      cap && cap.isNativePlatform() && cap.isPluginAvailable('LocalNotifications')
+        ? cap.registerPlugin('LocalNotifications')
+        : null;
+
+    // Klici vtičnika so asinhroni. Postavimo jih v vrsto, da se npr.
+    // "prekliči" in "načrtuj" za isto obvestilo ne prehitevata.
+    let notifyQueue = Promise.resolve();
+    function enqueueNotify(task) {
+      notifyQueue = notifyQueue
+        .then(task)
+        .catch((err) => console.warn('Obvestilo ni uspelo:', err));
+    }
+
+    /**
+     * Preveri dovoljenje za obvestila in ga po potrebi zahteva.
+     * Uporabnika vprašamo šele, ko obvestilo prvič res potrebujemo.
+     */
+    async function hasNotifyPermission() {
+      let { display } = await LocalNotifications.checkPermissions();
+      if (display === 'prompt' || display === 'prompt-with-rationale') {
+        ({ display } = await LocalNotifications.requestPermissions());
+      }
+      return display === 'granted';
+    }
+
+    /**
+     * Ali sme Android sprožiti obvestilo ob točno določeni sekundi?
+     * Na Androidu 14+ je to dovoljenje ("Alarmi in opomniki") privzeto
+     * izklopljeno. Če ga ni, vtičnik ob VSAKEM načrtovanju odpre sistemske
+     * nastavitve – kar bi bilo zelo moteče. Zato natančni alarm uporabimo le,
+     * če je dovoljenje že dano; sicer ga sistem sproži z manjšim zamikom
+     * (nekaj minut), kar je za opomnike povsem dovolj.
+     */
+    async function canUseExactAlarm() {
+      if (cap.getPlatform() !== 'android') return false; // iOS tega ne potrebuje
+      const { exact_alarm } = await LocalNotifications.checkExactNotificationSetting();
+      return exact_alarm === 'granted';
+    }
+
+    /**
+     * Načrtuje sistemsko obvestilo ob času atMs (ms od 1970).
+     * Prejšnje obvestilo z istim id najprej prekliče.
+     */
+    function scheduleNotification(id, title, body, atMs) {
+      if (!LocalNotifications) return;
+      enqueueNotify(async () => {
+        if (!(await hasNotifyPermission())) return;
+        await LocalNotifications.cancel({ notifications: [{ id }] });
+        await LocalNotifications.schedule({
+          notifications: [{
+            id,
+            title,
+            body,
+            // allowWhileIdle: obvestilo pride tudi, ko je telefon v varčevalnem načinu
+            schedule: { at: new Date(atMs), allowWhileIdle: true },
+            isExactNotification: await canUseExactAlarm(),
+            // Prikaži kot vidno pasico na vrhu zaslona, tudi ko je aplikacija odprta
+            foreground: true
+          }]
+        });
+      });
+    }
+
+    /** Prekliče načrtovano obvestilo (npr. ob pavzi ali ponastavitvi). */
+    function cancelNotification(id) {
+      if (!LocalNotifications) return;
+      enqueueNotify(() => LocalNotifications.cancel({ notifications: [{ id }] }));
+    }
+
+    // =========================================================
     // 1. NAVIGACIJA MED ZASLONI
     // =========================================================
 
@@ -868,6 +956,12 @@
       unlockAudio(); // zvok mora biti "odklenjen" ob kliku uporabnika
       endTime = Date.now() + remainingSeconds * 1000;
       intervalId = setInterval(tick, 250);
+      scheduleNotification(
+        NOTIFY_STUDY_ID,
+        'Čas za odmor 🍅',
+        'Interval učenja je končan. Odpri aplikacijo za navodilo za odmor.',
+        endTime
+      );
       timerStatus.textContent = 'Učenje poteka …';
       render();
     }
@@ -875,6 +969,7 @@
     function pauseTimer() {
       clearInterval(intervalId);
       intervalId = null;
+      cancelNotification(NOTIFY_STUDY_ID);
       timerStatus.textContent = 'Na pavzi';
       render();
     }
@@ -883,6 +978,7 @@
     function resetTimer(seconds = durationSeconds) {
       clearInterval(intervalId);
       intervalId = null;
+      cancelNotification(NOTIFY_STUDY_ID);
       durationSeconds = seconds;
       remainingSeconds = seconds;
       timerStatus.textContent = 'Pripravljen na učenje';
@@ -1086,6 +1182,12 @@
 
       moveTime.textContent = formatHms(seconds);
       moveTickId = setInterval(moveTick, 250);
+      scheduleNotification(
+        NOTIFY_MOVE_ID,
+        'Čas za gibanje 🚶',
+        'Čas je za krajši sprehod ali raztezanje!',
+        moveEndTime
+      );
     }
 
     /** Ustavi vse časovnike opomnika (npr. ob odhodu na začetni zaslon). */
@@ -1094,6 +1196,7 @@
       clearInterval(moveRepeatId);
       moveTickId = null;
       moveRepeatId = null;
+      cancelNotification(NOTIFY_MOVE_ID);
     }
 
     function moveTick() {
@@ -1138,6 +1241,11 @@
     // Začetni prikaz
     render();
     renderSessions();
+
+    // Ob zagonu aplikacija začne na začetnem zaslonu brez tekočih časovnikov,
+    // zato prekličemo morebitna obvestila, ki so ostala od prejšnjega zagona.
+    cancelNotification(NOTIFY_STUDY_ID);
+    cancelNotification(NOTIFY_MOVE_ID);
   </script>
 </body>
 </html>
