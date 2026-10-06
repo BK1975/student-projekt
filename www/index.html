@@ -38,6 +38,44 @@
       window.addEventListener('unhandledrejection', function (e) {
         showError(e.reason && e.reason.message ? e.reason.message : String(e.reason));
       });
+
+      /*
+       * ZAČASNO – RAZHROŠČEVANJE: rumena vrstica na vrhu zaslona izpisuje,
+       * ali se je skripta naložila, ali dotiki pridejo do strani in ali gumb
+       * sproži svoje dejanje. Ko težavo odpraviva, nastavi DEBUG = false.
+       */
+      var DEBUG = true;
+      window.debugLog = function (message) {
+        if (!DEBUG) return;
+        var bar = document.getElementById('debug-bar');
+        if (!bar) {
+          bar = document.createElement('div');
+          bar.id = 'debug-bar';
+          bar.style.cssText =
+            'position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top, 0px));z-index:98;' +
+            'padding:8px 10px;background:#fde047;color:#000;font:12px/1.35 ui-monospace,monospace;' +
+            'border-radius:10px;white-space:pre-wrap;max-height:30vh;overflow:auto;pointer-events:none';
+          (document.body || document.documentElement).appendChild(bar);
+        }
+        var lines = bar.textContent ? bar.textContent.split('\n') : [];
+        lines.push(message);
+        bar.textContent = lines.slice(-8).join('\n'); // zadnjih 8 vrstic
+      };
+
+      // Zajem dotikov in klikov na ravni dokumenta (še preden jih dobi gumb)
+      function describe(el) {
+        if (!el || !el.tagName) return String(el);
+        var btn = el.closest ? el.closest('button') : null;
+        if (btn) el = btn;
+        return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') +
+          (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').join('.') : '');
+      }
+      document.addEventListener('touchstart', function (e) {
+        window.debugLog('dotik: ' + describe(e.target));
+      }, { capture: true, passive: true });
+      document.addEventListener('click', function (e) {
+        window.debugLog('klik: ' + describe(e.target));
+      }, true);
     })();
   </script>
 
@@ -671,7 +709,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.2</p>
+    <p class="version">Različica 0.1.3</p>
   </main>
 
   <!-- =========================================================
@@ -922,6 +960,7 @@
      * @param {string} mode - ime načina, "Študijski" ali "Vitalni"
      */
     function loadMode(mode) {
+      window.debugLog('odpiram način: ' + mode);
       homeScreen.classList.add('hidden');
       window.scrollTo(0, 0);
 
@@ -1297,6 +1336,13 @@
     // Začetni prikaz
     render();
     renderSessions();
+
+    window.debugLog(
+      'skripta naložena ✓ | platforma: ' + (cap && cap.getPlatform ? cap.getPlatform() : 'brez Capacitorja') +
+      ' | core: ' + (cap && typeof cap.registerPlugin === 'function' ? 'da' : 'ne') +
+      ' | obvestila: ' + (LocalNotifications ? 'da' : 'ne') +
+      ' | gumbov: ' + modeButtons.length
+    );
 
     // Ob zagonu aplikacija začne na začetnem zaslonu brez tekočih časovnikov,
     // zato prekličemo morebitna obvestila, ki so ostala od prejšnjega zagona.
