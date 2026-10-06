@@ -70,6 +70,7 @@
       --v-border: #000000;
       --v-green: #14532d;     /* temno zelena: kontrast z belim > 9:1 */
       --v-alert-bg: #fde047;  /* rumena opozorilna podlaga */
+      --v-red: #b91c1c;       /* "ni vzeto" */
 
       --radius: 24px;
       --gap: clamp(16px, 4vw, 28px);
@@ -93,6 +94,7 @@
         --v-text: #ffffff;
         --v-border: #ffffff;
         --v-green: #22c55e;   /* svetlejša zelena za črno ozadje */
+        --v-red: #f87171;
       }
     }
 
@@ -804,6 +806,88 @@
       color: #ffffff;
     }
 
+    /* Okno za jemanje je minilo */
+    .med-dose.missed {
+      border-color: var(--v-red);
+    }
+
+    .med-dose.missed .med-state {
+      color: var(--v-red);
+    }
+
+    #meds-history-btn {
+      margin-left: 8px;
+    }
+
+    /* ---------- Zgodovina ---------- */
+    .history-day {
+      padding: 16px;
+      border: 3px solid var(--v-border);
+      border-radius: 18px;
+    }
+
+    .history-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .history-head h3 {
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    .history-count {
+      font-weight: 800;
+      color: var(--v-red);
+      white-space: nowrap;
+    }
+
+    .history-count.ok {
+      color: var(--v-green);
+    }
+
+    .history-count.neutral {
+      color: var(--v-text);
+    }
+
+    .history-list {
+      list-style: none;
+      margin-top: 10px;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--v-border);
+      font-size: 1.2rem;
+    }
+
+    .history-time {
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .history-name {
+      overflow-wrap: anywhere;
+    }
+
+    .history-state {
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .history-row.taken .history-state {
+      color: var(--v-green);
+    }
+
+    .history-row.missed .history-state {
+      color: var(--v-red);
+    }
+
     .meds-empty {
       margin: 16px 0 4px;
       font-size: 1.25rem;
@@ -1031,7 +1115,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.6</p>
+    <p class="version">Različica 0.1.7</p>
   </main>
 
   <!-- =========================================================
@@ -1056,6 +1140,7 @@
       </p>
 
       <button id="meds-manage-btn" class="big-btn" type="button">+ Dodaj zdravilo</button>
+      <button id="meds-history-btn" class="undo-btn hidden" type="button">📅 Zgodovina</button>
     </section>
 
     <!-- Sekcija: hidracija -->
@@ -1092,6 +1177,19 @@
       <button id="move-test-btn" class="btn btn--test" type="button">Test: 10 sekund</button>
     </section>
   </main>
+
+  <!-- =========================================================
+       ZGODOVINA ZDRAVIL – zadnjih 30 dni
+       ========================================================= -->
+  <div id="med-history" class="med-editor hidden" role="dialog" aria-modal="true"
+       aria-labelledby="med-history-title">
+    <div class="med-editor-inner">
+      <button id="med-history-close" class="back-btn" type="button">← Nazaj</button>
+      <h2 id="med-history-title" tabindex="-1">Zgodovina zdravil</h2>
+      <p>Zdravilo je treba vzeti največ 1 uro pred ali po predpisani uri.</p>
+      <div id="med-history-list" class="stack"></div>
+    </div>
+  </div>
 
   <!-- =========================================================
        UREJEVALNIK ZDRAVIL – seznam in obrazec čez cel zaslon
@@ -1429,6 +1527,7 @@
       stopMoveReminder();
       stopMedsCheck();
       medEditor.classList.add('hidden');
+      medHistory.classList.add('hidden');
       studyScreen.classList.add('hidden');
       vitalScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
@@ -1904,26 +2003,31 @@
     // =========================================================
 
     /*
-     * Podatki:
-     *  - zdravje.zdravila           seznam zdravil:
-     *                               [{ id, name, dose, times: ['08:00', '20:00'] }]
-     *  - zdravje.zdravila.vzeto     današnji vzeti odmerki:
-     *                               { date: 'LLLL-MM-DD', taken: { '3@08:00': '08:05' } }
-     *  - zdravje.zdravila.obvestila id-ji načrtovanih sistemskih obvestil
+     * Podatki (localStorage):
+     *  - zdravje.zdravila            seznam zdravil:
+     *                                [{ id, name, dose, times: ['08:00', '20:00'] }]
+     *  - zdravje.zdravila.zgodovina  odmerki po dnevih (zadnjih 30 dni):
+     *                                { 'LLLL-MM-DD': [{ key, name, dose, time, takenAt }] }
+     *                                takenAt = 'HH:MM' ali null (ni vzeto)
+     *  - zdravje.zdravila.obvestila  id-ji načrtovanih sistemskih obvestil
      *
-     * Vsak odmerek (zdravilo + ura) ima vsak dan svoje obvestilo, ki se
-     * ponavlja – tudi ko je aplikacija zaprta.
+     * Zdravilo je treba vzeti v oknu ±1 ura okoli predpisane ure. Samo takrat
+     * je na voljo gumb "Vzel/a sem"; ko okno mine, je odmerek "Ni vzeto".
+     * Vsak odmerek ima vsak dan svoje sistemsko obvestilo ob predpisani uri.
      */
     const MEDS_KEY = 'zdravje.zdravila';
-    const MEDS_TAKEN_KEY = 'zdravje.zdravila.vzeto';
+    const MEDS_HISTORY_KEY = 'zdravje.zdravila.zgodovina';
     const MEDS_NOTIFY_KEY = 'zdravje.zdravila.obvestila';
     const MAX_TIMES_PER_MED = 6;
     const MED_NOTIFY_BASE_ID = 1000; // id obvestila = 1000 + id zdravila * 10 + zaporedna ura
+    const DOSE_WINDOW_MIN = 60;      // zdravilo vzeti največ 60 min pred ali po uri
+    const HISTORY_DAYS = 30;         // koliko dni zgodovine hranimo
 
     const medsSummary = document.getElementById('meds-summary');
     const medsList = document.getElementById('meds-list');
     const medsEmpty = document.getElementById('meds-empty');
     const medsManageBtn = document.getElementById('meds-manage-btn');
+    const medsHistoryBtn = document.getElementById('meds-history-btn');
 
     const medEditor = document.getElementById('med-editor');
     const medManage = document.getElementById('med-manage');
@@ -1941,29 +2045,89 @@
     let previouslyDue = null;     // odmerki, ki so bili ob zadnjem osveževanju že "na vrsti"
 
     const loadMeds = () => loadJSON(MEDS_KEY, []);
-
-    function loadTaken() {
-      const record = loadJSON(MEDS_TAKEN_KEY, null);
-      return record && record.date === todayKey() ? record.taken : {};
-    }
-
-    function saveTaken(taken) {
-      saveJSON(MEDS_TAKEN_KEY, { date: todayKey(), taken });
-    }
-
-    /** Trenutni čas kot "HH:MM" – primerljiv z urami zdravil kot niz. */
-    function nowHHMM() {
-      const d = new Date();
-      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    }
-
     const doseKey = (med, time) => `${med.id}@${time}`;
 
-    /** Vsi današnji odmerki, urejeni po uri. */
-    function todaysDoses() {
-      const doses = [];
-      loadMeds().forEach((med) => med.times.forEach((time) => doses.push({ med, time })));
-      return doses.sort((a, b) => a.time.localeCompare(b.time) || a.med.name.localeCompare(b.med.name));
+    /** "HH:MM" → minute od polnoči, in obratno. */
+    function toMinutes(hhmm) {
+      const [h, m] = hhmm.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function fromMinutes(total) {
+      return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    /** Trenutni čas kot "HH:MM". */
+    function nowHHMM() {
+      const d = new Date();
+      return fromMinutes(d.getHours() * 60 + d.getMinutes());
+    }
+
+    /** Okno za jemanje (omejeno na isti dan, npr. 00:15 → od 00:00). */
+    function doseWindow(time) {
+      const t = toMinutes(time);
+      return {
+        from: Math.max(0, t - DOSE_WINDOW_MIN),
+        to: Math.min(24 * 60 - 1, t + DOSE_WINDOW_MIN)
+      };
+    }
+
+    /**
+     * Stanje odmerka:
+     *  'taken'    – vzeto
+     *  'upcoming' – okno se še ni odprlo
+     *  'open'     – okno je odprto, ura še ni prišla
+     *  'due'      – ura je prišla, okno je še odprto (rumeno opozorilo)
+     *  'missed'   – okno je minilo, ni vzeto
+     * Za pretekle dneve je vsak nevzet odmerek 'missed'.
+     */
+    function doseStatus(dose, nowMin, isToday) {
+      if (dose.takenAt) return 'taken';
+      if (!isToday) return 'missed';
+      const { from, to } = doseWindow(dose.time);
+      if (nowMin < from) return 'upcoming';
+      if (nowMin > to) return 'missed';
+      return nowMin >= toMinutes(dose.time) ? 'due' : 'open';
+    }
+
+    function loadHistory() {
+      return loadJSON(MEDS_HISTORY_KEY, {});
+    }
+
+    /** Shrani zgodovino in obdrži le zadnjih HISTORY_DAYS dni. */
+    function saveHistory(history) {
+      const keep = Object.keys(history).sort().reverse().slice(0, HISTORY_DAYS);
+      const trimmed = {};
+      keep.forEach((day) => { trimmed[day] = history[day]; });
+      saveJSON(MEDS_HISTORY_KEY, trimmed);
+    }
+
+    /**
+     * Današnji načrt odmerkov uskladi s trenutnim seznamom zdravil:
+     * novi odmerki se dodajo, nevzeti odmerki odstranjenih zdravil izginejo,
+     * že vzeti pa ostanejo (zgodovina mora biti resnična).
+     * Pretekli dnevi se ne spreminjajo.
+     */
+    function syncTodayPlan() {
+      const history = loadHistory();
+      const today = todayKey();
+      const previous = new Map((history[today] || []).map((d) => [d.key, d]));
+
+      const plan = [];
+      loadMeds().forEach((med) => med.times.forEach((time) => {
+        const key = doseKey(med, time);
+        const old = previous.get(key);
+        plan.push({ key, name: med.name, dose: med.dose || '', time, takenAt: old ? old.takenAt : null });
+        previous.delete(key);
+      }));
+      previous.forEach((d) => { if (d.takenAt) plan.push(d); });
+      plan.sort((a, b) => a.time.localeCompare(b.time) || a.name.localeCompare(b.name));
+
+      if (plan.length || history[today]) {
+        history[today] = plan;
+        saveHistory(history);
+      }
+      return plan;
     }
 
     /** Pomožna funkcija: element z razredom in besedilom (textContent – varno za uporabnikov vnos). */
@@ -1976,46 +2140,53 @@
 
     /** Nariše današnji seznam odmerkov na vitalnem zaslonu. */
     function renderMeds() {
-      const doses = todaysDoses();
-      const taken = loadTaken();
+      const doses = syncTodayPlan();
       const now = nowHHMM();
+      const nowMin = toMinutes(now);
       const dueNow = new Set();
 
       medsList.innerHTML = '';
-      doses.forEach(({ med, time }) => {
-        const key = doseKey(med, time);
-        const takenAt = taken[key];
-        const isDue = !takenAt && time <= now;
-        if (isDue) dueNow.add(key);
+      doses.forEach((dose) => {
+        const status = doseStatus(dose, nowMin, true);
+        const { from, to } = doseWindow(dose.time);
+        const windowText = `${fromMinutes(from)}–${fromMinutes(to)}`;
+        if (status === 'due') dueNow.add(dose.key);
 
-        const item = el('li', 'med-dose' + (takenAt ? ' taken' : isDue ? ' due' : ''));
-        item.appendChild(el('div', 'med-time', time));
+        const item = el('li', `med-dose ${status}`);
+        item.appendChild(el('div', 'med-time', dose.time));
 
         const info = el('div', 'med-info');
-        info.appendChild(el('strong', '', med.name));
-        if (med.dose) info.appendChild(el('span', '', med.dose));
-        if (takenAt) info.appendChild(el('span', 'med-state', `✓ Vzeto ob ${takenAt}`));
-        else if (isDue) info.appendChild(el('span', 'med-state', 'Čas je za to zdravilo!'));
+        info.appendChild(el('strong', '', dose.name));
+        if (dose.dose) info.appendChild(el('span', '', dose.dose));
+        const stateText = {
+          taken: `✓ Vzeto ob ${dose.takenAt}`,
+          upcoming: `Vzemite med ${windowText}`,
+          open: `Lahko že vzamete (do ${fromMinutes(to)})`,
+          due: `Čas je za to zdravilo! (do ${fromMinutes(to)})`,
+          missed: '✗ Ni vzeto – čas je potekel'
+        }[status];
+        info.appendChild(el('span', 'med-state', stateText));
         item.appendChild(info);
 
-        if (takenAt) {
-          const undo = el('button', 'undo-btn', 'Razveljavi');
-          undo.type = 'button';
-          undo.setAttribute('aria-label', `Razveljavi: ${med.name} ob ${time}`);
-          undo.addEventListener('click', () => setTaken(key, false));
-          item.appendChild(undo);
-        } else {
+        if (status === 'open' || status === 'due') {
           const take = el('button', 'big-btn', '✓ Vzel/a sem');
           take.type = 'button';
-          take.setAttribute('aria-label', `Vzel/a sem ${med.name} ob ${time}`);
-          take.addEventListener('click', () => setTaken(key, true));
+          take.setAttribute('aria-label', `Vzel/a sem ${dose.name} ob ${dose.time}`);
+          take.addEventListener('click', () => setTaken(dose.key, true));
           item.appendChild(take);
+        } else if (status === 'taken' && nowMin <= to) {
+          // Razveljaviti je mogoče le, dokler je okno še odprto
+          const undo = el('button', 'undo-btn', 'Razveljavi');
+          undo.type = 'button';
+          undo.setAttribute('aria-label', `Razveljavi: ${dose.name} ob ${dose.time}`);
+          undo.addEventListener('click', () => setTaken(dose.key, false));
+          item.appendChild(undo);
         }
         medsList.appendChild(item);
       });
 
       // Povzetek in prazno stanje
-      const takenCount = doses.filter(({ med, time }) => taken[doseKey(med, time)]).length;
+      const takenCount = doses.filter((d) => d.takenAt).length;
       medsEmpty.classList.toggle('hidden', doses.length > 0);
       medsSummary.classList.toggle('hidden', doses.length === 0);
       medsSummary.textContent = takenCount === doses.length
@@ -2025,6 +2196,7 @@
       // da ga ni mogoče zamenjati z gumbom "Vzel/a sem".
       medsManageBtn.textContent = doses.length ? 'Uredi zdravila' : '+ Dodaj zdravilo';
       medsManageBtn.className = doses.length ? 'undo-btn' : 'big-btn';
+      medsHistoryBtn.classList.toggle('hidden', Object.keys(loadHistory()).length === 0);
 
       // Če je med odprtim zaslonom kakšen odmerek ravnokar prišel na vrsto: pisk
       if (previouslyDue && [...dueNow].some((key) => !previouslyDue.has(key))) {
@@ -2034,13 +2206,79 @@
       previouslyDue = dueNow;
     }
 
-    /** Označi odmerek kot vzet (ali razveljavi oznako). */
+    /** Označi današnji odmerek kot vzet (ali razveljavi oznako). */
     function setTaken(key, isTaken) {
-      const taken = loadTaken();
-      if (isTaken) taken[key] = nowHHMM();
-      else delete taken[key];
-      saveTaken(taken);
+      const history = loadHistory();
+      const dose = (history[todayKey()] || []).find((d) => d.key === key);
+      if (dose) {
+        dose.takenAt = isTaken ? nowHHMM() : null;
+        saveHistory(history);
+      }
       renderMeds();
+    }
+
+    // ---------- Zgodovina ----------
+
+    const medHistory = document.getElementById('med-history');
+    const medHistoryList = document.getElementById('med-history-list');
+
+    /** "2026-10-06" → "torek, 6. 10." (slovensko). */
+    function formatDay(day) {
+      const [y, m, d] = day.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const weekday = date.toLocaleDateString('sl-SI', { weekday: 'long' });
+      return `${weekday}, ${d}. ${m}.`;
+    }
+
+    /** Odpre pregled zadnjih dni: kaj je bilo vzeto in kaj ne. */
+    function openMedHistory() {
+      syncTodayPlan();
+      const history = loadHistory();
+      const today = todayKey();
+      const nowMin = toMinutes(nowHHMM());
+      medHistoryList.innerHTML = '';
+
+      Object.keys(history).sort().reverse().forEach((day) => {
+        const doses = history[day];
+        if (!doses.length) return;
+        const isToday = day === today;
+        const taken = doses.filter((d) => d.takenAt).length;
+        const anyMissed = doses.some((d) => doseStatus(d, nowMin, isToday) === 'missed');
+        // zelena = vse vzeto, rdeča = kaj zamujeno, sicer nevtralno (dan še teče)
+        const countClass = taken === doses.length ? 'ok' : anyMissed ? 'missed' : 'neutral';
+
+        const section = el('section', 'history-day');
+        const head = el('div', 'history-head');
+        head.appendChild(el('h3', '', isToday ? `Danes (${formatDay(day)})` : formatDay(day)));
+        head.appendChild(el('span', `history-count ${countClass}`, `${taken} / ${doses.length}`));
+        section.appendChild(head);
+
+        const list = el('ul', 'history-list');
+        doses.forEach((dose) => {
+          const status = doseStatus(dose, nowMin, isToday);
+          const row = el('li', `history-row ${status}`);
+          row.appendChild(el('span', 'history-time', dose.time));
+          row.appendChild(el('span', 'history-name', dose.name));
+          row.appendChild(el('span', 'history-state', {
+            taken: `✓ ob ${dose.takenAt}`,
+            missed: '✗ ni vzeto',
+            upcoming: '… še ni čas',
+            open: '… še ni čas',
+            due: '! čaka'
+          }[status]));
+          list.appendChild(row);
+        });
+        section.appendChild(list);
+        medHistoryList.appendChild(section);
+      });
+
+      medHistory.classList.remove('hidden');
+      document.getElementById('med-history-title').focus();
+    }
+
+    function closeMedHistory() {
+      medHistory.classList.add('hidden');
+      medsHistoryBtn.focus();
     }
 
     /** Ko je vitalni zaslon odprt, seznam osvežimo vsakih 15 s (ure pridejo na vrsto). */
@@ -2079,7 +2317,8 @@
           notifications.push({
             id: MED_NOTIFY_BASE_ID + med.id * 10 + i,
             title: '💊 Čas za zdravilo',
-            body: `${med.name}${med.dose ? ' – ' + med.dose : ''} (${time})`,
+            body: `${med.name}${med.dose ? ' – ' + med.dose : ''} (${time}). ` +
+              `Vzemite do ${fromMinutes(doseWindow(time).to)}.`,
             // "on" brez datuma = vsak dan ob tej uri
             schedule: { on: { hour, minute }, allowWhileIdle: true },
             isExactNotification: exact,
@@ -2227,6 +2466,8 @@
     }
 
     medsManageBtn.addEventListener('click', openMedEditor);
+    medsHistoryBtn.addEventListener('click', openMedHistory);
+    document.getElementById('med-history-close').addEventListener('click', closeMedHistory);
     document.getElementById('med-editor-close').addEventListener('click', () => {
       // Iz obrazca nazaj na seznam, iz seznama nazaj na vitalni zaslon
       if (!medForm.classList.contains('hidden') && loadMeds().length) showMedManage();
