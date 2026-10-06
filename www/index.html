@@ -10,6 +10,37 @@
   <meta name="theme-color" content="#0f172a" />
   <title>Zdravje+</title>
 
+  <script>
+    /*
+     * DIAGNOSTIKA: če se katerikoli JavaScript ustavi z napako, jo izpišemo
+     * v rdečem okvirju na dnu zaslona. Na telefonu konzola ni vidna, zato
+     * tako takoj vidimo, kaj je šlo narobe. Dotik okvirja ga zapre.
+     */
+    (function () {
+      function showError(message) {
+        var box = document.getElementById('error-box');
+        if (!box) {
+          box = document.createElement('div');
+          box.id = 'error-box';
+          box.setAttribute('role', 'alert');
+          box.style.cssText =
+            'position:fixed;left:8px;right:8px;bottom:8px;z-index:99;padding:12px 14px;' +
+            'background:#b91c1c;color:#fff;font:14px/1.4 system-ui,sans-serif;' +
+            'border-radius:12px;white-space:pre-wrap;max-height:40vh;overflow:auto';
+          box.addEventListener('click', function () { box.remove(); });
+          (document.body || document.documentElement).appendChild(box);
+        }
+        box.textContent += (box.textContent ? '\n' : '') + 'Napaka: ' + message;
+      }
+      window.addEventListener('error', function (e) {
+        showError(e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''));
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        showError(e.reason && e.reason.message ? e.reason.message : String(e.reason));
+      });
+    })();
+  </script>
+
   <style>
     /* =========================================================
        1. OBLIKOVNI ŽETONI (barve, razmiki, zaobljenost)
@@ -119,6 +150,12 @@
     .header p {
       margin-top: 6px;
       font-size: clamp(1rem, 3.5vw, 1.2rem);
+      color: var(--text-muted);
+    }
+
+    .version {
+      text-align: center;
+      font-size: 0.85rem;
       color: var(--text-muted);
     }
 
@@ -632,6 +669,9 @@
         <span class="subtitle">Zdravila in počutje</span>
       </button>
     </section>
+
+    <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
+    <p class="version">Različica 0.1.2</p>
   </main>
 
   <!-- =========================================================
