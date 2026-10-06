@@ -366,6 +366,51 @@
       border: 2px solid var(--text-muted);
     }
 
+    /* Izbira ritma – "segmentirani" gumbi */
+    .rhythm {
+      display: inline-flex;
+      margin-top: 20px;
+      padding: 4px;
+      gap: 4px;
+      border-radius: 999px;
+      background: var(--bg);
+    }
+
+    .rhythm button {
+      min-height: 44px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+    }
+
+    .rhythm button[aria-checked="true"] {
+      background: var(--study);
+      color: #ffffff;
+    }
+
+    .rhythm button:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    .rhythm button:focus-visible {
+      outline: 3px solid var(--text);
+      outline-offset: 2px;
+    }
+
+    .rhythm-hint {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
     /* Števec današnjih intervalov */
     .sessions {
       margin-top: 24px;
@@ -425,6 +470,13 @@
       font-size: clamp(1.8rem, 7vw, 3rem);
       font-weight: 800;
       line-height: 1.25;
+    }
+
+    .break-overlay .break-timer {
+      font-size: clamp(3.5rem, 16vw, 5rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
     }
 
     .break-overlay .break-sessions {
@@ -1115,7 +1167,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.7</p>
+    <p class="version">Različica 0.1.8</p>
   </main>
 
   <!-- =========================================================
@@ -1251,6 +1303,14 @@
       <div id="timer-display" class="timer-display" role="timer">45:00</div>
       <p id="timer-status" class="timer-status">Pripravljen na učenje</p>
 
+      <!-- Ritem: minut učenja / minut odmora (shrani se na napravo) -->
+      <div class="rhythm" role="radiogroup" aria-label="Ritem: minut učenja / minut odmora">
+        <button type="button" role="radio" data-rhythm="25-5">25 / 5</button>
+        <button type="button" role="radio" data-rhythm="45-15">45 / 15</button>
+        <button type="button" role="radio" data-rhythm="50-10">50 / 10</button>
+      </div>
+      <p id="rhythm-hint" class="rhythm-hint">minut učenja / minut odmora</p>
+
       <div class="timer-controls">
         <button id="start-btn" class="btn btn--primary" type="button">Začni</button>
         <button id="reset-btn" class="btn btn--secondary" type="button">Ponastavi</button>
@@ -1286,8 +1346,11 @@
        ========================================================= -->
   <div id="break-overlay" class="break-overlay hidden" role="alertdialog"
        aria-modal="true" aria-labelledby="break-tip">
-    <p class="break-label">Čas za odmor</p>
+    <p id="break-label" class="break-label">Čas za odmor</p>
     <p id="break-tip" class="break-tip"></p>
+
+    <!-- Odštevanje odmora; ob koncu se skrije -->
+    <div id="break-timer" class="break-timer" role="timer">15:00</div>
     <p id="break-sessions" class="break-sessions"></p>
 
     <!-- Odmor je odličen čas za vaje -->
@@ -1296,7 +1359,8 @@
       <button class="btn btn--ghost" type="button" data-routine="back">🧘 Vaje za križ</button>
     </div>
 
-    <button id="break-back-btn" class="btn" type="button">Nazaj na učenje</button>
+    <button id="break-back-btn" class="btn" type="button">Končaj odmor</button>
+    <button id="break-close-btn" class="btn btn--ghost hidden" type="button">Zapri</button>
   </div>
 
   <!-- =========================================================
@@ -1412,6 +1476,7 @@
      */
     const NOTIFY_STUDY_ID = 1; // konec intervala učenja
     const NOTIFY_MOVE_ID = 2;  // opomnik za gibanje
+    const NOTIFY_BREAK_END_ID = 3; // konec odmora – nazaj k učenju
 
     const cap = window.Capacitor;
     let LocalNotifications = null;
@@ -1522,6 +1587,8 @@
 
     /** Vrne uporabnika na začetni zaslon in ustavi vse časovnike. */
     function goHome() {
+      stopBreakTimer();
+      breakOverlay.classList.add('hidden');
       resetTimer();
       closeExercises();
       stopMoveReminder();
@@ -1546,14 +1613,26 @@
     // 2. POMODORO ČASOVNIK
     // =========================================================
 
-    const DEFAULT_SECONDS = 45 * 60; // privzeto 45 minut
-    const TEST_SECONDS = 5;          // za testiranje
+    /*
+     * Pomodoro: interval učenja, nato samodejno odštevanje odmora.
+     * Ritem (minut učenja / minut odmora) izbere uporabnik in se shrani.
+     */
+    const RHYTHMS = {
+      '25-5': { focus: 25 * 60, rest: 5 * 60 },
+      '45-15': { focus: 45 * 60, rest: 15 * 60 },
+      '50-10': { focus: 50 * 60, rest: 10 * 60 }
+    };
+    const DEFAULT_RHYTHM = '45-15';
+    const RHYTHM_KEY = 'zdravje.ucenje.ritem';
+    const TEST_CYCLE = { focus: 5, rest: 5 }; // za testiranje: 5 s učenja, 5 s odmora
 
     const timerDisplay = document.getElementById('timer-display');
     const timerStatus = document.getElementById('timer-status');
     const startBtn = document.getElementById('start-btn');
     const resetBtn = document.getElementById('reset-btn');
     const testBtn = document.getElementById('test-btn');
+    const rhythmButtons = document.querySelectorAll('[data-rhythm]');
+    const rhythmHint = document.getElementById('rhythm-hint');
 
     const sessionsCount = document.getElementById('sessions-count');
     const breakSessions = document.getElementById('break-sessions');
@@ -1561,8 +1640,13 @@
     // Število uspešno zaključenih intervalov učenja danes
     const studySessions = createDailyCounter('zdravje.ucenje');
 
-    let durationSeconds = DEFAULT_SECONDS; // trajanje trenutnega cikla
-    let remainingSeconds = DEFAULT_SECONDS;
+    const savedRhythm = loadJSON(RHYTHM_KEY, DEFAULT_RHYTHM);
+    let rhythmKey = RHYTHMS[savedRhythm] ? savedRhythm : DEFAULT_RHYTHM;
+    let cycle = RHYTHMS[rhythmKey]; // trenutni ritem (ali testni)
+    let testMode = false;
+
+    let durationSeconds = cycle.focus; // trajanje trenutnega intervala učenja
+    let remainingSeconds = cycle.focus;
     let endTime = null;   // časovni žig konca (ms), ko časovnik teče
     let intervalId = null;
 
@@ -1573,12 +1657,32 @@
       return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
-    /** Osveži prikaz časa in besedilo gumba "Začni". */
+    /** Ali je interval zagnan ali na pavzi (takrat ritma ne moremo menjati). */
+    const inProgress = () => intervalId !== null || remainingSeconds < durationSeconds;
+
+    /** Osveži prikaz časa, gumb "Začni" in izbiro ritma. */
     function render() {
       timerDisplay.textContent = formatTime(remainingSeconds);
       startBtn.textContent = intervalId
         ? 'Pavza'
         : remainingSeconds < durationSeconds ? 'Nadaljuj' : 'Začni';
+
+      rhythmButtons.forEach((button) => {
+        button.setAttribute('aria-checked', String(!testMode && button.dataset.rhythm === rhythmKey));
+        button.disabled = inProgress();
+      });
+      rhythmHint.textContent = testMode
+        ? 'Test: 5 s učenja / 5 s odmora'
+        : inProgress()
+          ? 'Ritem lahko zamenjaš, ko ponastaviš časovnik.'
+          : 'minut učenja / minut odmora';
+    }
+
+    /** Besedilo stanja, ko časovnik čaka na začetek. */
+    function readyStatus() {
+      return testMode
+        ? 'Pripravljen na test'
+        : `Pripravljen na učenje · odmor ${cycle.rest / 60} min`;
     }
 
     /**
@@ -1601,33 +1705,66 @@
       unlockAudio(); // zvok mora biti "odklenjen" ob kliku uporabnika
       endTime = Date.now() + remainingSeconds * 1000;
       intervalId = setInterval(tick, 250);
+
+      // Obe obvestili načrtujemo takoj – prideta, tudi če je aplikacija
+      // ves čas zaprta (odmor se začne samodejno ob koncu učenja).
       scheduleNotification(
         NOTIFY_STUDY_ID,
         'Čas za odmor 🍅',
-        'Interval učenja je končan. Odpri aplikacijo za navodilo za odmor.',
+        `Interval učenja je končan. Privošči si ${formatBreakLength()} odmora.`,
         endTime
+      );
+      scheduleNotification(
+        NOTIFY_BREAK_END_ID,
+        'Odmor je končan 📚',
+        'Čas je, da se vrneš k učenju.',
+        endTime + cycle.rest * 1000
       );
       timerStatus.textContent = 'Učenje poteka …';
       render();
+    }
+
+    /** "15 minut" / "5 sekund" – za besedilo obvestila. */
+    function formatBreakLength() {
+      return cycle.rest >= 60 ? `${cycle.rest / 60} minut` : `${cycle.rest} sekund`;
     }
 
     function pauseTimer() {
       clearInterval(intervalId);
       intervalId = null;
       cancelNotification(NOTIFY_STUDY_ID);
+      cancelNotification(NOTIFY_BREAK_END_ID);
       timerStatus.textContent = 'Na pavzi';
       render();
     }
 
-    /** Ustavi časovnik in ga vrne na začetno trajanje. */
-    function resetTimer(seconds = durationSeconds) {
+    /** Ustavi časovnik in ga vrne na začetek trenutnega ritma. */
+    function resetTimer() {
       clearInterval(intervalId);
       intervalId = null;
       cancelNotification(NOTIFY_STUDY_ID);
-      durationSeconds = seconds;
-      remainingSeconds = seconds;
-      timerStatus.textContent = 'Pripravljen na učenje';
+      cancelNotification(NOTIFY_BREAK_END_ID);
+      durationSeconds = cycle.focus;
+      remainingSeconds = cycle.focus;
+      timerStatus.textContent = readyStatus();
       render();
+    }
+
+    /** Zamenja ritem (le ko časovnik ni zagnan) in ga shrani. */
+    function setRhythm(key) {
+      if (inProgress() || !RHYTHMS[key]) return;
+      rhythmKey = key;
+      cycle = RHYTHMS[key];
+      testMode = false;
+      saveJSON(RHYTHM_KEY, key);
+      resetTimer();
+    }
+
+    /** Testni način: 5 s učenja in 5 s odmora. "Ponastavi" ga izklopi. */
+    function startTestMode() {
+      testMode = true;
+      cycle = TEST_CYCLE;
+      resetTimer();
     }
 
     /** Prikaže, koliko intervalov je študent danes že opravil. */
@@ -1638,23 +1775,34 @@
     }
 
     /**
-     * Čas je potekel: zabeleži uspešen interval, pisk + prikaz odmora.
-     * Opomba: šteje tudi testni interval (5 s), da lahko števec preizkusiva
-     * brez 45-minutnega čakanja. Za pravo uporabo zamenjaj pogoj z
-     * `if (durationSeconds === DEFAULT_SECONDS)`.
+     * Učenje je končano: zabeleži interval, pisk in začni odmor.
+     * Odmor se začne ob dejanskem koncu učenja (endTime) – tudi če je bila
+     * aplikacija medtem v ozadju.
+     * Opomba: šteje tudi testni interval, da lahko števec preizkusiva.
+     * Za pravo uporabo dodaj pogoj `if (!testMode)`.
      */
     function finishTimer() {
       clearInterval(intervalId);
       intervalId = null;
       studySessions.set(studySessions.get() + 1);
       renderSessions();
+      timerStatus.textContent = 'Odmor';
+      render();
       playBeep();
-      showBreak();
+      startBreak(endTime + cycle.rest * 1000);
     }
 
     startBtn.addEventListener('click', toggleTimer);
-    resetBtn.addEventListener('click', () => resetTimer(DEFAULT_SECONDS));
-    testBtn.addEventListener('click', () => resetTimer(TEST_SECONDS));
+    resetBtn.addEventListener('click', () => {
+      // Ponastavi izklopi tudi testni način
+      testMode = false;
+      cycle = RHYTHMS[rhythmKey];
+      resetTimer();
+    });
+    testBtn.addEventListener('click', startTestMode);
+    rhythmButtons.forEach((button) => {
+      button.addEventListener('click', () => setRhythm(button.dataset.rhythm));
+    });
 
     // =========================================================
     // 3. ZVOK – pisk z Web Audio API (brez mp3 datotek)
@@ -1722,20 +1870,73 @@
     ];
 
     const breakOverlay = document.getElementById('break-overlay');
+    const breakLabel = document.getElementById('break-label');
     const breakTip = document.getElementById('break-tip');
+    const breakTimer = document.getElementById('break-timer');
     const breakBackBtn = document.getElementById('break-back-btn');
+    const breakCloseBtn = document.getElementById('break-close-btn');
 
-    /** Prikaže prekrivni zaslon z naključnim navodilom. */
-    function showBreak() {
+    let breakEndTime = null;
+    let breakTickId = null;
+    let breakOver = false; // false = odmor teče, true = odmor je končan
+
+    /** Prikaže odmor z naključnim navodilom in začne odštevati do breakEnd (ms). */
+    function startBreak(breakEnd) {
+      breakEndTime = breakEnd;
+      breakOver = false;
+      breakLabel.textContent = 'Čas za odmor';
       breakTip.textContent = breakTips[Math.floor(Math.random() * breakTips.length)];
+      breakTimer.classList.remove('hidden');
+      breakBackBtn.textContent = 'Končaj odmor';
+      breakCloseBtn.classList.add('hidden');
       breakOverlay.classList.remove('hidden');
       breakBackBtn.focus();
+
+      clearInterval(breakTickId);
+      breakTickId = setInterval(breakTick, 250);
+      breakTick();
     }
 
-    /** "Nazaj na učenje": skrije odmor in ponastavi časovnik. */
-    breakBackBtn.addEventListener('click', () => {
+    function breakTick() {
+      const remaining = Math.max(0, Math.ceil((breakEndTime - Date.now()) / 1000));
+      breakTimer.textContent = formatTime(remaining);
+      if (remaining === 0) finishBreak();
+    }
+
+    /** Odmor je minil: nežen pisk in povabilo k naslednjemu intervalu. */
+    function finishBreak() {
+      stopBreakTimer();
+      breakOver = true;
+      breakLabel.textContent = 'Odmor je končan';
+      breakTip.textContent = 'Čas je, da se vrneš k učenju. 📚';
+      breakTimer.classList.add('hidden');
+      breakBackBtn.textContent = '▶ Začni naslednji interval';
+      breakCloseBtn.classList.remove('hidden');
+      playBeep({ frequency: 523, count: 2, length: 0.3 }); // nižji, prijaznejši ton
+    }
+
+    function stopBreakTimer() {
+      clearInterval(breakTickId);
+      breakTickId = null;
+    }
+
+    /** Zapre odmor; časovnik se vrne na začetek intervala. */
+    function closeBreak() {
+      stopBreakTimer();
       breakOverlay.classList.add('hidden');
-      resetTimer();
+      resetTimer(); // prekliče tudi obvestilo o koncu odmora
+    }
+
+    // Med odmorom: "Končaj odmor". Po odmoru: "Začni naslednji interval".
+    breakBackBtn.addEventListener('click', () => {
+      const startNext = breakOver;
+      closeBreak();
+      if (startNext) toggleTimer();
+      startBtn.focus();
+    });
+
+    breakCloseBtn.addEventListener('click', () => {
+      closeBreak();
       startBtn.focus();
     });
 
@@ -2586,12 +2787,15 @@
     }
 
     // Začetni prikaz
+    timerStatus.textContent = readyStatus();
+    timerDisplay.textContent = formatTime(remainingSeconds);
     render();
     renderSessions();
 
     // Ob zagonu aplikacija začne na začetnem zaslonu brez tekočih časovnikov,
     // zato prekličemo morebitna obvestila, ki so ostala od prejšnjega zagona.
     cancelNotification(NOTIFY_STUDY_ID);
+    cancelNotification(NOTIFY_BREAK_END_ID);
     cancelNotification(NOTIFY_MOVE_ID);
 
     // Opomniki za zdravila pa morajo veljati ves čas – ob zagonu jih uskladimo
