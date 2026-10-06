@@ -56,6 +56,10 @@
       --study: #2563eb;
       --study-dark: #1e40af;
 
+      /* Vaje za hrbtenico – turkizna (bel tekst ima kontrast > 5:1) */
+      --exercise: #0f766e;
+      --exercise-dark: #134e4a;
+
       /* Vitalni način – zelena (temnejši odtenek za visok kontrast z belim besedilom) */
       --vital: #15803d;
       --vital-dark: #14532d;
@@ -435,6 +439,148 @@
       outline-color: #ffffff;
     }
 
+    /* Gumbi za vaje na zaslonu odmora – prozorni z belo obrobo */
+    .break-overlay .break-exercises {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .break-overlay .btn--ghost {
+      background: transparent;
+      color: #ffffff;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+    }
+
+    /* =========================================================
+       7b. VAJE ZA HRBTENICO
+       ========================================================= */
+
+    /* Kartica z izbiro vaj na študijskem zaslonu */
+    .exercise-card {
+      width: 100%;
+      max-width: 560px;
+      padding: 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border-top: 8px solid var(--exercise);
+    }
+
+    .exercise-card h2 {
+      font-size: 1.4rem;
+      font-weight: 800;
+    }
+
+    .exercise-card p {
+      margin-top: 4px;
+      color: var(--text-muted);
+    }
+
+    .exercise-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .btn--exercise {
+      min-width: 0;
+      border-radius: 18px;
+      background: var(--exercise);
+      color: #ffffff;
+      line-height: 1.25;
+    }
+
+    /* Druga vrstica v gumbu: število vaj in trajanje */
+    .btn--exercise small {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0.9;
+    }
+
+    /* Vodene vaje – prekrivni sloj nad vsem (tudi nad zaslonom odmora) */
+    .exercise-overlay {
+      z-index: 11;
+      gap: 18px;
+      background: linear-gradient(135deg, var(--exercise), var(--exercise-dark));
+    }
+
+    .exercise-overlay .ex-routine {
+      font-size: 1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.85;
+    }
+
+    .exercise-overlay .ex-name {
+      font-size: clamp(1.8rem, 7vw, 2.6rem);
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .exercise-overlay .ex-text {
+      max-width: 560px;
+      font-size: clamp(1.15rem, 4.5vw, 1.35rem);
+      line-height: 1.5;
+    }
+
+    .exercise-overlay .ex-timer {
+      font-size: clamp(3rem, 14vw, 4.5rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    /* Vrstica napredka trenutne vaje */
+    .ex-progress {
+      width: min(320px, 80vw);
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.25);
+      overflow: hidden;
+    }
+
+    .ex-progress-fill {
+      width: 0;
+      height: 100%;
+      background: #ffffff;
+      transition: width 0.25s linear;
+    }
+
+    .exercise-overlay .ex-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .exercise-overlay .btn {
+      background: #ffffff;
+      color: var(--exercise-dark);
+    }
+
+    .exercise-overlay .btn--ghost {
+      background: transparent;
+      color: #ffffff;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .exercise-overlay .btn:focus-visible {
+      outline-color: #ffffff;
+    }
+
+    .exercise-overlay .ex-safety {
+      max-width: 480px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
     @keyframes fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -671,7 +817,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.4</p>
+    <p class="version">Različica 0.1.5</p>
   </main>
 
   <!-- =========================================================
@@ -747,6 +893,21 @@
       <!-- Samo za testiranje: nastavi časovnik na 5 sekund -->
       <button id="test-btn" class="btn btn--test" type="button">Test: 5 sekund</button>
     </section>
+
+    <!-- Vodene vaje za hrbtenico – na voljo kadarkoli med učenjem -->
+    <section class="exercise-card" aria-labelledby="exercise-title">
+      <h2 id="exercise-title">🧘 Vaje za hrbtenico</h2>
+      <p>Kratke vaje sede ali stoje razbremenijo vrat in križ po dolgem sedenju.</p>
+      <div class="exercise-buttons">
+        <!-- Število vaj in trajanje (<small>) izpolni JavaScript iz seznama vaj -->
+        <button class="btn btn--exercise" type="button" data-routine="neck">
+          Vratna hrbtenica <small></small>
+        </button>
+        <button class="btn btn--exercise" type="button" data-routine="back">
+          Ledvena hrbtenica <small></small>
+        </button>
+      </div>
+    </section>
   </main>
 
   <!-- =========================================================
@@ -757,7 +918,36 @@
     <p class="break-label">Čas za odmor</p>
     <p id="break-tip" class="break-tip"></p>
     <p id="break-sessions" class="break-sessions"></p>
+
+    <!-- Odmor je odličen čas za vaje -->
+    <div class="break-exercises">
+      <button class="btn btn--ghost" type="button" data-routine="neck">🧘 Vaje za vrat</button>
+      <button class="btn btn--ghost" type="button" data-routine="back">🧘 Vaje za križ</button>
+    </div>
+
     <button id="break-back-btn" class="btn" type="button">Nazaj na učenje</button>
+  </div>
+
+  <!-- =========================================================
+       VODENE VAJE – ena vaja naenkrat z odštevanjem
+       ========================================================= -->
+  <div id="exercise-overlay" class="break-overlay exercise-overlay hidden" role="dialog"
+       aria-modal="true" aria-labelledby="ex-name">
+    <p id="ex-routine" class="ex-routine"></p>
+    <h2 id="ex-name" class="ex-name"></h2>
+    <p id="ex-text" class="ex-text"></p>
+
+    <div id="ex-timer" class="ex-timer" role="timer">0</div>
+    <div class="ex-progress" aria-hidden="true"><div id="ex-progress-fill" class="ex-progress-fill"></div></div>
+
+    <div class="ex-controls">
+      <button id="ex-pause-btn" class="btn btn--ghost" type="button">Pavza</button>
+      <button id="ex-next-btn" class="btn" type="button">Naslednja vaja</button>
+    </div>
+    <button id="ex-close-btn" class="btn btn--ghost" type="button">Končaj</button>
+
+    <p class="ex-safety">Vaje izvajaj počasi in v udobnem obsegu. Če začutiš bolečino, omotico
+      ali mravljinčenje v rokah ali nogah, prenehaj.</p>
   </div>
 
   <!--
@@ -938,6 +1128,7 @@
     /** Vrne uporabnika na začetni zaslon in ustavi vse časovnike. */
     function goHome() {
       resetTimer();
+      closeExercises();
       stopMoveReminder();
       studyScreen.classList.add('hidden');
       vitalScreen.classList.add('hidden');
@@ -1149,6 +1340,222 @@
       resetTimer();
       startBtn.focus();
     });
+
+    // =========================================================
+    // 4b. VAJE ZA HRBTENICO – vodeni program z odštevanjem
+    // =========================================================
+
+    /*
+     * Nežne raztezne in mobilizacijske vaje, ki jih je mogoče narediti ob
+     * pisalni mizi. Vsaka vaja ima ime, navodilo in trajanje v sekundah.
+     * Seznam je preprosto razširiti – dodaj nov objekt v "steps".
+     */
+    const routines = {
+      neck: {
+        title: 'Vratna hrbtenica',
+        steps: [
+          {
+            name: 'Brada nazaj',
+            text: 'Sedi vzravnano in glej naravnost. Brado počasi potisni naravnost nazaj, da nastane »dvojna brada«. Zadrži 3 sekunde, sprosti. Ponavljaj.',
+            seconds: 30
+          },
+          {
+            name: 'Brada proti prsim',
+            text: 'Počasi spusti brado proti prsim, da začutiš nežen razteg v zatilju. Ramena ostanejo sproščena. Zadrži.',
+            seconds: 20
+          },
+          {
+            name: 'Uho proti rami – levo',
+            text: 'Glavo nagni tako, da se levo uho približa levi rami. Desno ramo potisni navzdol. Zadrži in mirno dihaj.',
+            seconds: 20
+          },
+          {
+            name: 'Uho proti rami – desno',
+            text: 'Še na drugo stran: desno uho proti desni rami, levo ramo potisni navzdol. Zadrži.',
+            seconds: 20
+          },
+          {
+            name: 'Pogled čez ramo',
+            text: 'Počasi obrni glavo in poglej čez levo ramo, nato čez desno. Brada ostane vodoravno. Gibaj se mirno, brez sunkov.',
+            seconds: 30
+          },
+          {
+            name: 'Kroženje z rameni',
+            text: 'Z rameni počasi in na široko kroži nazaj. Lopatice ob tem stisni skupaj.',
+            seconds: 20
+          }
+        ]
+      },
+      back: {
+        title: 'Ledvena hrbtenica',
+        steps: [
+          {
+            name: 'Mačka in krava sede',
+            text: 'Sedi na rob stola, dlani na kolenih. Ob vdihu uleknji križ in dvigni prsni koš, ob izdihu hrbet zaokroži in spusti brado. Izmenjuj počasi.',
+            seconds: 40
+          },
+          {
+            name: 'Zasuk sede – levo',
+            text: 'Sedi vzravnano, stopala na tleh. Trup počasi zasukaj v levo in se z roko primi naslonjala. Zadrži in dihaj.',
+            seconds: 20
+          },
+          {
+            name: 'Zasuk sede – desno',
+            text: 'Še na drugo stran: trup zasukaj v desno. Medenica ostane pri miru.',
+            seconds: 20
+          },
+          {
+            name: 'Predklon sede',
+            text: 'Kolena razmakni v širino bokov. Počasi se predkloni in roke spusti proti tlom, glava naj visi sproščeno. Zadrži, nato se počasi, vretence za vretencem, zravnaj.',
+            seconds: 25
+          },
+          {
+            name: 'Zaklon stoje',
+            text: 'Vstani, stopala v širini bokov, dlani položi na križ. Medenico potisni rahlo naprej in se nežno nagni nazaj. Zadrži 2 sekundi in se vrni. Ponavljaj.',
+            seconds: 30
+          },
+          {
+            name: 'Stranski nagib stoje',
+            text: 'Stoje dvigni desno roko nad glavo in se nagni v levo, nato zamenjaj stran. Gibaj se počasi in ne zadržuj diha.',
+            seconds: 30
+          }
+        ]
+      }
+    };
+
+    const exerciseOverlay = document.getElementById('exercise-overlay');
+    const exRoutine = document.getElementById('ex-routine');
+    const exName = document.getElementById('ex-name');
+    const exText = document.getElementById('ex-text');
+    const exTimer = document.getElementById('ex-timer');
+    const exProgressFill = document.getElementById('ex-progress-fill');
+    const exPauseBtn = document.getElementById('ex-pause-btn');
+    const exNextBtn = document.getElementById('ex-next-btn');
+    const exCloseBtn = document.getElementById('ex-close-btn');
+
+    let exRoutineData = null; // trenutno izbran program
+    let exIndex = 0;          // katera vaja teče
+    let exEndTime = null;     // konec trenutne vaje (ms)
+    let exRemainingMs = 0;    // preostanek med pavzo
+    let exTickId = null;
+    let exReturnFocus = null; // gumb, ki dobi fokus po zaprtju
+
+    /** Skupno trajanje programa v minutah (zaokroženo navzgor). */
+    function routineMinutes(routine) {
+      const seconds = routine.steps.reduce((sum, step) => sum + step.seconds, 0);
+      return Math.ceil(seconds / 60);
+    }
+
+    // Napiši število vaj in trajanje na gumbe študijskega zaslona
+    document.querySelectorAll('.btn--exercise').forEach((button) => {
+      const routine = routines[button.dataset.routine];
+      button.querySelector('small').textContent =
+        `${routine.steps.length} vaj · ${routineMinutes(routine)} min`;
+    });
+
+    /** Odpre izbrani program vaj (neck ali back). */
+    function openExercises(key, returnFocusTo) {
+      unlockAudio(); // klik je dejanje uporabnika – zvok za konec vaje bo deloval
+      exRoutineData = routines[key];
+      exIndex = 0;
+      exReturnFocus = returnFocusTo || null;
+      exerciseOverlay.classList.remove('hidden');
+      startExerciseStep();
+      exNextBtn.focus();
+    }
+
+    /** Prikaže trenutno vajo in zažene njeno odštevanje. */
+    function startExerciseStep() {
+      const step = exRoutineData.steps[exIndex];
+      const total = exRoutineData.steps.length;
+
+      exRoutine.textContent = `${exRoutineData.title} · vaja ${exIndex + 1} / ${total}`;
+      exName.textContent = step.name;
+      exText.textContent = step.text;
+      exTimer.classList.remove('hidden');
+      exPauseBtn.classList.remove('hidden');
+      exPauseBtn.textContent = 'Pavza';
+      exNextBtn.classList.remove('hidden');
+      exNextBtn.textContent = exIndex + 1 < total ? 'Naslednja vaja' : 'Zaključi';
+      exCloseBtn.textContent = 'Končaj';
+
+      exRemainingMs = step.seconds * 1000;
+      runExerciseTimer();
+    }
+
+    function runExerciseTimer() {
+      clearInterval(exTickId);
+      exEndTime = Date.now() + exRemainingMs;
+      exTickId = setInterval(exerciseTick, 250);
+      exerciseTick();
+    }
+
+    /** Osveži odštevanje; ob koncu vaje pisne in preide na naslednjo. */
+    function exerciseTick() {
+      const step = exRoutineData.steps[exIndex];
+      const remainingMs = Math.max(0, exEndTime - Date.now());
+      exTimer.textContent = `${Math.ceil(remainingMs / 1000)} s`;
+      exProgressFill.style.width = `${100 - (remainingMs / (step.seconds * 1000)) * 100}%`;
+
+      if (remainingMs === 0) {
+        playBeep({ frequency: 660, count: 1, length: 0.25 });
+        nextExercise();
+      }
+    }
+
+    /** Pavza / nadaljevanje trenutne vaje. */
+    function toggleExercisePause() {
+      if (exTickId) {
+        clearInterval(exTickId);
+        exTickId = null;
+        exRemainingMs = Math.max(0, exEndTime - Date.now());
+        exPauseBtn.textContent = 'Nadaljuj';
+      } else {
+        exPauseBtn.textContent = 'Pavza';
+        runExerciseTimer();
+      }
+    }
+
+    function nextExercise() {
+      if (exIndex + 1 < exRoutineData.steps.length) {
+        exIndex++;
+        startExerciseStep();
+      } else {
+        finishExercises();
+      }
+    }
+
+    /** Vse vaje so opravljene – pohvala in gumb za zaprtje. */
+    function finishExercises() {
+      clearInterval(exTickId);
+      exTickId = null;
+      exRoutine.textContent = exRoutineData.title;
+      exName.textContent = 'Bravo! 🎉';
+      exText.textContent = 'Vaje so končane. Hrbtenica se ti zahvaljuje – zdaj se lahko spočito vrneš k učenju.';
+      exTimer.classList.add('hidden');
+      exPauseBtn.classList.add('hidden');
+      exNextBtn.classList.add('hidden');
+      exProgressFill.style.width = '100%';
+      exCloseBtn.textContent = 'Zapri';
+      exCloseBtn.focus();
+    }
+
+    /** Zapre vaje in vrne uporabnika tja, od koder je prišel. */
+    function closeExercises() {
+      clearInterval(exTickId);
+      exTickId = null;
+      exerciseOverlay.classList.add('hidden');
+      if (exReturnFocus) exReturnFocus.focus();
+    }
+
+    // Vsi gumbi z data-routine (na študijskem zaslonu in na zaslonu odmora)
+    document.querySelectorAll('[data-routine]').forEach((button) => {
+      button.addEventListener('click', () => openExercises(button.dataset.routine, button));
+    });
+
+    exPauseBtn.addEventListener('click', toggleExercisePause);
+    exNextBtn.addEventListener('click', nextExercise);
+    exCloseBtn.addEventListener('click', closeExercises);
 
     // =========================================================
     // 5. VITALNI NAČIN – hidracija
