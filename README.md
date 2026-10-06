@@ -8,10 +8,12 @@ Mobilna zdravstvena aplikacija za študente in starejše, zgrajena s [Capacitor]
   se prikažeta tudi, ko je aplikacija v ozadju ali zaprta.
 
 Celotna spletna aplikacija je v eni datoteki: [`www/index.html`](www/index.html).
+Poleg nje je v `www/` še `capacitor.js` – knjižnica `@capacitor/core`, ki jo `npm install` samodejno
+skopira iz `node_modules` (potrebna je, da aplikacija na telefonu doseže vtičnike).
 
 ## Zahteve
 
-- Node.js 22 ali novejši
+- Node.js 22 ali novejši (`node -v`; starejše različice Capacitor 8 ne podpira)
 - **Android:** Android Studio (z Android SDK)
 - **iOS:** macOS z Xcode
 

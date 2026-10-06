@@ -4,6 +4,7 @@
   "private": true,
   "description": "Mobilna zdravstvena aplikacija za študente in starejše (Capacitor)",
   "scripts": {
+    "postinstall": "node -e \"require('fs').copyFileSync('node_modules/@capacitor/core/dist/capacitor.js','www/capacitor.js')\"",
     "sync": "cap sync",
     "android": "cap sync android && cap open android",
     "ios": "cap sync ios && cap open ios"
@@ -16,5 +17,8 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

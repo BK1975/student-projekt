@@ -720,6 +720,14 @@
     <button id="break-back-btn" class="btn" type="button">Nazaj na učenje</button>
   </div>
 
+  <!--
+    Knjižnica @capacitor/core (datoteko skopira "npm install" iz node_modules).
+    Doda Capacitor.registerPlugin, ki ga potrebujemo za vtičnike. Brez nje mobilni
+    "most" ponudi le osnovni objekt window.Capacitor. V navadnem brskalniku
+    knjižnica le zazna, da ni na telefonu.
+  -->
+  <script src="capacitor.js"></script>
+
   <script>
     // =========================================================
     // 0. SHRANJEVANJE – dnevni števci v localStorage
@@ -768,8 +776,8 @@
     // =========================================================
 
     /*
-     * V mobilni aplikaciji (Android/iOS) Capacitor vstavi globalni objekt
-     * window.Capacitor. Ker aplikacija nima "bundlerja", vtičnik dobimo z
+     * window.Capacitor pripravita mobilni "most" in knjižnica capacitor.js.
+     * Ker aplikacija nima "bundlerja", vtičnik dobimo s
      * Capacitor.registerPlugin namesto z `import`. V navadnem brskalniku
      * vtičnika ni – takrat so spodnje funkcije prazne in aplikacija deluje
      * kot prej (pisk in sporočilo na zaslonu).
@@ -781,10 +789,18 @@
     const NOTIFY_MOVE_ID = 2;  // opomnik za gibanje
 
     const cap = window.Capacitor;
-    const LocalNotifications =
-      cap && cap.isNativePlatform() && cap.isPluginAvailable('LocalNotifications')
-        ? cap.registerPlugin('LocalNotifications')
-        : null;
+    let LocalNotifications = null;
+
+    // try/catch: če karkoli pri vtičniku ne uspe, mora aplikacija vseeno
+    // delovati – le brez sistemskih obvestil.
+    try {
+      if (cap && typeof cap.registerPlugin === 'function' && cap.isNativePlatform() &&
+          cap.isPluginAvailable('LocalNotifications')) {
+        LocalNotifications = cap.registerPlugin('LocalNotifications');
+      }
+    } catch (err) {
+      console.warn('Obvestila niso na voljo:', err);
+    }
 
     // Klici vtičnika so asinhroni. Postavimo jih v vrsto, da se npr.
     // "prekliči" in "načrtuj" za isto obvestilo ne prehitevata.
