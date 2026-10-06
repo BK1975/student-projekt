@@ -691,7 +691,8 @@
     }
 
     @media (prefers-color-scheme: dark) {
-      .vital .big-btn {
+      .vital .big-btn,
+      .med-editor .big-btn {
         color: #000000; /* črn tekst na svetlejši zeleni */
       }
     }
@@ -720,6 +721,219 @@
       font-size: 1.5rem;
       font-weight: 800;
       color: var(--v-green);
+    }
+
+    /* ---------- Zdravila ---------- */
+    .meds-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin: 18px 0 6px;
+      text-align: left;
+    }
+
+    /* En odmerek: ura, ime in gumb */
+    .med-dose {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 16px;
+      align-items: center;
+      padding: 16px;
+      border: 3px solid var(--v-border);
+      border-radius: 18px;
+    }
+
+    .med-time {
+      font-size: clamp(1.6rem, 6.5vw, 2rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .med-info strong {
+      display: block;
+      font-size: clamp(1.35rem, 5vw, 1.6rem);
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .med-info span {
+      display: block;
+      font-size: 1.2rem;
+    }
+
+    .med-state {
+      font-weight: 800;
+    }
+
+    /* Gumb čez celo širino pod uro in imenom */
+    .med-dose .big-btn,
+    .med-dose .undo-btn {
+      grid-column: 1 / -1;
+    }
+
+    .med-dose .big-btn {
+      min-height: 68px;
+      margin-top: 6px;
+    }
+
+    .med-dose .undo-btn {
+      justify-self: start;
+      margin-top: 4px;
+    }
+
+    /* Že vzeto: zelena obroba, tekst ostane črn/bel (visok kontrast) */
+    .med-dose.taken {
+      border-color: var(--v-green);
+      border-style: dashed;
+    }
+
+    .med-dose.taken .med-state {
+      color: var(--v-green);
+    }
+
+    /* Čas za zdravilo, a še ni vzeto: rumeno opozorilo */
+    .med-dose.due {
+      background: var(--v-alert-bg);
+      color: #000000;
+      border-color: #000000;
+    }
+
+    .med-dose.due .big-btn {
+      background: #14532d;
+      color: #ffffff;
+    }
+
+    .meds-empty {
+      margin: 16px 0 4px;
+      font-size: 1.25rem;
+    }
+
+    /* ---------- Urejevalnik zdravil (čez cel zaslon) ---------- */
+    .med-editor {
+      position: fixed;
+      inset: 0;
+      z-index: 12;
+      overflow-y: auto;
+      background: var(--v-bg);
+      color: var(--v-text);
+      font-size: 1.35rem;
+      padding: calc(16px + var(--safe-top)) var(--gap) calc(32px + var(--safe-bottom));
+    }
+
+    .med-editor-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Notranji sklopi v urejevalniku: navpično, čez celo širino */
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .med-editor h2 {
+      font-size: clamp(1.8rem, 7vw, 2.3rem);
+      font-weight: 800;
+    }
+
+    .med-editor .back-btn {
+      align-self: flex-start;
+      font-size: 1.35rem;
+      min-height: 60px;
+      border: 3px solid var(--v-border);
+      color: var(--v-text);
+    }
+
+    /* Seznam vnesenih zdravil v urejevalniku */
+    .med-manage-item {
+      padding: 16px;
+      border: 3px solid var(--v-border);
+      border-radius: 18px;
+    }
+
+    .med-manage-item strong {
+      display: block;
+      font-size: 1.5rem;
+      overflow-wrap: anywhere;
+    }
+
+    .med-manage-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Obrazec */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field label,
+    .field legend {
+      font-weight: 800;
+    }
+
+    .field small {
+      font-size: 1.05rem;
+    }
+
+    .field input {
+      min-height: 60px;
+      padding: 10px 14px;
+      border: 3px solid var(--v-border);
+      border-radius: 14px;
+      background: var(--v-bg);
+      color: var(--v-text);
+      font-family: inherit;
+      font-size: 1.35rem; /* ≥ 16 px: iOS ob dotiku ne poveča strani */
+    }
+
+    .field input:focus-visible,
+    .med-editor button:focus-visible {
+      outline: 4px solid var(--v-text);
+      outline-offset: 3px;
+    }
+
+    fieldset.field {
+      border: none;
+    }
+
+    .time-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .time-row input {
+      flex: 1;
+    }
+
+    .time-remove {
+      width: 60px;
+      height: 60px;
+      flex-shrink: 0;
+      border: 3px solid var(--v-border);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--v-text);
+      font-size: 1.4rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .med-error {
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: #b91c1c;
+      color: #ffffff;
+      font-weight: 700;
     }
 
     /* Odštevanje do naslednjega opomnika */
@@ -817,7 +1031,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.5</p>
+    <p class="version">Različica 0.1.6</p>
   </main>
 
   <!-- =========================================================
@@ -829,6 +1043,20 @@
     </div>
 
     <h1>Moj dnevni navigator zdravja</h1>
+
+    <!-- Sekcija: zdravila -->
+    <section id="meds-card" class="vital-card" aria-labelledby="meds-title">
+      <h2 id="meds-title">💊 Zdravila</h2>
+      <p id="meds-summary" class="vital-goal"></p>
+
+      <!-- Današnji odmerki po urah – izpolni JavaScript -->
+      <ul id="meds-list" class="meds-list"></ul>
+      <p id="meds-empty" class="meds-empty hidden">
+        Še ni vnesenih zdravil. Dodajte jih, pa vas bo aplikacija opomnila ob pravem času.
+      </p>
+
+      <button id="meds-manage-btn" class="big-btn" type="button">+ Dodaj zdravilo</button>
+    </section>
 
     <!-- Sekcija: hidracija -->
     <section class="vital-card" aria-labelledby="water-title">
@@ -864,6 +1092,51 @@
       <button id="move-test-btn" class="btn btn--test" type="button">Test: 10 sekund</button>
     </section>
   </main>
+
+  <!-- =========================================================
+       UREJEVALNIK ZDRAVIL – seznam in obrazec čez cel zaslon
+       ========================================================= -->
+  <div id="med-editor" class="med-editor hidden" role="dialog" aria-modal="true"
+       aria-labelledby="med-editor-title">
+    <div class="med-editor-inner">
+      <button id="med-editor-close" class="back-btn" type="button">← Nazaj</button>
+
+      <!-- Pogled 1: seznam vnesenih zdravil -->
+      <div id="med-manage" class="stack">
+        <h2 id="med-editor-title" tabindex="-1">Moja zdravila</h2>
+        <div id="med-manage-list" class="stack"></div>
+        <button id="med-new-btn" class="big-btn" type="button">+ Dodaj novo zdravilo</button>
+      </div>
+
+      <!-- Pogled 2: obrazec za dodajanje / urejanje -->
+      <form id="med-form" class="stack hidden" novalidate>
+        <h2 id="med-form-title">Novo zdravilo</h2>
+
+        <div class="field">
+          <label for="med-name">Ime zdravila</label>
+          <input id="med-name" type="text" autocomplete="off" maxlength="60"
+                 placeholder="npr. Aspirin" />
+        </div>
+
+        <div class="field">
+          <label for="med-dose">Odmerek <small>(neobvezno)</small></label>
+          <input id="med-dose" type="text" autocomplete="off" maxlength="60"
+                 placeholder="npr. 1 tableta po jedi" />
+        </div>
+
+        <fieldset class="field">
+          <legend>Ure jemanja</legend>
+          <div id="med-times" class="field"></div>
+          <button id="med-add-time" class="undo-btn" type="button">+ Dodaj uro</button>
+        </fieldset>
+
+        <p id="med-error" class="med-error hidden" role="alert"></p>
+
+        <button class="big-btn" type="submit">Shrani</button>
+        <button id="med-form-cancel" class="undo-btn" type="button">Prekliči</button>
+      </form>
+    </div>
+  </div>
 
   <!-- =========================================================
        ŠTUDIJSKI NAČIN – Pomodoro časovnik
@@ -1001,6 +1274,30 @@
       };
     }
 
+    /*
+     * Shrani / prebere poljuben podatek (seznam, objekt) kot JSON.
+     * Če localStorage ni na voljo, podatek ostane v pomnilniku, dokler je
+     * aplikacija odprta.
+     */
+    const memoryStore = {};
+
+    function loadJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw !== null) return JSON.parse(raw);
+      } catch (e) {
+        if (key in memoryStore) return memoryStore[key];
+      }
+      return key in memoryStore ? memoryStore[key] : fallback;
+    }
+
+    function saveJSON(key, value) {
+      memoryStore[key] = value;
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) { /* ostane le v pomnilniku */ }
+    }
+
     // =========================================================
     // 0b. SISTEMSKA OBVESTILA – Capacitor Local Notifications
     // =========================================================
@@ -1130,6 +1427,8 @@
       resetTimer();
       closeExercises();
       stopMoveReminder();
+      stopMedsCheck();
+      medEditor.classList.add('hidden');
       studyScreen.classList.add('hidden');
       vitalScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
@@ -1601,6 +1900,349 @@
     });
 
     // =========================================================
+    // 5b. VITALNI NAČIN – zdravila
+    // =========================================================
+
+    /*
+     * Podatki:
+     *  - zdravje.zdravila           seznam zdravil:
+     *                               [{ id, name, dose, times: ['08:00', '20:00'] }]
+     *  - zdravje.zdravila.vzeto     današnji vzeti odmerki:
+     *                               { date: 'LLLL-MM-DD', taken: { '3@08:00': '08:05' } }
+     *  - zdravje.zdravila.obvestila id-ji načrtovanih sistemskih obvestil
+     *
+     * Vsak odmerek (zdravilo + ura) ima vsak dan svoje obvestilo, ki se
+     * ponavlja – tudi ko je aplikacija zaprta.
+     */
+    const MEDS_KEY = 'zdravje.zdravila';
+    const MEDS_TAKEN_KEY = 'zdravje.zdravila.vzeto';
+    const MEDS_NOTIFY_KEY = 'zdravje.zdravila.obvestila';
+    const MAX_TIMES_PER_MED = 6;
+    const MED_NOTIFY_BASE_ID = 1000; // id obvestila = 1000 + id zdravila * 10 + zaporedna ura
+
+    const medsSummary = document.getElementById('meds-summary');
+    const medsList = document.getElementById('meds-list');
+    const medsEmpty = document.getElementById('meds-empty');
+    const medsManageBtn = document.getElementById('meds-manage-btn');
+
+    const medEditor = document.getElementById('med-editor');
+    const medManage = document.getElementById('med-manage');
+    const medManageList = document.getElementById('med-manage-list');
+    const medForm = document.getElementById('med-form');
+    const medFormTitle = document.getElementById('med-form-title');
+    const medName = document.getElementById('med-name');
+    const medDose = document.getElementById('med-dose');
+    const medTimes = document.getElementById('med-times');
+    const medAddTime = document.getElementById('med-add-time');
+    const medError = document.getElementById('med-error');
+
+    let editingMedId = null;      // null = novo zdravilo
+    let medsCheckId = null;       // periodično osveževanje, ko je zaslon odprt
+    let previouslyDue = null;     // odmerki, ki so bili ob zadnjem osveževanju že "na vrsti"
+
+    const loadMeds = () => loadJSON(MEDS_KEY, []);
+
+    function loadTaken() {
+      const record = loadJSON(MEDS_TAKEN_KEY, null);
+      return record && record.date === todayKey() ? record.taken : {};
+    }
+
+    function saveTaken(taken) {
+      saveJSON(MEDS_TAKEN_KEY, { date: todayKey(), taken });
+    }
+
+    /** Trenutni čas kot "HH:MM" – primerljiv z urami zdravil kot niz. */
+    function nowHHMM() {
+      const d = new Date();
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    const doseKey = (med, time) => `${med.id}@${time}`;
+
+    /** Vsi današnji odmerki, urejeni po uri. */
+    function todaysDoses() {
+      const doses = [];
+      loadMeds().forEach((med) => med.times.forEach((time) => doses.push({ med, time })));
+      return doses.sort((a, b) => a.time.localeCompare(b.time) || a.med.name.localeCompare(b.med.name));
+    }
+
+    /** Pomožna funkcija: element z razredom in besedilom (textContent – varno za uporabnikov vnos). */
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    /** Nariše današnji seznam odmerkov na vitalnem zaslonu. */
+    function renderMeds() {
+      const doses = todaysDoses();
+      const taken = loadTaken();
+      const now = nowHHMM();
+      const dueNow = new Set();
+
+      medsList.innerHTML = '';
+      doses.forEach(({ med, time }) => {
+        const key = doseKey(med, time);
+        const takenAt = taken[key];
+        const isDue = !takenAt && time <= now;
+        if (isDue) dueNow.add(key);
+
+        const item = el('li', 'med-dose' + (takenAt ? ' taken' : isDue ? ' due' : ''));
+        item.appendChild(el('div', 'med-time', time));
+
+        const info = el('div', 'med-info');
+        info.appendChild(el('strong', '', med.name));
+        if (med.dose) info.appendChild(el('span', '', med.dose));
+        if (takenAt) info.appendChild(el('span', 'med-state', `✓ Vzeto ob ${takenAt}`));
+        else if (isDue) info.appendChild(el('span', 'med-state', 'Čas je za to zdravilo!'));
+        item.appendChild(info);
+
+        if (takenAt) {
+          const undo = el('button', 'undo-btn', 'Razveljavi');
+          undo.type = 'button';
+          undo.setAttribute('aria-label', `Razveljavi: ${med.name} ob ${time}`);
+          undo.addEventListener('click', () => setTaken(key, false));
+          item.appendChild(undo);
+        } else {
+          const take = el('button', 'big-btn', '✓ Vzel/a sem');
+          take.type = 'button';
+          take.setAttribute('aria-label', `Vzel/a sem ${med.name} ob ${time}`);
+          take.addEventListener('click', () => setTaken(key, true));
+          item.appendChild(take);
+        }
+        medsList.appendChild(item);
+      });
+
+      // Povzetek in prazno stanje
+      const takenCount = doses.filter(({ med, time }) => taken[doseKey(med, time)]).length;
+      medsEmpty.classList.toggle('hidden', doses.length > 0);
+      medsSummary.classList.toggle('hidden', doses.length === 0);
+      medsSummary.textContent = takenCount === doses.length
+        ? 'Vsa današnja zdravila so vzeta. Bravo!'
+        : `Danes vzeto: ${takenCount} / ${doses.length}`;
+      // Brez zdravil je glavni (zeleni) gumb "Dodaj"; sicer manj izrazit "Uredi",
+      // da ga ni mogoče zamenjati z gumbom "Vzel/a sem".
+      medsManageBtn.textContent = doses.length ? 'Uredi zdravila' : '+ Dodaj zdravilo';
+      medsManageBtn.className = doses.length ? 'undo-btn' : 'big-btn';
+
+      // Če je med odprtim zaslonom kakšen odmerek ravnokar prišel na vrsto: pisk
+      if (previouslyDue && [...dueNow].some((key) => !previouslyDue.has(key))) {
+        playBeep({ frequency: 660, count: 3, length: 0.4 });
+        document.getElementById('meds-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      previouslyDue = dueNow;
+    }
+
+    /** Označi odmerek kot vzet (ali razveljavi oznako). */
+    function setTaken(key, isTaken) {
+      const taken = loadTaken();
+      if (isTaken) taken[key] = nowHHMM();
+      else delete taken[key];
+      saveTaken(taken);
+      renderMeds();
+    }
+
+    /** Ko je vitalni zaslon odprt, seznam osvežimo vsakih 15 s (ure pridejo na vrsto). */
+    function startMedsCheck() {
+      stopMedsCheck();
+      previouslyDue = null; // ob odprtju ne piskamo za že zamujene odmerke
+      renderMeds();
+      medsCheckId = setInterval(renderMeds, 15 * 1000);
+    }
+
+    function stopMedsCheck() {
+      clearInterval(medsCheckId);
+      medsCheckId = null;
+    }
+
+    /**
+     * Uskladi sistemska obvestila s seznamom zdravil: prekliče stara in
+     * načrtuje nova – za vsak odmerek eno, ki se ponovi vsak dan ob tej uri.
+     */
+    function syncMedNotifications() {
+      if (!LocalNotifications) return;
+      const meds = loadMeds();
+
+      enqueueNotify(async () => {
+        const oldIds = loadJSON(MEDS_NOTIFY_KEY, []);
+        if (oldIds.length) {
+          await LocalNotifications.cancel({ notifications: oldIds.map((id) => ({ id })) });
+          saveJSON(MEDS_NOTIFY_KEY, []);
+        }
+        if (!meds.length || !(await hasNotifyPermission())) return;
+
+        const exact = await canUseExactAlarm();
+        const notifications = [];
+        meds.forEach((med) => med.times.forEach((time, i) => {
+          const [hour, minute] = time.split(':').map(Number);
+          notifications.push({
+            id: MED_NOTIFY_BASE_ID + med.id * 10 + i,
+            title: '💊 Čas za zdravilo',
+            body: `${med.name}${med.dose ? ' – ' + med.dose : ''} (${time})`,
+            // "on" brez datuma = vsak dan ob tej uri
+            schedule: { on: { hour, minute }, allowWhileIdle: true },
+            isExactNotification: exact,
+            foreground: true
+          });
+        }));
+
+        await LocalNotifications.schedule({ notifications });
+        saveJSON(MEDS_NOTIFY_KEY, notifications.map((n) => n.id));
+      });
+    }
+
+    function saveMeds(meds) {
+      saveJSON(MEDS_KEY, meds);
+      syncMedNotifications();
+      renderMeds();
+    }
+
+    // ---------- Urejevalnik ----------
+
+    /** Odpre urejevalnik: seznam zdravil, ali takoj obrazec, če jih še ni. */
+    function openMedEditor() {
+      unlockAudio();
+      medEditor.classList.remove('hidden');
+      if (loadMeds().length) showMedManage();
+      else showMedForm(null);
+    }
+
+    function closeMedEditor() {
+      medEditor.classList.add('hidden');
+      renderMeds();
+    }
+
+    function showMedManage() {
+      medForm.classList.add('hidden');
+      medManage.classList.remove('hidden');
+      medManageList.innerHTML = '';
+
+      loadMeds().forEach((med) => {
+        const item = el('div', 'med-manage-item');
+        item.appendChild(el('strong', '', med.name));
+        if (med.dose) item.appendChild(el('span', '', med.dose));
+        item.appendChild(el('p', '', `Ob ${med.times.join(', ')}`));
+
+        const actions = el('div', 'med-manage-actions');
+        const edit = el('button', 'undo-btn', 'Uredi');
+        edit.type = 'button';
+        edit.addEventListener('click', () => showMedForm(med));
+        const remove = el('button', 'undo-btn', 'Izbriši');
+        remove.type = 'button';
+        remove.addEventListener('click', () => deleteMed(med));
+        actions.append(edit, remove);
+        item.appendChild(actions);
+
+        medManageList.appendChild(item);
+      });
+      document.getElementById('med-editor-title').focus();
+    }
+
+    /** Doda vrstico z izbirnikom ure (telefon pokaže svoj velik izbirnik). */
+    function addTimeRow(value) {
+      const row = el('div', 'time-row');
+      const input = document.createElement('input');
+      input.type = 'time';
+      input.value = value || '';
+      input.setAttribute('aria-label', 'Ura jemanja');
+      const remove = el('button', 'time-remove', '✕');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Odstrani to uro');
+      remove.addEventListener('click', () => {
+        row.remove();
+        updateTimeButtons();
+      });
+      row.append(input, remove);
+      medTimes.appendChild(row);
+      updateTimeButtons();
+      return input;
+    }
+
+    /** Vsaj ena ura mora ostati; največ MAX_TIMES_PER_MED ur. */
+    function updateTimeButtons() {
+      const rows = medTimes.querySelectorAll('.time-row');
+      rows.forEach((row) => {
+        row.querySelector('.time-remove').classList.toggle('hidden', rows.length === 1);
+      });
+      medAddTime.classList.toggle('hidden', rows.length >= MAX_TIMES_PER_MED);
+    }
+
+    /** Pokaže obrazec – prazen za novo zdravilo ali izpolnjen za urejanje. */
+    function showMedForm(med) {
+      editingMedId = med ? med.id : null;
+      medManage.classList.add('hidden');
+      medForm.classList.remove('hidden');
+      medError.classList.add('hidden');
+
+      medFormTitle.textContent = med ? 'Uredi zdravilo' : 'Novo zdravilo';
+      medName.value = med ? med.name : '';
+      medDose.value = med ? med.dose : '';
+      medTimes.innerHTML = '';
+      (med ? med.times : ['08:00']).forEach((time) => addTimeRow(time));
+      medName.focus();
+    }
+
+    function showMedError(message) {
+      medError.textContent = message;
+      medError.classList.remove('hidden');
+    }
+
+    medForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const name = medName.value.trim();
+      const dose = medDose.value.trim();
+      const times = [...new Set(
+        [...medTimes.querySelectorAll('input')].map((input) => input.value).filter(Boolean)
+      )].sort();
+
+      if (!name) {
+        showMedError('Vpišite ime zdravila.');
+        medName.focus();
+        return;
+      }
+      if (!times.length) {
+        showMedError('Dodajte vsaj eno uro jemanja.');
+        return;
+      }
+
+      const meds = loadMeds();
+      if (editingMedId === null) {
+        const nextId = meds.reduce((max, m) => Math.max(max, m.id), 0) + 1;
+        meds.push({ id: nextId, name, dose, times });
+      } else {
+        const med = meds.find((m) => m.id === editingMedId);
+        Object.assign(med, { name, dose, times });
+      }
+      saveMeds(meds);
+      showMedManage();
+    });
+
+    function deleteMed(med) {
+      if (!window.confirm(`Ali res želite izbrisati zdravilo »${med.name}«?`)) return;
+      saveMeds(loadMeds().filter((m) => m.id !== med.id));
+      if (loadMeds().length) showMedManage();
+      else closeMedEditor();
+    }
+
+    medsManageBtn.addEventListener('click', openMedEditor);
+    document.getElementById('med-editor-close').addEventListener('click', () => {
+      // Iz obrazca nazaj na seznam, iz seznama nazaj na vitalni zaslon
+      if (!medForm.classList.contains('hidden') && loadMeds().length) showMedManage();
+      else closeMedEditor();
+    });
+    document.getElementById('med-new-btn').addEventListener('click', () => showMedForm(null));
+    document.getElementById('med-form-cancel').addEventListener('click', () => {
+      if (loadMeds().length) showMedManage();
+      else closeMedEditor();
+    });
+    medAddTime.addEventListener('click', () => addTimeRow('').focus());
+
+    // Sporočilo o napaki skrijemo, ko uporabnik začne popravljati
+    medForm.addEventListener('input', () => medError.classList.add('hidden'));
+
+    // =========================================================
     // 6. VITALNI NAČIN – opomnik za gibanje
     // =========================================================
 
@@ -1690,11 +2332,12 @@
     });
 
     /**
-     * Ob odprtju vitalnega načina: osveži vodo iz pomnilnika naprave,
+     * Ob odprtju vitalnega načina: osveži zdravila in vodo iz pomnilnika naprave,
      * odkleni zvok (klik na gumb načina je dejanje uporabnika)
      * in zaženi opomnik za gibanje.
      */
     function openVitalMode() {
+      startMedsCheck();
       renderWater(); // prebere shranjeno stanje (in ga ob novem dnevu ponastavi)
       unlockAudio();
       startMoveReminder(MOVE_DEFAULT_SECONDS);
@@ -1709,6 +2352,10 @@
     // zato prekličemo morebitna obvestila, ki so ostala od prejšnjega zagona.
     cancelNotification(NOTIFY_STUDY_ID);
     cancelNotification(NOTIFY_MOVE_ID);
+
+    // Opomniki za zdravila pa morajo veljati ves čas – ob zagonu jih uskladimo
+    // s shranjenim seznamom (npr. po posodobitvi aplikacije).
+    syncMedNotifications();
   </script>
 </body>
 </html>

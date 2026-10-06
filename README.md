@@ -3,9 +3,11 @@
 Mobilna zdravstvena aplikacija za študente in starejše, zgrajena s [Capacitor](https://capacitorjs.com/).
 
 - **Študijski način** – Pomodoro časovnik (45 min), pisk in navodilo za odmor, števec današnjih intervalov.
-- **Vitalni način** – velik tekst in visok kontrast; števec popite vode in opomnik za gibanje vsaki 2 uri.
-- **Sistemska obvestila** (`@capacitor/local-notifications`) – konec intervala učenja in opomnik za gibanje
-  se prikažeta tudi, ko je aplikacija v ozadju ali zaprta.
+- **Študijski način** ima tudi vodene vaje za vratno in ledveno hrbtenico.
+- **Vitalni način** – velik tekst in visok kontrast; opomnik za zdravila (vsakodnevna obvestila ob izbranih
+  urah, oznaka »Vzel/a sem«), števec popite vode in opomnik za gibanje vsaki 2 uri.
+- **Sistemska obvestila** (`@capacitor/local-notifications`) – konec intervala učenja, opomnik za gibanje
+  in zdravila se prikažejo tudi, ko je aplikacija v ozadju ali zaprta.
 
 Celotna spletna aplikacija je v eni datoteki: [`www/index.html`](www/index.html).
 Poleg nje je v `www/` še `capacitor.js` – knjižnica `@capacitor/core`, ki jo `npm install` samodejno
