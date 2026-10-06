@@ -4,7 +4,8 @@ Mobilna zdravstvena aplikacija za študente in starejše, zgrajena s [Capacitor]
 
 - **Študijski način** – Pomodoro z izbiro ritma (25/5, 45/15, 50/10 min), samodejnim odštevanjem odmora,
   piskom in navodilom za odmor ter števcem današnjih intervalov.
-- **Študijski način** ima tudi vodene vaje za vratno in ledveno hrbtenico.
+- **Študijski način** ima tudi vodene vaje za vratno in ledveno hrbtenico, vodeno dihanje (4-7-8 in
+  škatlasto) ter kalkulator spanca po 90-minutnih ciklih z neobveznim večernim opomnikom.
 - **Vitalni način** – velik tekst in visok kontrast; opomnik za zdravila (vsakodnevna obvestila ob izbranih
   urah, oznaka »Vzel/a sem« v oknu ±1 ura, zgodovina zadnjih 30 dni), števec popite vode in opomnik za
   gibanje vsaki 2 uri.

@@ -60,6 +60,11 @@
       --exercise: #0f766e;
       --exercise-dark: #134e4a;
 
+      /* Dihanje – indigo, spanec – temno modra */
+      --breath: #4338ca;
+      --breath-dark: #312e81;
+      --sleep: #1e3a8a;
+
       /* Vitalni način – zelena (temnejši odtenek za visok kontrast z belim besedilom) */
       --vital: #15803d;
       --vital-dark: #14532d;
@@ -635,6 +640,199 @@
       opacity: 0.85;
     }
 
+    /* =========================================================
+       7c. DIHANJE
+       ========================================================= */
+    .breath-card {
+      border-top-color: var(--breath);
+    }
+
+    .btn--breath {
+      min-width: 0;
+      border-radius: 18px;
+      background: var(--breath);
+      color: #ffffff;
+      line-height: 1.25;
+    }
+
+    .btn--breath small {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0.9;
+    }
+
+    .breath-overlay {
+      z-index: 11;
+      gap: 16px;
+      background: linear-gradient(160deg, var(--breath), var(--breath-dark));
+    }
+
+    .breath-overlay .btn {
+      background: #ffffff;
+      color: var(--breath-dark);
+    }
+
+    .breath-overlay .btn--ghost {
+      background: transparent;
+      color: #ffffff;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .breath-overlay .btn:focus-visible {
+      outline-color: #ffffff;
+    }
+
+    /* Krog: velikost določa JavaScript (transform: scale) */
+    .breath-stage {
+      position: relative;
+      width: min(280px, 70vw);
+      height: min(280px, 70vw);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .breath-circle {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.15));
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      transform: scale(0.45);
+      will-change: transform;
+    }
+
+    /* Besedilo čez sredino kroga */
+    .breath-text {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+    }
+
+    .breath-phase {
+      font-size: clamp(1.4rem, 6vw, 1.8rem);
+      font-weight: 800;
+    }
+
+    .breath-count {
+      font-size: clamp(2.2rem, 10vw, 3rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    /* =========================================================
+       7d. SPANEC
+       ========================================================= */
+    .sleep-card {
+      border-top-color: var(--sleep);
+      text-align: left;
+    }
+
+    .sleep-card h2 {
+      text-align: center;
+    }
+
+    .sleep-card > p:first-of-type {
+      text-align: center;
+    }
+
+    .sleep-wake {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+      font-weight: 700;
+    }
+
+    .sleep-wake input {
+      min-height: 48px;
+      padding: 6px 12px;
+      border: 2px solid var(--text-muted);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.2rem; /* ≥ 16 px: iOS ob dotiku ne poveča strani */
+      font-weight: 700;
+    }
+
+    .sleep-heading {
+      margin-top: 18px;
+      font-weight: 700;
+    }
+
+    .sleep-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .sleep-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: var(--bg);
+    }
+
+    .sleep-list strong {
+      font-size: 1.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sleep-list span {
+      color: var(--text-muted);
+    }
+
+    /* Priporočen termin (5 ciklov) */
+    .sleep-list li.best {
+      outline: 2px solid var(--sleep);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .sleep-list li.best {
+        outline-color: #93c5fd;
+      }
+    }
+
+    .sleep-remind {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      min-height: 48px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .sleep-remind input {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      accent-color: var(--sleep);
+    }
+
+    .sleep-card #sleep-now-btn {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .sleep-tip {
+      margin-top: 16px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
     @keyframes fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -1167,7 +1365,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.8</p>
+    <p class="version">Različica 0.1.9</p>
   </main>
 
   <!-- =========================================================
@@ -1339,6 +1537,48 @@
         </button>
       </div>
     </section>
+
+    <!-- Vodeno dihanje -->
+    <section class="exercise-card breath-card" aria-labelledby="breath-title">
+      <h2 id="breath-title">🌬️ Vodeno dihanje</h2>
+      <p>Sledi krogu: ko se širi, vdihni; ko se krči, izdihni.</p>
+      <div class="exercise-buttons">
+        <button class="btn btn--breath" type="button" data-breath="478">
+          4-7-8 <small>za umiritev · ok. 1 min</small>
+        </button>
+        <button class="btn btn--breath" type="button" data-breath="box">
+          Škatlasto <small>za zbranost · ok. 1½ min</small>
+        </button>
+      </div>
+    </section>
+
+    <!-- Spanec: kdaj iti spat glede na 90-minutne cikle -->
+    <section class="exercise-card sleep-card" aria-labelledby="sleep-title">
+      <h2 id="sleep-title">🌙 Spanec</h2>
+      <p>Spanec poteka v ciklih po približno 90 minut. Če se zbudiš ob koncu cikla,
+        si bolj spočit/a. Upoštevamo še 15 minut za uspavanje.</p>
+
+      <div class="sleep-wake">
+        <label for="sleep-wake">Jutri moram vstati ob</label>
+        <input id="sleep-wake" type="time" value="07:00" />
+      </div>
+
+      <p class="sleep-heading">Pojdi spat ob:</p>
+      <ul id="sleep-bedtimes" class="sleep-list"></ul>
+
+      <label class="sleep-remind">
+        <input id="sleep-remind" type="checkbox" />
+        <span id="sleep-remind-text">Opomni me 30 minut pred spanjem</span>
+      </label>
+
+      <button id="sleep-now-btn" class="btn btn--secondary" type="button">Grem spat zdaj</button>
+      <div id="sleep-now" class="hidden">
+        <p class="sleep-heading">Nastavi budilko na:</p>
+        <ul id="sleep-waketimes" class="sleep-list"></ul>
+      </div>
+
+      <p class="sleep-tip">💡 Uro pred spanjem odloži zaslone, po 14. uri pa ne pij več kave.</p>
+    </section>
   </main>
 
   <!-- =========================================================
@@ -1357,10 +1597,34 @@
     <div class="break-exercises">
       <button class="btn btn--ghost" type="button" data-routine="neck">🧘 Vaje za vrat</button>
       <button class="btn btn--ghost" type="button" data-routine="back">🧘 Vaje za križ</button>
+      <button class="btn btn--ghost" type="button" data-breath="478">🌬️ Dihanje</button>
     </div>
 
     <button id="break-back-btn" class="btn" type="button">Končaj odmor</button>
     <button id="break-close-btn" class="btn btn--ghost hidden" type="button">Zapri</button>
+  </div>
+
+  <!-- =========================================================
+       VODENO DIHANJE – krog se širi in krči
+       ========================================================= -->
+  <div id="breath-overlay" class="break-overlay breath-overlay hidden" role="dialog"
+       aria-modal="true" aria-labelledby="breath-name">
+    <p id="breath-cycle" class="ex-routine"></p>
+    <h2 id="breath-name" class="ex-name"></h2>
+
+    <div class="breath-stage">
+      <div id="breath-circle" class="breath-circle" aria-hidden="true"></div>
+      <!-- Besedilo čez sredino kroga (ne povečuje se skupaj s krogom) -->
+      <div class="breath-text" aria-live="polite">
+        <span id="breath-phase" class="breath-phase"></span>
+        <span id="breath-count" class="breath-count"></span>
+      </div>
+    </div>
+
+    <div class="ex-controls">
+      <button id="breath-pause-btn" class="btn btn--ghost" type="button">Pavza</button>
+      <button id="breath-close-btn" class="btn" type="button">Končaj</button>
+    </div>
   </div>
 
   <!-- =========================================================
@@ -1477,6 +1741,7 @@
     const NOTIFY_STUDY_ID = 1; // konec intervala učenja
     const NOTIFY_MOVE_ID = 2;  // opomnik za gibanje
     const NOTIFY_BREAK_END_ID = 3; // konec odmora – nazaj k učenju
+    const NOTIFY_SLEEP_ID = 4;     // večerni opomnik za spanje (vsak dan)
 
     const cap = window.Capacitor;
     let LocalNotifications = null;
@@ -1578,6 +1843,8 @@
       if (mode === 'Študijski') {
         studyScreen.classList.remove('hidden');
         renderSessions(); // morda je medtem nastopil nov dan
+        renderSleep();
+        sleepNow.classList.add('hidden'); // "Grem spat zdaj" izračunamo ob kliku
         startBtn.focus(); // fokus na glavni gumb – pomaga pri dostopnosti
       } else {
         vitalScreen.classList.remove('hidden');
@@ -1591,6 +1858,7 @@
       breakOverlay.classList.add('hidden');
       resetTimer();
       closeExercises();
+      closeBreathing();
       stopMoveReminder();
       stopMedsCheck();
       medEditor.classList.add('hidden');
@@ -1827,8 +2095,9 @@
      * @param {number} [options.frequency=880] - višina tona v Hz
      * @param {number} [options.count=3]       - število piskov
      * @param {number} [options.length=0.2]    - dolžina enega piska v sekundah
+     * @param {number} [options.volume=0.5]    - glasnost (0–1)
      */
-    function playBeep({ frequency = 880, count = 3, length = 0.2 } = {}) {
+    function playBeep({ frequency = 880, count = 3, length = 0.2, volume = 0.5 } = {}) {
       if (!audioCtx) return;
       const now = audioCtx.currentTime;
       const spacing = length + 0.1; // kratka tišina med piski
@@ -1843,7 +2112,7 @@
 
         // Kratek dvig in upad glasnosti prepreči "klikanje" zvočnika
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.5, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
 
         osc.connect(gain).connect(audioCtx.destination);
@@ -2155,6 +2424,263 @@
     exPauseBtn.addEventListener('click', toggleExercisePause);
     exNextBtn.addEventListener('click', nextExercise);
     exCloseBtn.addEventListener('click', closeExercises);
+
+    // =========================================================
+    // 4c. VODENO DIHANJE
+    // =========================================================
+
+    /*
+     * Vsaka tehnika je zaporedje faz. "to" pove, kam gre krog v tej fazi:
+     * 1 = razširjen (pljuča polna), 0 = skrčen (pljuča prazna).
+     */
+    const breathingPatterns = {
+      '478': {
+        title: 'Dihanje 4-7-8',
+        cycles: 4,
+        phases: [
+          { label: 'Vdihni skozi nos', seconds: 4, to: 1 },
+          { label: 'Zadrži dih', seconds: 7, to: 1 },
+          { label: 'Izdihni skozi usta', seconds: 8, to: 0 }
+        ]
+      },
+      box: {
+        title: 'Škatlasto dihanje',
+        cycles: 5,
+        phases: [
+          { label: 'Vdihni', seconds: 4, to: 1 },
+          { label: 'Zadrži', seconds: 4, to: 1 },
+          { label: 'Izdihni', seconds: 4, to: 0 },
+          { label: 'Zadrži', seconds: 4, to: 0 }
+        ]
+      }
+    };
+
+    const BREATH_MIN_SCALE = 0.45; // velikost kroga pri izdihu
+    const BREATH_MAX_SCALE = 1;    // velikost kroga pri vdihu
+
+    const breathOverlay = document.getElementById('breath-overlay');
+    const breathCycle = document.getElementById('breath-cycle');
+    const breathName = document.getElementById('breath-name');
+    const breathCircle = document.getElementById('breath-circle');
+    const breathPhase = document.getElementById('breath-phase');
+    const breathCount = document.getElementById('breath-count');
+    const breathPauseBtn = document.getElementById('breath-pause-btn');
+    const breathCloseBtn = document.getElementById('breath-close-btn');
+
+    let breath = null; // stanje: { pattern, cycle, phaseIndex, from, level, phaseStart, pausedElapsed }
+    let breathTickId = null;
+    let breathReturnFocus = null;
+
+    function setCircle(level) {
+      const scale = BREATH_MIN_SCALE + (BREATH_MAX_SCALE - BREATH_MIN_SCALE) * level;
+      breathCircle.style.transform = `scale(${scale})`;
+    }
+
+    /** Odpre izbrano tehniko dihanja. */
+    function openBreathing(key, returnFocusTo) {
+      unlockAudio();
+      breathReturnFocus = returnFocusTo || null;
+      breath = { pattern: breathingPatterns[key], cycle: 1, phaseIndex: 0, level: 0 };
+      breathName.textContent = breath.pattern.title;
+      breathPauseBtn.classList.remove('hidden');
+      breathPauseBtn.textContent = 'Pavza';
+      breathCloseBtn.textContent = 'Končaj';
+      setCircle(0);
+      breathOverlay.classList.remove('hidden');
+      startBreathPhase();
+      breathTick();
+      breathTickId = setInterval(breathTick, 50); // pogosto – gladko gibanje kroga
+      breathCloseBtn.focus();
+    }
+
+    function startBreathPhase() {
+      const phase = breath.pattern.phases[breath.phaseIndex];
+      breath.from = breath.level;
+      breath.phaseStart = Date.now();
+      breathCycle.textContent = `Cikel ${breath.cycle} / ${breath.pattern.cycles}`;
+      breathPhase.textContent = phase.label;
+      // Nežen, tih ton ob vsaki menjavi – vodi tudi z zaprtimi očmi
+      playBeep({ frequency: phase.to === 1 ? 528 : 396, count: 1, length: 0.35, volume: 0.15 });
+    }
+
+    function breathTick() {
+      const phase = breath.pattern.phases[breath.phaseIndex];
+      const elapsed = (Date.now() - breath.phaseStart) / 1000;
+      const progress = Math.min(1, elapsed / phase.seconds);
+      // Mehak začetek in konec gibanja (sinusna krivulja)
+      const eased = (1 - Math.cos(Math.PI * progress)) / 2;
+      breath.level = breath.from + (phase.to - breath.from) * eased;
+      setCircle(breath.level);
+      breathCount.textContent = Math.max(1, Math.ceil(phase.seconds - elapsed));
+
+      if (progress >= 1) nextBreathPhase();
+    }
+
+    function nextBreathPhase() {
+      breath.phaseIndex++;
+      if (breath.phaseIndex >= breath.pattern.phases.length) {
+        breath.phaseIndex = 0;
+        breath.cycle++;
+        if (breath.cycle > breath.pattern.cycles) {
+          finishBreathing();
+          return;
+        }
+      }
+      startBreathPhase();
+    }
+
+    function toggleBreathPause() {
+      if (breathTickId) {
+        clearInterval(breathTickId);
+        breathTickId = null;
+        breath.pausedElapsed = Date.now() - breath.phaseStart;
+        breathPauseBtn.textContent = 'Nadaljuj';
+      } else {
+        breath.phaseStart = Date.now() - breath.pausedElapsed;
+        breathTickId = setInterval(breathTick, 50);
+        breathPauseBtn.textContent = 'Pavza';
+      }
+    }
+
+    function finishBreathing() {
+      clearInterval(breathTickId);
+      breathTickId = null;
+      setCircle(0);
+      breathCycle.textContent = breath.pattern.title;
+      breathName.textContent = 'Bravo! 🌿';
+      breathPhase.textContent = 'Lepo dihaš';
+      breathCount.textContent = '';
+      breathPauseBtn.classList.add('hidden');
+      breathCloseBtn.textContent = 'Zapri';
+      breathCloseBtn.focus();
+    }
+
+    function closeBreathing() {
+      clearInterval(breathTickId);
+      breathTickId = null;
+      breathOverlay.classList.add('hidden');
+      if (breathReturnFocus) breathReturnFocus.focus();
+    }
+
+    document.querySelectorAll('[data-breath]').forEach((button) => {
+      button.addEventListener('click', () => openBreathing(button.dataset.breath, button));
+    });
+    breathPauseBtn.addEventListener('click', toggleBreathPause);
+    breathCloseBtn.addEventListener('click', closeBreathing);
+
+    // =========================================================
+    // 4d. SPANEC – 90-minutni cikli in večerni opomnik
+    // =========================================================
+
+    const SLEEP_KEY = 'zdravje.spanec';      // { wake: '07:00', remind: false }
+    const SLEEP_CYCLE_MIN = 90;              // en spalni cikel
+    const FALL_ASLEEP_MIN = 15;              // povprečen čas uspavanja
+    const SLEEP_REMIND_BEFORE_MIN = 30;      // opomnik pred priporočeno uro
+    const BEST_CYCLES = 5;                   // 5 ciklov = 7 h 30 min (priporočeno)
+    const DAY_MIN = 24 * 60;
+
+    const sleepWake = document.getElementById('sleep-wake');
+    const sleepBedtimes = document.getElementById('sleep-bedtimes');
+    const sleepRemind = document.getElementById('sleep-remind');
+    const sleepRemindText = document.getElementById('sleep-remind-text');
+    const sleepNowBtn = document.getElementById('sleep-now-btn');
+    const sleepNow = document.getElementById('sleep-now');
+    const sleepWaketimes = document.getElementById('sleep-waketimes');
+
+    const loadSleep = () => ({ wake: '07:00', remind: false, ...loadJSON(SLEEP_KEY, {}) });
+
+    /** Minute → "HH:MM" s prehodom čez polnoč. */
+    const clockTime = (minutes) => fromMinutes(((minutes % DAY_MIN) + DAY_MIN) % DAY_MIN);
+
+    /** "7 h 30 min" */
+    function formatDuration(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m ? `${h} h ${m} min` : `${h} h`;
+    }
+
+    /** Pravilna slovenska množina: 1 cikel, 2 cikla, 3–4 cikli, 5+ ciklov. */
+    function cyclesWord(n) {
+      if (n === 1) return '1 cikel';
+      if (n === 2) return '2 cikla';
+      if (n === 3 || n === 4) return `${n} cikli`;
+      return `${n} ciklov`;
+    }
+
+    /** Ura, ko je treba iti spat, da se zbudiš ob "wake" po "cycles" ciklih. */
+    function bedtimeFor(wake, cycles) {
+      return clockTime(toMinutes(wake) - cycles * SLEEP_CYCLE_MIN - FALL_ASLEEP_MIN);
+    }
+
+    /** Nariše vrstico s predlogom: velika ura + število ciklov in trajanje. */
+    function sleepRow(time, cycles) {
+      const li = el('li', cycles === BEST_CYCLES ? 'best' : '');
+      li.appendChild(el('strong', '', time));
+      const note = `${cyclesWord(cycles)} · ${formatDuration(cycles * SLEEP_CYCLE_MIN)} spanca` +
+        (cycles === BEST_CYCLES ? ' · priporočeno' : '');
+      li.appendChild(el('span', '', note));
+      return li;
+    }
+
+    function renderSleep() {
+      const settings = loadSleep();
+      sleepWake.value = settings.wake;
+      sleepRemind.checked = settings.remind;
+
+      sleepBedtimes.innerHTML = '';
+      [6, 5, 4].forEach((cycles) => {
+        sleepBedtimes.appendChild(sleepRow(bedtimeFor(settings.wake, cycles), cycles));
+      });
+
+      const remindAt = clockTime(toMinutes(bedtimeFor(settings.wake, BEST_CYCLES)) - SLEEP_REMIND_BEFORE_MIN);
+      sleepRemindText.textContent = `Opomni me 30 minut pred spanjem (vsak dan ob ${remindAt})`;
+    }
+
+    /** "Grem spat zdaj": kdaj nastaviti budilko. */
+    function showWakeTimes() {
+      const d = new Date();
+      const asleepAt = d.getHours() * 60 + d.getMinutes() + FALL_ASLEEP_MIN;
+      sleepWaketimes.innerHTML = '';
+      [4, 5, 6].forEach((cycles) => {
+        sleepWaketimes.appendChild(sleepRow(clockTime(asleepAt + cycles * SLEEP_CYCLE_MIN), cycles));
+      });
+      sleepNow.classList.remove('hidden');
+    }
+
+    /** Vsakodnevni opomnik za spanje: načrtuj ali prekliči. */
+    function syncSleepNotification() {
+      if (!LocalNotifications) return;
+      const settings = loadSleep();
+      enqueueNotify(async () => {
+        await LocalNotifications.cancel({ notifications: [{ id: NOTIFY_SLEEP_ID }] });
+        if (!settings.remind || !(await hasNotifyPermission())) return;
+
+        const bedtime = bedtimeFor(settings.wake, BEST_CYCLES);
+        const [hour, minute] = clockTime(toMinutes(bedtime) - SLEEP_REMIND_BEFORE_MIN).split(':').map(Number);
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: NOTIFY_SLEEP_ID,
+            title: '🌙 Kmalu je čas za spanje',
+            body: `Pojdi spat ob ${bedtime}, da se ob ${settings.wake} zbudiš po 5 ciklih spanja. Odloži zaslone.`,
+            schedule: { on: { hour, minute }, allowWhileIdle: true },
+            isExactNotification: await canUseExactAlarm(),
+            foreground: true
+          }]
+        });
+      });
+    }
+
+    function saveSleep(changes) {
+      saveJSON(SLEEP_KEY, { ...loadSleep(), ...changes });
+      renderSleep();
+      syncSleepNotification();
+    }
+
+    sleepWake.addEventListener('change', () => {
+      if (sleepWake.value) saveSleep({ wake: sleepWake.value });
+    });
+    sleepRemind.addEventListener('change', () => saveSleep({ remind: sleepRemind.checked }));
+    sleepNowBtn.addEventListener('click', showWakeTimes);
 
     // =========================================================
     // 5. VITALNI NAČIN – hidracija
@@ -2801,6 +3327,7 @@
     // Opomniki za zdravila pa morajo veljati ves čas – ob zagonu jih uskladimo
     // s shranjenim seznamom (npr. po posodobitvi aplikacije).
     syncMedNotifications();
+    syncSleepNotification();
   </script>
 </body>
 </html>
