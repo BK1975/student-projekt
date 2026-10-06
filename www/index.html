@@ -75,7 +75,9 @@
       --v-border: #000000;
       --v-green: #14532d;     /* temno zelena: kontrast z belim > 9:1 */
       --v-alert-bg: #fde047;  /* rumena opozorilna podlaga */
-      --v-red: #b91c1c;       /* "ni vzeto" */
+      --v-red: #b91c1c;       /* "ni vzeto", klic v sili */
+      --v-call: #1d4ed8;      /* gumbi za klic: bel tekst, kontrast > 6:1 */
+      --v-call-text: #ffffff;
 
       --radius: 24px;
       --gap: clamp(16px, 4vw, 28px);
@@ -100,6 +102,8 @@
         --v-border: #ffffff;
         --v-green: #22c55e;   /* svetlejša zelena za črno ozadje */
         --v-red: #f87171;
+        --v-call: #93c5fd;
+        --v-call-text: #000000;
       }
     }
 
@@ -1056,6 +1060,67 @@
       color: #ffffff;
     }
 
+    /* ---------- Klic svojcem ---------- */
+    .call-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 18px 0 4px;
+    }
+
+    /* Povezava tel: oblikovana kot velik gumb */
+    .call-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 84px;
+      padding: 12px 16px;
+      border-radius: 20px;
+      background: var(--v-call);
+      color: var(--v-call-text);
+      text-decoration: none;
+      font-size: clamp(1.5rem, 6vw, 1.9rem);
+      font-weight: 800;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .call-btn small {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .call-btn:active {
+      transform: scale(0.97);
+    }
+
+    .call-btn:focus-visible,
+    .sos-btn:focus-visible {
+      outline: 4px solid var(--v-text);
+      outline-offset: 4px;
+    }
+
+    /* Klic v sili: rdeča obroba, ne polna barva – da ni najbolj vabljiv gumb */
+    .sos-btn {
+      display: block;
+      width: 100%;
+      min-height: 64px;
+      margin-top: 14px;
+      border: 3px solid var(--v-red);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--v-red);
+      font-family: inherit;
+      font-size: 1.35rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    #call-card .undo-btn {
+      margin-top: 14px;
+    }
+
     /* Okno za jemanje je minilo */
     .med-dose.missed {
       border-color: var(--v-red);
@@ -1365,7 +1430,7 @@
     </section>
 
     <!-- Številka različice – za preverjanje, ali je na telefonu najnovejša koda -->
-    <p class="version">Različica 0.1.9</p>
+    <p class="version">Različica 0.2.0</p>
   </main>
 
   <!-- =========================================================
@@ -1377,6 +1442,20 @@
     </div>
 
     <h1>Moj dnevni navigator zdravja</h1>
+
+    <!-- Sekcija: klic svojcem -->
+    <section id="call-card" class="vital-card" aria-labelledby="call-title">
+      <h2 id="call-title">📞 Pokliči</h2>
+
+      <!-- Gumbi za klic – izpolni JavaScript iz shranjenih stikov -->
+      <div id="call-list" class="call-list"></div>
+      <p id="call-empty" class="meds-empty hidden">
+        Dodajte telefonske številke svojcev, da jih lahko pokličete z enim dotikom.
+      </p>
+
+      <button id="call-manage-btn" class="big-btn" type="button">+ Dodaj stik</button>
+      <button id="call-sos-btn" class="sos-btn" type="button">🚑 Klic v sili 112</button>
+    </section>
 
     <!-- Sekcija: zdravila -->
     <section id="meds-card" class="vital-card" aria-labelledby="meds-title">
@@ -1427,6 +1506,45 @@
       <button id="move-test-btn" class="btn btn--test" type="button">Test: 10 sekund</button>
     </section>
   </main>
+
+  <!-- =========================================================
+       UREJEVALNIK STIKOV – seznam in obrazec čez cel zaslon
+       ========================================================= -->
+  <div id="contact-editor" class="med-editor hidden" role="dialog" aria-modal="true"
+       aria-labelledby="contact-editor-title">
+    <div class="med-editor-inner">
+      <button id="contact-editor-close" class="back-btn" type="button">← Nazaj</button>
+
+      <!-- Pogled 1: seznam stikov -->
+      <div id="contact-manage" class="stack">
+        <h2 id="contact-editor-title" tabindex="-1">Moji stiki</h2>
+        <div id="contact-manage-list" class="stack"></div>
+        <button id="contact-new-btn" class="big-btn" type="button">+ Dodaj nov stik</button>
+      </div>
+
+      <!-- Pogled 2: obrazec -->
+      <form id="contact-form" class="stack hidden" novalidate>
+        <h2 id="contact-form-title">Nov stik</h2>
+
+        <div class="field">
+          <label for="contact-name">Ime</label>
+          <input id="contact-name" type="text" autocomplete="off" maxlength="40"
+                 placeholder="npr. Hčerka Maja" />
+        </div>
+
+        <div class="field">
+          <label for="contact-phone">Telefonska številka</label>
+          <input id="contact-phone" type="tel" inputmode="tel" autocomplete="off" maxlength="25"
+                 placeholder="npr. 041 123 456" />
+        </div>
+
+        <p id="contact-error" class="med-error hidden" role="alert"></p>
+
+        <button class="big-btn" type="submit">Shrani</button>
+        <button id="contact-form-cancel" class="undo-btn" type="button">Prekliči</button>
+      </form>
+    </div>
+  </div>
 
   <!-- =========================================================
        ZGODOVINA ZDRAVIL – zadnjih 30 dni
@@ -1863,6 +1981,7 @@
       stopMedsCheck();
       medEditor.classList.add('hidden');
       medHistory.classList.add('hidden');
+      contactEditor.classList.add('hidden');
       studyScreen.classList.add('hidden');
       vitalScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
@@ -2726,6 +2845,172 @@
     });
 
     // =========================================================
+    // 5a. VITALNI NAČIN – klic svojcem
+    // =========================================================
+
+    /*
+     * Stiki: zdravje.stiki = [{ id, name, phone }]
+     * Gumb za klic je povezava "tel:". Telefon pred klicem vedno vpraša
+     * (iPhone) ali odpre aplikacijo za klicanje s številko (Android) –
+     * zato aplikacija ne potrebuje dovoljenja za klicanje.
+     */
+    const CONTACTS_KEY = 'zdravje.stiki';
+    const MAX_CONTACTS = 4;
+    const EMERGENCY_NUMBER = '112';
+
+    const callList = document.getElementById('call-list');
+    const callEmpty = document.getElementById('call-empty');
+    const callManageBtn = document.getElementById('call-manage-btn');
+    const contactEditor = document.getElementById('contact-editor');
+    const contactManage = document.getElementById('contact-manage');
+    const contactManageList = document.getElementById('contact-manage-list');
+    const contactNewBtn = document.getElementById('contact-new-btn');
+    const contactForm = document.getElementById('contact-form');
+    const contactFormTitle = document.getElementById('contact-form-title');
+    const contactName = document.getElementById('contact-name');
+    const contactPhone = document.getElementById('contact-phone');
+    const contactError = document.getElementById('contact-error');
+
+    let editingContactId = null;
+
+    const loadContacts = () => loadJSON(CONTACTS_KEY, []);
+
+    /** Za povezavo tel: obdržimo le števke in začetni "+". */
+    function dialNumber(phone) {
+      const trimmed = phone.trim();
+      return (trimmed.startsWith('+') ? '+' : '') + trimmed.replace(/\D/g, '');
+    }
+
+    function renderContacts() {
+      const contacts = loadContacts();
+      callList.innerHTML = '';
+
+      contacts.forEach((contact) => {
+        const link = el('a', 'call-btn');
+        link.href = `tel:${dialNumber(contact.phone)}`;
+        link.setAttribute('aria-label', `Pokliči: ${contact.name}, ${contact.phone}`);
+        link.appendChild(el('span', '', `📞 ${contact.name}`));
+        link.appendChild(el('small', '', contact.phone));
+        callList.appendChild(link);
+      });
+
+      callEmpty.classList.toggle('hidden', contacts.length > 0);
+      // Brez stikov je "Dodaj" glavni gumb; sicer manj izrazit "Uredi stike"
+      callManageBtn.textContent = contacts.length ? 'Uredi stike' : '+ Dodaj stik';
+      callManageBtn.className = contacts.length ? 'undo-btn' : 'big-btn';
+    }
+
+    function openContactEditor() {
+      contactEditor.classList.remove('hidden');
+      if (loadContacts().length) showContactManage();
+      else showContactForm(null);
+    }
+
+    function closeContactEditor() {
+      contactEditor.classList.add('hidden');
+      renderContacts();
+      callManageBtn.focus();
+    }
+
+    function showContactManage() {
+      contactForm.classList.add('hidden');
+      contactManage.classList.remove('hidden');
+      contactManageList.innerHTML = '';
+
+      const contacts = loadContacts();
+      contacts.forEach((contact) => {
+        const item = el('div', 'med-manage-item');
+        item.appendChild(el('strong', '', contact.name));
+        item.appendChild(el('p', '', contact.phone));
+
+        const actions = el('div', 'med-manage-actions');
+        const edit = el('button', 'undo-btn', 'Uredi');
+        edit.type = 'button';
+        edit.addEventListener('click', () => showContactForm(contact));
+        const remove = el('button', 'undo-btn', 'Izbriši');
+        remove.type = 'button';
+        remove.addEventListener('click', () => deleteContact(contact));
+        actions.append(edit, remove);
+        item.appendChild(actions);
+
+        contactManageList.appendChild(item);
+      });
+      contactNewBtn.classList.toggle('hidden', contacts.length >= MAX_CONTACTS);
+      document.getElementById('contact-editor-title').focus();
+    }
+
+    function showContactForm(contact) {
+      editingContactId = contact ? contact.id : null;
+      contactManage.classList.add('hidden');
+      contactForm.classList.remove('hidden');
+      contactError.classList.add('hidden');
+      contactFormTitle.textContent = contact ? 'Uredi stik' : 'Nov stik';
+      contactName.value = contact ? contact.name : '';
+      contactPhone.value = contact ? contact.phone : '';
+      contactName.focus();
+    }
+
+    function showContactError(message, field) {
+      contactError.textContent = message;
+      contactError.classList.remove('hidden');
+      field.focus();
+    }
+
+    contactForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const name = contactName.value.trim();
+      const phone = contactPhone.value.trim();
+
+      if (!name) {
+        showContactError('Vpišite ime.', contactName);
+        return;
+      }
+      if (dialNumber(phone).replace('+', '').length < 3) {
+        showContactError('Vpišite veljavno telefonsko številko.', contactPhone);
+        return;
+      }
+
+      const contacts = loadContacts();
+      if (editingContactId === null) {
+        const nextId = contacts.reduce((max, c) => Math.max(max, c.id), 0) + 1;
+        contacts.push({ id: nextId, name, phone });
+      } else {
+        Object.assign(contacts.find((c) => c.id === editingContactId), { name, phone });
+      }
+      saveJSON(CONTACTS_KEY, contacts);
+      renderContacts();
+      showContactManage();
+    });
+
+    function deleteContact(contact) {
+      if (!window.confirm(`Ali res želite izbrisati stik »${contact.name}«?`)) return;
+      saveJSON(CONTACTS_KEY, loadContacts().filter((c) => c.id !== contact.id));
+      renderContacts();
+      if (loadContacts().length) showContactManage();
+      else closeContactEditor();
+    }
+
+    /** Klic v sili: najprej potrditev, da ga ni mogoče sprožiti po nesreči. */
+    function callEmergency() {
+      if (window.confirm(`Ali res želite poklicati ${EMERGENCY_NUMBER} (nujna medicinska pomoč)?`)) {
+        window.location.href = `tel:${EMERGENCY_NUMBER}`;
+      }
+    }
+
+    callManageBtn.addEventListener('click', openContactEditor);
+    document.getElementById('call-sos-btn').addEventListener('click', callEmergency);
+    contactNewBtn.addEventListener('click', () => showContactForm(null));
+    document.getElementById('contact-editor-close').addEventListener('click', () => {
+      if (!contactForm.classList.contains('hidden') && loadContacts().length) showContactManage();
+      else closeContactEditor();
+    });
+    document.getElementById('contact-form-cancel').addEventListener('click', () => {
+      if (loadContacts().length) showContactManage();
+      else closeContactEditor();
+    });
+    contactForm.addEventListener('input', () => contactError.classList.add('hidden'));
+
+    // =========================================================
     // 5b. VITALNI NAČIN – zdravila
     // =========================================================
 
@@ -3305,6 +3590,7 @@
      * in zaženi opomnik za gibanje.
      */
     function openVitalMode() {
+      renderContacts();
       startMedsCheck();
       renderWater(); // prebere shranjeno stanje (in ga ob novem dnevu ponastavi)
       unlockAudio();

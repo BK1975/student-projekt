@@ -6,7 +6,8 @@ Mobilna zdravstvena aplikacija za študente in starejše, zgrajena s [Capacitor]
   piskom in navodilom za odmor ter števcem današnjih intervalov.
 - **Študijski način** ima tudi vodene vaje za vratno in ledveno hrbtenico, vodeno dihanje (4-7-8 in
   škatlasto) ter kalkulator spanca po 90-minutnih ciklih z neobveznim večernim opomnikom.
-- **Vitalni način** – velik tekst in visok kontrast; opomnik za zdravila (vsakodnevna obvestila ob izbranih
+- **Vitalni način** – velik tekst in visok kontrast; klic svojcem z enim dotikom (do 4 stiki) in klic v sili
+  112 s potrditvijo; opomnik za zdravila (vsakodnevna obvestila ob izbranih
   urah, oznaka »Vzel/a sem« v oknu ±1 ura, zgodovina zadnjih 30 dni), števec popite vode in opomnik za
   gibanje vsaki 2 uri.
 - **Sistemska obvestila** (`@capacitor/local-notifications`) – konec intervala učenja, opomnik za gibanje
