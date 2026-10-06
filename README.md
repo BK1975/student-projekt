@@ -15,7 +15,8 @@ skopira iz `node_modules` (potrebna je, da aplikacija na telefonu doseže vtičn
 
 - Node.js 22 ali novejši (`node -v`; starejše različice Capacitor 8 ne podpira)
 - **Android:** Android Studio (z Android SDK)
-- **iOS:** macOS z Xcode
+- **iOS:** macOS z Xcode in posodobljenim simulatorjem/iOS (na zastarelem simulatorju iOS 17.0
+  aplikacija ni sprejemala dotikov)
 
 ## Zagon
 
