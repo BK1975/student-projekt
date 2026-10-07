@@ -1,6 +1,6 @@
 # Napredek projekta Zdravje+
 
-Zadnja posodobitev: 6. 10. 2026 · različica aplikacije **1.0.0 (build 1)**
+Zadnja posodobitev: 7. 10. 2026 · različica aplikacije **1.0.0 (build 1)**
 
 ## Narejeno
 
@@ -14,6 +14,13 @@ Zadnja posodobitev: 6. 10. 2026 · različica aplikacije **1.0.0 (build 1)**
   »O aplikaciji in zasebnost« (zdravstvena izjava, zasebnost, brisanje podatkov), ikona in začetni
   zaslon, `docs/zasebnost.html`, `ITSAppUsesNonExemptEncryption = false`, Android targetSdk 36.
 - **iOS na Macu:** projekt se zgradi, podpisovanje v Xcodu deluje (geslo za obesek za ključe vpisano).
+
+## Odločitve
+
+- **Apple Developer Program:** plačilo članstva je zaenkrat odloženo. Do takrat je možno brezplačno
+  preizkušanje na lastnem iPhonu (osebna ekipa, iPhone priključen s kablom, namestitev velja 7 dni).
+- **Politika zasebnosti:** po včlanitvi bo `docs/zasebnost.html` objavljena na **GitHub Pages** in
+  **Google Sites**. V App Store Connect se vpiše ena povezava; ob spremembah je treba posodobiti obe strani.
 
 ## Naslednji koraki (TestFlight)
 
