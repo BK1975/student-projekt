@@ -49,9 +49,9 @@ const POLJA = [
   ['reminderDate', 'Opomnik'], ['lastDeadline', 'Zadnji rok'], ['finalDate', 'Končno obvestilo'],
   ['handedDate', 'Izdano'], ['discardedDate', 'Oddano v zabojnik'],
   ['createdAt', 'Ustvarjeno'], ['updatedAt', 'Posodobljeno'], ['id', 'ID'],
-  ['services', 'Storitve (cenik)'], // nove stolpce dodajajte samo na konec
+  ['services', 'Storitve'], // nove stolpce dodajajte samo na konec
 ];
-const LIST_CENIK = 'Cenik';
+const LIST_STORITVE = 'Storitve';
 const KLJUCI = POLJA.map((p) => p[0]);
 const STOLPEC = Object.fromEntries(KLJUCI.map((k, i) => [k, i + 1]));
 const ZAKLENJENO = ['id', 'num', 'sector', 'createdAt', 'updatedAt'];
@@ -65,9 +65,9 @@ function nastavi() {
   sh.getRange(1, 1, 1, POLJA.length).setValues([POLJA.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
   sh.setFrozenRows(1);
   sh.getRange(2, 1, sh.getMaxRows() - 1, POLJA.length).setNumberFormat('@'); // vse kot besedilo
-  const cenik = ss.getSheetByName(LIST_CENIK) || ss.insertSheet(LIST_CENIK);
-  cenik.getRange(1, 1, 1, 4).setValues([['Skupina', 'Storitev', 'Cena (€)', 'Cena od']]).setFontWeight('bold').setBackground('#e5eeea');
-  cenik.setFrozenRows(1);
+  const storitve = ss.getSheetByName(LIST_STORITVE) || ss.insertSheet(LIST_STORITVE);
+  storitve.getRange(1, 1, 1, 2).setValues([['Skupina', 'Storitev']]).setFontWeight('bold').setBackground('#e5eeea');
+  storitve.setFrozenRows(1);
   ScriptApp.getProjectTriggers().forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dnevniPregled').timeBased().everyDays(1).atHour(NASTAVITVE.uraDnevnegaPregleda)
     .inTimezone(CASOVNI_PAS).create();
@@ -89,8 +89,8 @@ function doPost(e) {
   lock.waitLock(20000);
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
-    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), prices: preberiCenik() });
-    if (req.action === 'savePrices') { shraniCenik(req.prices || []); return json({ ok: true }); }
+    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve() });
+    if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
     if (req.action === 'create') return json({ ok: true, order: ustvari(sh, req.order || {}) });
     if (req.action === 'update') return json({ ok: true, order: posodobi(sh, req.id, req.patch || {}) });
     return json({ ok: false, error: 'Neznano dejanje' });
@@ -235,23 +235,20 @@ function vrsticaIz(o) {
   return KLJUCI.map((k) => (k === 'services' ? JSON.stringify(o.services || []) : o[k] == null ? '' : String(o[k])));
 }
 
-function preberiCenik() {
-  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_CENIK);
+function preberiStoritve() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_STORITVE);
   if (!sh || sh.getLastRow() < 2) return [];
-  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues()
-    .filter((r) => r[0] && r[1] && r[2] !== '')
-    .map((r) => ({ group: String(r[0]), name: String(r[1]), price: Number(String(r[2]).replace(',', '.')), from: r[3] === true || String(r[3]).toLowerCase() === 'da' }))
-    .filter((x) => Number.isFinite(x.price));
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues()
+    .filter((r) => r[0] && r[1])
+    .map((r) => ({ group: String(r[0]), name: String(r[1]) }));
 }
 
-function shraniCenik(list) {
-  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_CENIK);
-  if (!sh) throw new Error('Ni lista Cenik – zaženite funkcijo nastavi');
-  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 4).clearContent();
-  const vrstice = list
-    .filter((x) => x.group && x.name && Number.isFinite(Number(x.price)))
-    .map((x) => [String(x.group), String(x.name), Number(x.price), x.from ? 'da' : 'ne']);
-  if (vrstice.length) sh.getRange(2, 1, vrstice.length, 4).setValues(vrstice);
+function shraniStoritve(list) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_STORITVE);
+  if (!sh) throw new Error('Ni lista Storitve – zaženite funkcijo nastavi');
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
+  const vrstice = list.filter((x) => x.group && x.name).map((x) => [String(x.group), String(x.name)]);
+  if (vrstice.length) sh.getRange(2, 1, vrstice.length, 2).setValues(vrstice);
 }
 
 function zapisi(sh, vrstica, o) {

@@ -183,12 +183,12 @@ const CONFIG = {
   ],
 };
 
-// Začetni cenik – cene »od« s strani buckadizajn.com. Urejate ga v aplikaciji (Nastavitve → Cenik).
-const DEFAULT_PRICES = [
-  { group: 'Popravila', name: 'Hlače', price: 7, from: true },
-  { group: 'Popravila', name: 'Srajce in majice', price: 8, from: true },
-  { group: 'Popravila', name: 'Obleke in krila', price: 12, from: true },
-  { group: 'Popravila', name: 'Jakne in plašči', price: 15, from: true },
+// Začetni seznam storitev (brez cen – cene so v blagajni). Urejate ga v aplikaciji (Nastavitve → Storitve).
+const DEFAULT_SERVICES = [
+  { group: 'Popravila', name: 'Hlače' },
+  { group: 'Popravila', name: 'Srajce in majice' },
+  { group: 'Popravila', name: 'Obleke in krila' },
+  { group: 'Popravila', name: 'Jakne in plašči' },
 ];
 
 /* ================================================================ */
@@ -197,7 +197,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SETTINGS_KEY = 'bucka-settings';
 const LOCAL_KEY = 'bucka-orders-v2';
-const PRICES_KEY = 'bucka-prices';
+const SERVICES_KEY = 'bucka-services';
 
 function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; } }
@@ -272,7 +272,7 @@ function smsLink(phone, text) {
 
 const settings = lsGet(SETTINGS_KEY, { url: '', key: '' });
 let orders = [];
-let prices = DEFAULT_PRICES;
+let serviceList = DEFAULT_SERVICES;
 
 const store = {
   remote: () => !!settings.url,
@@ -290,17 +290,17 @@ const store = {
     if (this.remote()) {
       const res = await this.call('list');
       orders = res.orders;
-      prices = res.prices && res.prices.length ? res.prices : DEFAULT_PRICES;
+      serviceList = res.services && res.services.length ? res.services : DEFAULT_SERVICES;
     } else {
       orders = lsGet(LOCAL_KEY, []);
-      prices = lsGet(PRICES_KEY, DEFAULT_PRICES);
+      serviceList = lsGet(SERVICES_KEY, DEFAULT_SERVICES);
     }
     orders.forEach((o) => { if (!Array.isArray(o.services)) o.services = []; });
   },
-  async savePrices(list) {
-    if (this.remote()) await this.call('savePrices', { prices: list });
-    else if (!lsSet(PRICES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
-    prices = list;
+  async saveServices(list) {
+    if (this.remote()) await this.call('saveServices', { services: list });
+    else if (!lsSet(SERVICES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
+    serviceList = list;
   },
   async create(o) {
     if (this.remote()) {
@@ -428,16 +428,16 @@ function renderIntake(el) {
       <input id="iName" name="name" autocomplete="off">
       <label for="iEmail">E-pošta <small>(neobvezno – za samodejna obvestila)</small></label>
       <input id="iEmail" name="email" type="email" autocomplete="off">
-      <label>Storitve iz cenika</label>
-      ${priceGroups().map(([g, list]) => `
+      <label>Storitve</label>
+      ${serviceGroups().map(([g, list]) => `
         <p class="hint" style="margin-top:8px">${esc(g)}</p>
-        <div class="chips">${list.map((x) => `<button type="button" class="chip" data-svc="${prices.indexOf(x)}">+ ${esc(x.name)} · ${priceLabel(x)}</button>`).join('')}</div>`).join('')}
+        <div class="chips">${list.map((x) => `<button type="button" class="chip" data-svc="${serviceList.indexOf(x)}">+ ${esc(x.name)}</button>`).join('')}</div>`).join('')}
       <div id="picked"></div>
       <label for="iDesc">Opis <small>(podrobnosti, npr. »črne hlače – krajšanje za 3 cm«)</small></label>
       <textarea id="iDesc" name="description"></textarea>
       <div class="two">
         <div>
-          <label for="iPrice">Cena (€) <small id="priceHint">(neobvezno)</small></label>
+          <label for="iPrice">Cena (€) <small>(neobvezno)</small></label>
           <input id="iPrice" name="price" inputmode="decimal" placeholder="npr. 12">
         </div>
         <div>
@@ -452,8 +452,6 @@ function renderIntake(el) {
     </form>`;
 
   picked = [];
-  priceTouched = false;
-  $('#iPrice').addEventListener('input', () => { priceTouched = true; });
   renderPicked();
 
   // Znana stranka: po vnosu telefona predlagaj ime in e-pošto.
@@ -473,19 +471,16 @@ function renderIntake(el) {
   });
 }
 
-/* ---- Cenik ---- */
+/* ---- Seznam storitev (brez cen – cene so v blagajni) ---- */
 
-let picked = [];          // izbrane storitve pri prevzemu: { name, price, from, qty }
-let priceTouched = false; // ceno je zaposleni ročno popravil
+let picked = []; // izbrane storitve pri prevzemu: { name, qty }
 
-function priceGroups() {
+function serviceGroups() {
   const m = new Map();
-  prices.forEach((x) => { if (!m.has(x.group)) m.set(x.group, []); m.get(x.group).push(x); });
+  serviceList.forEach((x) => { if (!m.has(x.group)) m.set(x.group, []); m.get(x.group).push(x); });
   return [...m];
 }
-const priceLabel = (x) => (x.from ? 'od ' : '') + money(x.price);
 const servicesText = (o) => (o.services || []).map((x) => (x.qty > 1 ? `${x.qty} × ` : '') + x.name).join(', ');
-const servicesSum = (list) => list.reduce((s, x) => s + x.price * x.qty, 0);
 const orderText = (o) => [servicesText(o), o.description].filter(Boolean).join(' – ');
 
 function renderPicked() {
@@ -499,39 +494,29 @@ function renderPicked() {
           <button type="button" class="chip" data-qty="${i}" data-d="-1" aria-label="Manj">−</button>
           <b>${x.qty}</b>
           <button type="button" class="chip" data-qty="${i}" data-d="1" aria-label="Več">+</button>
-          <span style="min-width:72px;text-align:right">${x.from ? 'od ' : ''}${money(x.price * x.qty)}</span>
         </div>`).join('')}
-      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:6px;margin-top:4px">
-        <b>Skupaj</b><b>${picked.some((x) => x.from) ? 'od ' : ''}${money(servicesSum(picked))}</b>
-      </div>
     </div>` : '';
-  if (!priceTouched) $('#iPrice').value = picked.length ? String(servicesSum(picked)).replace('.', ',') : '';
-  $('#priceHint').textContent = picked.some((x) => x.from) ? '(cene so »od« – po potrebi popravi)' : '(neobvezno)';
 }
 
-function parsePrices(text) {
+// Vrstice »Skupina; Storitev« (dodatni stolpci, npr. cena, se prezrejo).
+function parseServices(text) {
   const list = [];
   const errors = [];
   text.split(/\r?\n/).forEach((line, i) => {
     if (!line.trim() || line.trim().startsWith('#')) return;
     const parts = line.split(/[;\t]/).map((x) => x.trim());
-    if (parts.length < 3) { errors.push(i + 1); return; }
-    const raw = parts[2].toLowerCase();
-    const price = Number(raw.replace(/^od\s*/, '').replace(/€|eur/g, '').trim().replace(',', '.'));
-    if (!parts[0] || !parts[1] || !Number.isFinite(price) || price < 0) { errors.push(i + 1); return; }
-    list.push({ group: parts[0], name: parts[1], price, from: raw.startsWith('od') });
+    if (parts.length < 2 || !parts[0] || !parts[1]) { errors.push(i + 1); return; }
+    list.push({ group: parts[0], name: parts[1] });
   });
   return { list, errors };
 }
-// Vrstica CSV z vejicami → »Skupina; Storitev; Cena« (cena ima lahko decimalno vejico, npr. 7,50).
+// Vrstica CSV z vejicami → »Skupina; Storitev«.
 function csvLine(l) {
   if (l.includes(';') || l.includes('\t')) return l;
   const p = l.split(',').map((x) => x.trim().replace(/^"|"$/g, ''));
-  if (p.length === 3) return p.join('; ');
-  if (p.length === 4) return `${p[0]}; ${p[1]}; ${p[2]},${p[3]}`;
-  return l;
+  return p.length >= 2 ? `${p[0]}; ${p[1]}` : l;
 }
-const pricesToText = (list) => list.map((x) => `${x.group}; ${x.name}; ${x.from ? 'od ' : ''}${String(x.price).replace('.', ',')}`).join('\n');
+const servicesToText = (list) => list.map((x) => `${x.group}; ${x.name}`).join('\n');
 
 const digits = (s) => String(s || '').replace(/\D/g, '').replace(/^386/, '0');
 const pieces = (n) => (Number(n) === 1 ? 'kos' : Number(n) === 2 ? 'kosa' : Number(n) <= 4 ? 'kosi' : 'kosov');
@@ -546,7 +531,7 @@ async function saveIntake() {
     phone: f.phone.trim(),
     email: f.email.trim(),
     pieces: Math.max(1, Number(f.pieces) || 1),
-    services: picked.map(({ name, price, from, qty }) => ({ name, price, from, qty })),
+    services: picked.map(({ name, qty }) => ({ name, qty })),
     description: f.description.trim(),
     price: f.price.trim().replace(',', '.'),
     dueDate: f.dueDate || '',
@@ -556,7 +541,7 @@ async function saveIntake() {
   if (!o.name) return err('Vpiši ime in priimek.');
   if (digits(o.phone).length < 6) return err('Vpiši telefonsko številko.');
   if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return err('E-poštni naslov ni veljaven.');
-  if (!o.description && !o.services.length) return err('Izberi storitev iz cenika ali opiši, kaj je treba narediti.');
+  if (!o.description && !o.services.length) return err('Izberi storitev ali opiši, kaj je treba narediti.');
   if (o.price && isNaN(Number(o.price))) return err('Cena mora biti število.');
   if (o.received > today()) return err('Datum prevzema ne more biti v prihodnosti.');
   const saved = await busy(() => store.create(o));
@@ -790,7 +775,7 @@ function openDetail(o) {
         <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
         <div><label>Cena (€)</label><input name="price" inputmode="decimal" value="${esc(o.price)}" ${dis}></div>
       </div>
-      ${o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)} (${x.from ? 'od ' : ''}${money(x.price)})`).join('<br>')}</p>` : ''}
+      ${o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}`).join('<br>')}</p>` : ''}
       <label>Opis</label><textarea name="description" ${dis}>${esc(o.description)}</textarea>
       <label>Opomba</label><input name="note" value="${esc(o.note)}" ${dis}>
       <p class="error" id="editError" hidden></p>
@@ -861,34 +846,34 @@ function renderSettings(app) {
       </div>
     </div>`}
     <div class="card" style="margin-top:14px">
-      <b>Cenik</b>
-      <p class="hint">Ena vrstica na storitev: <code>Skupina; Storitev; Cena</code>. Za ceno »od« napiši <code>od 7</code>.
-        Lahko prilepiš tudi vrstice iz Excela (ločene s tabulatorjem).${store.remote() ? ' Cenik velja za vse naprave.' : ''}</p>
-      <textarea id="priceText" rows="${Math.min(16, prices.length + 3)}" style="font-family:ui-monospace,monospace;font-size:.85rem;margin-top:8px">${esc(pricesToText(prices))}</textarea>
-      <p class="error" id="priceError" hidden></p>
+      <b>Storitve</b>
+      <p class="hint">Seznam storitev za hitro izbiro pri prevzemu – brez cen (cene so v blagajni).
+        Ena vrstica na storitev: <code>Skupina; Storitev</code>. Lahko prilepiš tudi vrstice iz Excela.${store.remote() ? ' Seznam velja za vse naprave.' : ''}</p>
+      <textarea id="svcText" rows="${Math.min(16, serviceList.length + 3)}" style="font-family:ui-monospace,monospace;font-size:.85rem;margin-top:8px">${esc(servicesToText(serviceList))}</textarea>
+      <p class="error" id="svcError" hidden></p>
       <div class="actions">
-        <button class="btn" id="savePrices">Shrani cenik</button>
-        <label class="btn secondary" style="margin:0">Uvozi iz datoteke (CSV/TXT)<input type="file" id="importPrices" accept=".csv,.txt,text/csv,text/plain" hidden></label>
-        <button class="btn secondary" id="resetPrices">Začetni cenik</button>
+        <button class="btn" id="saveServices">Shrani storitve</button>
+        <label class="btn secondary" style="margin:0">Uvozi iz datoteke (CSV/TXT)<input type="file" id="importServices" accept=".csv,.txt,text/csv,text/plain" hidden></label>
+        <button class="btn secondary" id="resetServices">Začetni seznam</button>
       </div>
     </div>
     <div class="card policy" style="margin-top:14px">${policyHtml()}</div>`;
 
-  $('#savePrices').onclick = async () => {
-    const { list, errors } = parsePrices($('#priceText').value);
-    const err = $('#priceError');
-    if (errors.length) { err.textContent = `Napaka v vrstici ${errors.join(', ')} – oblika: Skupina; Storitev; Cena`; err.hidden = false; return; }
-    if (!list.length) { err.textContent = 'Cenik je prazen.'; err.hidden = false; return; }
+  $('#saveServices').onclick = async () => {
+    const { list, errors } = parseServices($('#svcText').value);
+    const err = $('#svcError');
+    if (errors.length) { err.textContent = `Napaka v vrstici ${errors.join(', ')} – oblika: Skupina; Storitev`; err.hidden = false; return; }
+    if (!list.length) { err.textContent = 'Seznam je prazen.'; err.hidden = false; return; }
     err.hidden = true;
-    const ok = await busy(() => store.savePrices(list).then(() => true));
-    if (ok) { toast(`Cenik shranjen (${list.length} storitev)`); render(); }
+    const ok = await busy(() => store.saveServices(list).then(() => true));
+    if (ok) { toast(`Shranjeno (${list.length} storitev)`); render(); }
   };
-  $('#importPrices').addEventListener('change', async (e) => {
+  $('#importServices').addEventListener('change', async (e) => {
     const text = await e.target.files[0].text();
-    $('#priceText').value = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(csvLine).join('\n');
-    toast('Preveri vrstice in klikni »Shrani cenik«');
+    $('#svcText').value = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(csvLine).join('\n');
+    toast('Preveri vrstice in klikni »Shrani storitve«');
   });
-  $('#resetPrices').onclick = () => { $('#priceText').value = pricesToText(DEFAULT_PRICES); };
+  $('#resetServices').onclick = () => { $('#svcText').value = servicesToText(DEFAULT_SERVICES); };
 
   $('#saveSettings').onclick = async (e) => {
     e.preventDefault();
@@ -979,10 +964,10 @@ document.addEventListener('click', (e) => {
     return nav(t.dataset.nav);
   }
   if (t.dataset.svc) {
-    const x = prices[Number(t.dataset.svc)];
-    const have = picked.find((p) => p.name === x.name && p.price === x.price);
+    const x = serviceList[Number(t.dataset.svc)];
+    const have = picked.find((p) => p.name === x.name);
     if (have) have.qty++;
-    else picked.push({ ...x, qty: 1 });
+    else picked.push({ name: x.name, qty: 1 });
     return renderPicked();
   }
   if (t.dataset.qty) {
