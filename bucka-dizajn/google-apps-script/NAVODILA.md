@@ -5,6 +5,7 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
 ## Kaj dobite
 
 - Vsa naročila so v Google preglednici (list **Naročila**). Vse naprave v poslovalnici vidijo iste podatke.
+- Cenik je v listu **Cenik** in velja za vse naprave. Urejate ga v aplikaciji (Nastavitve → Cenik).
 - Ko zaposleni v aplikaciji označi naročilo kot **gotovo**, stranka z e-pošto samodejno prejme
   obvestilo z rokom za prevzem (14 dni).
 - Vsak dan ob 8.00 skripta preveri roke in strankam z e-pošto samodejno pošlje:
@@ -44,6 +45,8 @@ povezovanjem jih po potrebi izvozite (Nastavitve → Izvozi) in vnesite znova.
 - Roke in praznike spreminjajte v `Code.gs` **in** v `index.html` (`CONFIG`), da sta enaka.
 - Seznam praznikov vsako leto dopolnite.
 - Po spremembi `Code.gs`: **Uvedi → Upravljaj uvedbe → ✎ → Različica: Nova različica**, da URL ostane enak.
+- Če ste skripto namestili pred dodajanjem cenika, po posodobitvi `Code.gs` še enkrat zaženite **nastavi**
+  (doda list Cenik in stolpec »Storitve (cenik)«; obstoječi podatki ostanejo).
 - Preglednico lahko berete in filtrirate, a podatke urejajte v aplikaciji. Ne spreminjajte vrstnega reda
   stolpcev in ne brišite stolpca **ID**.
 

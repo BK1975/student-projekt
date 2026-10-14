@@ -49,7 +49,9 @@ const POLJA = [
   ['reminderDate', 'Opomnik'], ['lastDeadline', 'Zadnji rok'], ['finalDate', 'Končno obvestilo'],
   ['handedDate', 'Izdano'], ['discardedDate', 'Oddano v zabojnik'],
   ['createdAt', 'Ustvarjeno'], ['updatedAt', 'Posodobljeno'], ['id', 'ID'],
+  ['services', 'Storitve (cenik)'], // nove stolpce dodajajte samo na konec
 ];
+const LIST_CENIK = 'Cenik';
 const KLJUCI = POLJA.map((p) => p[0]);
 const STOLPEC = Object.fromEntries(KLJUCI.map((k, i) => [k, i + 1]));
 const ZAKLENJENO = ['id', 'num', 'sector', 'createdAt', 'updatedAt'];
@@ -63,6 +65,9 @@ function nastavi() {
   sh.getRange(1, 1, 1, POLJA.length).setValues([POLJA.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
   sh.setFrozenRows(1);
   sh.getRange(2, 1, sh.getMaxRows() - 1, POLJA.length).setNumberFormat('@'); // vse kot besedilo
+  const cenik = ss.getSheetByName(LIST_CENIK) || ss.insertSheet(LIST_CENIK);
+  cenik.getRange(1, 1, 1, 4).setValues([['Skupina', 'Storitev', 'Cena (€)', 'Cena od']]).setFontWeight('bold').setBackground('#e5eeea');
+  cenik.setFrozenRows(1);
   ScriptApp.getProjectTriggers().forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dnevniPregled').timeBased().everyDays(1).atHour(NASTAVITVE.uraDnevnegaPregleda)
     .inTimezone(CASOVNI_PAS).create();
@@ -84,7 +89,8 @@ function doPost(e) {
   lock.waitLock(20000);
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
-    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o) });
+    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), prices: preberiCenik() });
+    if (req.action === 'savePrices') { shraniCenik(req.prices || []); return json({ ok: true }); }
     if (req.action === 'create') return json({ ok: true, order: ustvari(sh, req.order || {}) });
     if (req.action === 'update') return json({ ok: true, order: posodobi(sh, req.id, req.patch || {}) });
     return json({ ok: false, error: 'Neznano dejanje' });
@@ -96,13 +102,15 @@ function doPost(e) {
 }
 
 function ustvari(sh, vnos) {
-  if (!vnos.name || !vnos.phone || !vnos.description) throw new Error('Ime, telefon in opis so obvezni');
+  if (!vnos.name || !vnos.phone) throw new Error('Ime in telefon sta obvezna');
+  if (!vnos.description && !(vnos.services || []).length) throw new Error('Manjka opis ali storitev');
   const sector = vnos.sector || 'popravilo';
   const predpona = sector === 'popravilo' ? 'P-' : 'N-';
   const zadnja = vsa(sh).filter((v) => String(v.o.num).startsWith(predpona))
     .reduce((m, v) => Math.max(m, Number(String(v.o.num).slice(2)) || 0), 0);
   const o = {};
-  KLJUCI.forEach((k) => { o[k] = vnos[k] == null ? '' : String(vnos[k]); });
+  KLJUCI.forEach((k) => { o[k] = vnos[k]; });
+  o.services = Array.isArray(vnos.services) ? vnos.services : [];
   o.id = Utilities.getUuid();
   o.num = predpona + String(zadnja + 1).padStart(4, '0');
   o.sector = sector;
@@ -111,7 +119,7 @@ function ustvari(sh, vnos) {
   const r = sh.getLastRow() + 1;
   const obseg = sh.getRange(r, 1, 1, KLJUCI.length);
   obseg.setNumberFormat('@');
-  obseg.setValues([KLJUCI.map((k) => o[k])]);
+  obseg.setValues([vrsticaIz(o)]);
   return o;
 }
 
@@ -121,7 +129,7 @@ function posodobi(sh, id, patch) {
   const prej = v.o.status;
   const o = Object.assign({}, v.o);
   Object.keys(patch).forEach((k) => {
-    if (KLJUCI.includes(k) && !ZAKLENJENO.includes(k)) o[k] = patch[k] == null ? '' : String(patch[k]);
+    if (KLJUCI.includes(k) && !ZAKLENJENO.includes(k)) o[k] = patch[k];
   });
   o.updatedAt = new Date().toISOString();
 
@@ -214,14 +222,42 @@ function vsa(sh) {
   const n = sh.getLastRow() - 1;
   if (n < 1) return [];
   return sh.getRange(2, 1, n, KLJUCI.length).getDisplayValues()
-    .map((vr, i) => ({ vrstica: i + 2, o: Object.fromEntries(KLJUCI.map((k, j) => [k, vr[j]])) }))
+    .map((vr, i) => {
+      const o = Object.fromEntries(KLJUCI.map((k, j) => [k, vr[j]]));
+      try { o.services = o.services ? JSON.parse(o.services) : []; } catch (e) { o.services = []; }
+      return { vrstica: i + 2, o };
+    })
     .filter((v) => v.o.id);
+}
+
+// Vrednosti za zapis v vrstico: storitve kot JSON, vse ostalo kot besedilo.
+function vrsticaIz(o) {
+  return KLJUCI.map((k) => (k === 'services' ? JSON.stringify(o.services || []) : o[k] == null ? '' : String(o[k])));
+}
+
+function preberiCenik() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_CENIK);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues()
+    .filter((r) => r[0] && r[1] && r[2] !== '')
+    .map((r) => ({ group: String(r[0]), name: String(r[1]), price: Number(String(r[2]).replace(',', '.')), from: r[3] === true || String(r[3]).toLowerCase() === 'da' }))
+    .filter((x) => Number.isFinite(x.price));
+}
+
+function shraniCenik(list) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_CENIK);
+  if (!sh) throw new Error('Ni lista Cenik – zaženite funkcijo nastavi');
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 4).clearContent();
+  const vrstice = list
+    .filter((x) => x.group && x.name && Number.isFinite(Number(x.price)))
+    .map((x) => [String(x.group), String(x.name), Number(x.price), x.from ? 'da' : 'ne']);
+  if (vrstice.length) sh.getRange(2, 1, vrstice.length, 4).setValues(vrstice);
 }
 
 function zapisi(sh, vrstica, o) {
   const obseg = sh.getRange(vrstica, 1, 1, KLJUCI.length);
   obseg.setNumberFormat('@');
-  obseg.setValues([KLJUCI.map((k) => o[k] == null ? '' : o[k])]);
+  obseg.setValues([vrsticaIz(o)]);
 }
 
 function json(obj) {

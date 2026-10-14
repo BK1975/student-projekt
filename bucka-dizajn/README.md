@@ -46,7 +46,7 @@ Na vrhu skripte v [`index.html`](index.html):
 
 - `CONFIG` – ime, telefon, naslov in delovni čas (za besedilo sporočil), roki (`pickupDays`,
   `reminderWorkDays`, `discardWorkDays`), delovni dnevi in prazniki
-- `QUICK_REPAIRS` – hitri gumbi za pogosta popravila
+- `DEFAULT_PRICES` – začetni cenik (cene »od« s strani buckadizajn.com); cenik sicer urejate v aplikaciji: Nastavitve → Cenik
 
 Enake roke in praznike nastavite tudi v `google-apps-script/Code.gs`. Po spremembi datotek v `sw.js`
 povečajte `CACHE` (npr. `bucka-v4`).
