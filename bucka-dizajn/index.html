@@ -204,6 +204,9 @@
   <div class="pricelist" id="pricelist"></div>
   <p class="note">Cene so okvirne. Končno ceno potrdimo ob oddaji, ko si oblačilo ogledamo.</p>
 
+  <h2 class="section">Rok za prevzem</h2>
+  <div class="callout" id="pickupPolicy"></div>
+
   <div class="info">
     <section>
       <h2>Kje smo</h2>
@@ -260,6 +263,14 @@ const SHOP = {
   },
   // Dnevi, ko je delavnica zaprta (prazniki, dopust), oblika LLLL-MM-DD.
   closedDates: ['2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02'],
+  // Naslov spletne aplikacije Google Apps Script (glej google-apps-script/NAVODILA.md).
+  // Če je prazen, se prijava pošlje z e-poštnim programom stranke.
+  backendUrl: '',
+  // Pogoji prevzema – enake vrednosti nastavite tudi v google-apps-script/Code.gs.
+  pickupDays: 14,       // rok za prevzem (koledarski dnevi od obvestila »gotovo«)
+  reminderWorkDays: 3,  // dodatni delovni dnevi po opomniku
+  discardWorkDays: 22,  // po toliko delovnih dneh od obvestila »gotovo« sledi končno obvestilo
+  donation: 'Humana',
 };
 
 // Vrste oblačil, med katerimi stranka izbira.
@@ -404,6 +415,7 @@ function renderInfo() {
     const h = SHOP.hours[d];
     return `<tr><td>${capitalize(DAY_NAMES[d])}</td><td>${h ? `${h[0]} – ${h[1]}` : 'zaprto'}</td></tr>`;
   }).join('');
+  $('#pickupPolicy').innerHTML = policyText();
   $('#year').textContent = new Date().getFullYear();
 }
 
@@ -548,6 +560,10 @@ function renderBooking() {
         </div>
       </div>
       <p class="hint" id="readyHint"></p>
+      ${items.some((it) => it.kind === 'repair') ? `
+        <label for="fPickup">Želen datum prevzema</label>
+        <select id="fPickup" name="pickup"></select>
+        <p class="hint">Izberi lahko dan od predvidenega dne, ko bo popravilo gotovo, do izteka roka za prevzem.</p>` : ''}
       <label for="fName">Ime in priimek</label>
       <input id="fName" name="name" autocomplete="name" value="${esc(c.name || '')}">
       <div class="two">
@@ -560,12 +576,14 @@ function renderBooking() {
           <input id="fEmail" name="email" type="email" autocomplete="email" value="${esc(c.email || '')}">
         </div>
       </div>
+      <p class="hint">Na e-pošto pošiljamo obvestilo, ko je naročilo gotovo, in opomnike o roku za prevzem.</p>
       <label for="fNotify">Ko je naročilo gotovo, me obvestite po</label>
       <select id="fNotify" name="notify">
         <option value="SMS">SMS</option>
         <option value="klicu">telefonskem klicu</option>
         <option value="e-pošti">e-pošti</option>
       </select>
+      <label class="check"><input type="checkbox" name="terms"> Seznanjen/a sem s pogoji prevzema: gotove kose prevzamem v ${SHOP.pickupDays} dneh od obvestila, sicer jih delavnica po opomniku in izteku roka odda v zabojnik ${esc(SHOP.donation)}.</label>
       <label class="check"><input type="checkbox" name="agree"> Strinjam se, da delavnica moje podatke uporabi samo za izvedbo tega naročila.</label>
       <p class="error" id="formError" hidden></p>
     </form>`;
@@ -578,10 +596,35 @@ function renderBooking() {
   const update = () => {
     const day = days.find((d) => d.date === $('#fDay').value);
     $('#fSlot').innerHTML = day.slots.map((s) => `<option value="${s}">${s}</option>`).join('');
-    $('#readyHint').textContent = `Predviden prevzem gotovih kosov: ${dateLabel(readyDate(day.date))} ali kasneje.`;
+    const ready = readyDate(day.date);
+    $('#readyHint').textContent = `Predviden prevzem gotovih kosov: ${dateLabel(ready)} ali kasneje.`;
+    const pickup = $('#fPickup');
+    if (pickup) {
+      const prev = pickup.value;
+      pickup.innerHTML = '<option value="">Čim prej – ko bo gotovo</option>' +
+        pickupDates(ready).map((d) => `<option value="${isoDate(d)}">${esc(dateLabel(d))}</option>`).join('');
+      if ([...pickup.options].some((o) => o.value === prev)) pickup.value = prev;
+    }
   };
   $('#fDay').addEventListener('change', update);
   update();
+}
+
+// Dnevi, ko je delavnica odprta, od predvidenega dne, ko bo gotovo, do izteka roka za prevzem.
+function pickupDates(ready) {
+  const list = [];
+  for (let i = 0; i <= SHOP.pickupDays; i++) {
+    const d = new Date(ready.getFullYear(), ready.getMonth(), ready.getDate() + i);
+    if (isOpen(d)) list.push(d);
+  }
+  return list;
+}
+
+function policyText() {
+  return `Gotove kose je treba prevzeti v <b>${SHOP.pickupDays} dneh</b> od obvestila, da je naročilo gotovo.
+    Če jih v tem času ne prevzameš, ti samodejno pošljemo opomnik in imaš še <b>${SHOP.reminderWorkDays} delovne dni</b> za prevzem.
+    Ker blaga ne skladiščimo, kose, ki niso prevzeti do ${SHOP.discardWorkDays}. delovnega dne od obvestila,
+    oddamo v zabojnik <b>${esc(SHOP.donation)}</b> – o tem te obvestimo s končnim sporočilom.`;
 }
 
 function showError(msg) {
@@ -605,17 +648,25 @@ function submitOrder() {
   if (!/^[+\d][\d\s/-]{5,}$/.test(phone)) return showError('Vpiši veljavno telefonsko številko.');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('E-poštni naslov ni veljaven.');
   if (data.notify === 'e-pošti' && !email) return showError('Za obvestilo po e-pošti vpiši e-poštni naslov.');
+  if (!data.terms) return showError('Za oddajo potrdi, da si seznanjen/a s pogoji prevzema.');
   if (!data.agree) return showError('Za oddajo potrdi soglasje.');
   const day = dropOffDays().find((d) => d.date === data.day);
   if (!day || !day.slots.includes(data.slot)) return showError('Izbrani termin ni več na voljo. Izberi drugega.');
   showError('');
   save(CUSTOMER_KEY, { name, phone, email });
 
-  const ready = dateLabel(readyDate(day.date));
+  const readyD = readyDate(day.date);
+  const pickupD = data.pickup ? pickupDates(readyD).find((d) => isoDate(d) === data.pickup) : null;
   const order = {
     code: orderCode(),
+    createdAt: new Date().toISOString(),
     dropOff: `${day.label} ob ${data.slot}`,
-    ready,
+    dropOffDate: day.date,
+    ready: dateLabel(readyD),
+    readyDate: isoDate(readyD),
+    pickupWish: pickupD ? dateLabel(pickupD) : '',
+    pickupWishDate: pickupD ? isoDate(pickupD) : '',
+    customer: { name, phone, email, notify: data.notify },
     items: items.slice(),
     total: totalPrice(),
     unpriced: hasUnpriced(),
@@ -625,6 +676,7 @@ function submitOrder() {
     '',
     `Oddaja: ${order.dropOff}`,
     `Predviden prevzem: ${order.ready}`,
+    order.pickupWish ? `Želen datum prevzema: ${order.pickupWish}` : null,
     '',
     'Kosi:',
     ...order.items.map((it, i) => {
@@ -644,14 +696,39 @@ function submitOrder() {
     `Obvestilo, ko je gotovo: po ${data.notify}`,
   ].filter((l) => l !== null).join('\n');
 
+  order.items = order.items.map((it) => ({ ...it, title: itemTitle(it), detail: itemDetail(it), price: itemPrice(it) }));
+
   const history = load(ORDERS_KEY, []);
-  history.unshift({ code: order.code, dropOff: order.dropOff, ready: order.ready, items: order.items.length });
+  history.unshift({ code: order.code, dropOff: order.dropOff, ready: order.pickupWish || order.ready, items: order.items.length });
   save(ORDERS_KEY, history.slice(0, 20));
 
   items = [];
   save(ITEMS_KEY, items);
   lastOrder = order;
   view = 'done';
+  sendOrder(order);
+}
+
+// Pošlje prijavo v Google preglednico; če to ne uspe (ali ni nastavljeno), odpre e-poštni program.
+async function sendOrder(order) {
+  order.via = 'sending';
+  renderAll();
+  if (SHOP.backendUrl) {
+    try {
+      const res = await fetch(SHOP.backendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // brez CORS predpoverbe
+        body: JSON.stringify(order),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Napaka strežnika');
+      order.via = 'server';
+      return renderAll();
+    } catch (err) {
+      console.warn('Pošiljanje na strežnik ni uspelo, uporabim e-pošto.', err);
+    }
+  }
+  order.via = 'email';
   renderAll();
   sendEmail(order);
 }
@@ -669,20 +746,24 @@ function renderDone() {
     <div class="done">
       <p>Številka naročila</p>
       <div class="code">${esc(o.code)}</div>
-      <div class="callout">Odprl se je tvoj e-poštni program s pripravljenim sporočilom.
-        Prijava je oddana, ko sporočilo <b>pošlješ</b>.</div>
+      ${o.via === 'sending' ? '<div class="callout">Pošiljam prijavo …</div>'
+        : o.via === 'server' ? '<div class="callout" style="background:var(--brand-soft);border-color:#b9d1c7">Prijava je oddana.' + (o.customer.email ? ' Potrdilo smo poslali tudi na tvoj e-poštni naslov.' : '') + '</div>'
+        : `<div class="callout">Odprl se je tvoj e-poštni program s pripravljenim sporočilom.
+        Prijava je oddana, ko sporočilo <b>pošlješ</b>.</div>`}
       <div class="summary">
         <p><b>Oddaja:</b> ${esc(o.dropOff)}</p>
         <p><b>Naslov:</b> ${esc(SHOP.address)}</p>
         <p><b>Predviden prevzem:</b> ${esc(o.ready)}</p>
+        ${o.pickupWish ? `<p><b>Želen prevzem:</b> ${esc(o.pickupWish)}</p>` : ''}
         <p><b>Kosi:</b> ${o.items.map((it) => esc(itemTitle(it))).join(', ')}</p>
         <p><b>Okvirna cena:</b> od ${fmt.format(o.total)} – plačilo ob prevzemu</p>
       </div>
       <p class="hint" style="margin-top:12px">Ob oddaji povej številko naročila. Oblačila naj bodo oprana.</p>
+      <div class="callout" style="font-size:.85rem">${policyText()}</div>
     </div>`;
   $('#drawerFoot').innerHTML = `
-    <button class="btn block" id="resend">Ponovno odpri e-pošto</button>
-    <div class="two" style="margin-top:8px">
+    ${o.via === 'email' ? '<button class="btn block" id="resend">Ponovno odpri e-pošto</button>' : ''}
+    <div class="two" style="${o.via === 'email' ? 'margin-top:8px' : ''}">
       <button class="btn secondary" id="copyOrder">Kopiraj prijavo</button>
       <a class="btn secondary" href="tel:${esc(tel)}">Pokliči nas</a>
     </div>`;
