@@ -1,42 +1,55 @@
 # Bucka Dizajn Pick&Collect
 
-Spletna aplikacija za šiviljsko delavnico: stranka na spletu prijavi oblačila za **popravilo** ali
-**izdelavo po naročilu**, izbere termin za **oddajo** in izve predviden datum **prevzema** gotovih kosov.
-Ne potrebuje Google Play ali App Store – deluje v brskalniku, na telefonu pa jo je mogoče dodati na
-domači zaslon (PWA).
+Interno orodje za **zaposlene v poslovalnici Bucka Dizajn**. Deluje v brskalniku (računalnik, tablica,
+telefon), na tablico ali telefon pa ga lahko dodate na domači zaslon. Google Play in App Store nista
+potrebna.
 
-## Kaj zna
+## Sektorji
 
-- okvirni cenik popravil in izdelave po meri (cena »od« in čas izdelave)
-- prijava več kosov naenkrat:
-  - **popravilo** – vrsta oblačila, ena ali več storitev (krajšanje, zadrga, ožanje …), opis
-  - **po naročilu** – vrsta izdelka, opis želje, želen rok
-- izbira termina oddaje glede na delovni čas, praznike in najkrajši čas vnaprej
-- samodejni izračun predvidenega prevzema (najdaljši čas izdelave v delovnih dneh)
-- pri popravilih izbira **želenega datuma prevzema** (od predvidenega dne, ko bo gotovo, do izteka roka)
-- izbira načina obvestila, ko je naročilo gotovo (SMS, klic, e-pošta)
-- **rok za prevzem 14 dni** s samodejnim opomnikom (še 3 delovni dnevi) in končnim obvestilom na
-  22. delovni dan, da bodo neprevzeti kosi oddani v zabojnik Humana – glej
-  [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md)
-- oddaja: ustvari se številka naročila (npr. `BD-7KQ2M`); prijava se zapiše v Google preglednico
-  delavnice (če je nastavljen `backendUrl`), sicer se odpre e-poštni program stranke s pripravljenim
-  sporočilom
-- seznam zadnjih naročil stranke; aplikacija si zapomni podatke stranke
-- deluje tudi brez povezave (service worker)
+### Popravilo oblačil (narejeno)
+
+- **Prevzem** – oblačila stranke se sprejmejo v poslovalnico: datum prevzema, ime in priimek, telefon,
+  neobvezna e-pošta, število kosov, opis (s hitrimi gumbi za pogosta popravila), neobvezna cena in
+  dogovorjeni rok. Vsak prevzem dobi številko za listek (`P-0001`, `P-0002` …). Pri znani telefonski
+  številki aplikacija predlaga ime stranke.
+- **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki. Brez iskanja so
+  prikazana vsa gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
+- **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), oblačila v popravilu,
+  oblačila, ki čakajo na prevzem, in zadnja zaključena naročila.
+
+**Roki za prevzem:**
+
+1. Ko je naročilo označeno kot **gotovo**, se stranko obvesti, rok za prevzem je **14 dni**.
+2. Po izteku roka gre **opomnik**: stranka ima še **3 delovne dni**.
+3. Na **22. delovni dan** od obvestila (nikoli pred iztekom roka po opomniku) gre **končno obvestilo**:
+   ker blaga ni prevzela v določenem času, smatramo, da ga ne potrebuje, in ga bomo oddali v zabojnik
+   **Humana**.
+4. Ko je blago oddano, ga zaposleni označi kot »Oddano v Humana«.
+
+Primer: gotovo 2. 11. → rok 16. 11. → opomnik 17. 11. (zadnji rok 20. 11.) → končno obvestilo 2. 12.
+
+Obvestila se pošiljajo s pripravljenim SMS (en dotik), po e-pošti ali s klicem. Če je povezana Google
+preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
+
+### Izdelava po naročilu (sledi)
+
+## Shranjevanje podatkov
+
+- **Brez nastavitev** so podatki shranjeni samo v brskalniku naprave, na kateri vnašate (primerno za
+  preizkus). V Nastavitvah lahko naredite varnostno kopijo (izvoz/uvoz JSON).
+- **Z Google preglednico** (priporočeno) vse naprave v poslovalnici vidijo iste podatke, strankam z
+  e-pošto pa se obvestila pošiljajo samodejno. Navodila: [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md).
 
 ## Urejanje
 
-Vse nastavitve so na vrhu skripte v [`index.html`](index.html):
+Na vrhu skripte v [`index.html`](index.html):
 
-- `SHOP` – e-pošta za prijave, telefon, naslov, delovni čas, zaprti dnevi, dolžina termina,
-  `backendUrl` (Google Apps Script) in pogoji prevzema (`pickupDays`, `reminderWorkDays`, `discardWorkDays`)
-- `GARMENTS` – vrste oblačil
-- `REPAIRS` – storitve popravil (`price` = cena od, `days` = delovni dnevi izdelave)
-- `CUSTOM` – izdelava po naročilu (`price: 0` pomeni »po dogovoru«)
+- `CONFIG` – ime, telefon, naslov in delovni čas (za besedilo sporočil), roki (`pickupDays`,
+  `reminderWorkDays`, `discardWorkDays`), delovni dnevi in prazniki
+- `QUICK_REPAIRS` – hitri gumbi za pogosta popravila
 
-Trenutne cene, roki in kontaktni podatki so **primeri** – zamenjajte jih s pravimi.
-
-Po spremembi datotek v `sw.js` povečajte `CACHE` (npr. `bucka-v2`), da obiskovalci dobijo novo različico.
+Enake roke in praznike nastavite tudi v `google-apps-script/Code.gs`. Po spremembi datotek v `sw.js`
+povečajte `CACHE` (npr. `bucka-v4`).
 
 ## Lokalni zagon
 
@@ -46,16 +59,9 @@ python3 -m http.server 8080
 # odprite http://localhost:8080
 ```
 
-## Objava na spletu (brezplačno)
+## Objava
 
-Mapo lahko objavite na katerikoli statični gostovanji, npr. **Netlify** (povlecite mapo na
-app.netlify.com/drop), **GitHub Pages** ali **Cloudflare Pages**. Za namestitev na domači zaslon in
-delovanje brez povezave mora stran teči prek `https`.
-
-## Omejitve te različice
-
-- Brez nastavljenega `backendUrl` prijava pride do delavnice šele, ko stranka v svojem e-poštnem programu
-  pritisne **Pošlji**, samodejnih opomnikov pa ni. Za samodejna obvestila sledite
-  [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md).
-- Termini oddaje se ne zasedajo (dve stranki lahko izbereta isti termin).
-- Samodejna obvestila se pošiljajo po e-pošti; SMS bi zahteval plačljivo storitev.
+Mapo objavite na statičnem gostovanju s `https`, npr. **Netlify** (povlecite mapo na
+app.netlify.com/drop), **GitHub Pages** ali **Cloudflare Pages**. Stran ima oznako `noindex`, zato je
+iskalniki ne prikazujejo. Podatki strank niso v datotekah strani, ampak na napravi ali v vaši Google
+preglednici, dostop do nje pa je zaščiten s ključem.

@@ -1,7 +1,7 @@
 {
   "name": "Bucka Dizajn Pick&Collect",
   "short_name": "Bucka P&C",
-  "description": "Oddaja oblačil v popravilo ali izdelavo po meri in prevzem gotovih kosov.",
+  "description": "Interno orodje poslovalnice Bucka Dizajn za prevzem in izdajo oblačil.",
   "lang": "sl",
   "start_url": "./",
   "scope": "./",

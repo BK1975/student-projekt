@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bucka Dizajn Pick&amp;Collect</title>
-<meta name="description" content="Oddaja oblačil v popravilo ali izdelavo po meri in prevzem gotovih kosov – Bucka Dizajn.">
+<meta name="description" content="Interno orodje poslovalnice Bucka Dizajn za prevzem in izdajo oblačil.">
+<meta name="robots" content="noindex">
 <meta name="theme-color" content="#2f5d50">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Bucka Pick&amp;Collect">
+<meta name="apple-mobile-web-app-title" content="Bucka P&amp;C">
 <style>
   :root {
     --bg: #faf7f2;
@@ -22,767 +23,814 @@
     --brand-dark: #23463c;
     --brand-soft: #e5eeea;
     --accent: #e08a3c;
+    --warn-bg: #fff4e8;
+    --warn-line: #f2cfa6;
     --danger: #b3362b;
+    --danger-bg: #fbeceb;
     --radius: 14px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--text); line-height: 1.45;
-  }
-  button, input, select, textarea { font: inherit; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45; }
+  button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   a { color: var(--brand); }
+  [hidden] { display: none !important; }
 
   header {
-    position: sticky; top: 0; z-index: 10;
-    background: var(--brand); color: #fff;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    position: sticky; top: 0; z-index: 10; background: var(--brand); color: #fff;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
   .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
-  .logo img { width: 36px; height: 36px; }
-  .logo b { display: block; font-size: 1.05rem; letter-spacing: .02em; }
-  .logo small { display: block; font-size: .78rem; opacity: .85; }
-  .head-btn {
-    position: relative; border: 0; border-radius: 999px;
-    background: #fff; color: var(--brand); font-weight: 600; padding: 9px 16px;
+  .logo img { width: 34px; height: 34px; }
+  .logo b { display: block; font-size: 1rem; }
+  .logo small { display: block; font-size: .75rem; opacity: .85; }
+  .iconbtn { border: 0; background: rgba(255,255,255,.15); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: .9rem; }
+  .mode { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.2); margin-left: 6px; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 16px 16px 40px; }
+  h1 { font-size: 1.35rem; margin: 4px 0 14px; }
+  h2 { font-size: 1.05rem; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .back { border: 0; background: none; color: var(--brand); padding: 0; font-weight: 600; margin-bottom: 8px; }
+
+  .sectors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+  .sector {
+    text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: var(--radius);
+    padding: 18px; display: flex; flex-direction: column; gap: 6px;
   }
-  .head-btn .badge {
-    position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px;
-    border-radius: 11px; background: var(--accent); color: #fff;
-    font-size: .75rem; display: grid; place-items: center; padding: 0 6px;
-  }
-  .head-btn .badge[hidden] { display: none; }
+  .sector:not(:disabled):hover { border-color: var(--brand); }
+  .sector:disabled { opacity: .55; cursor: default; }
+  .sector b { font-size: 1.15rem; }
+  .sector span { color: var(--muted); font-size: .92rem; }
+  .sector .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
-  main { max-width: 1040px; margin: 0 auto; padding: 16px; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+  .tabs button { border: 0; background: none; padding: 9px 4px; border-radius: 9px; font-weight: 600; color: var(--brand); position: relative; }
+  .tabs button[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .72rem; margin-left: 4px; }
 
-  .hero { margin: 8px 0 18px; }
-  .hero h1 { font-size: 1.5rem; margin: 0 0 6px; }
-  .hero p { margin: 0; color: var(--muted); }
-
-  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
-  .choice {
-    text-align: left; border: 1px solid var(--line); background: var(--card);
-    border-radius: var(--radius); padding: 18px; color: var(--text);
-    display: flex; gap: 14px; align-items: flex-start;
-  }
-  .choice:hover { border-color: var(--brand); }
-  .choice .ico { flex: none; width: 48px; height: 48px; border-radius: 12px; background: var(--brand-soft); display: grid; place-items: center; }
-  .choice .ico svg { width: 28px; height: 28px; stroke: var(--brand); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .choice b { display: block; font-size: 1.1rem; margin-bottom: 2px; }
-  .choice span { color: var(--muted); font-size: .92rem; }
-
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; margin: 22px 0; counter-reset: s; padding: 0; list-style: none; }
-  .steps li { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px 12px 50px; position: relative; font-size: .92rem; }
-  .steps li::before {
-    counter-increment: s; content: counter(s);
-    position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; border-radius: 50%;
-    background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: .85rem;
-  }
-  .steps b { display: block; }
-
-  h2.section { font-size: 1.15rem; margin: 26px 0 10px; }
-  .pricelist { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
-  .pricelist section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; }
-  .pricelist h3 { margin: 0 0 6px; font-size: 1rem; }
-  .pricelist table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-  .pricelist td { padding: 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
-  .pricelist td:last-child { text-align: right; white-space: nowrap; padding-left: 10px; }
-  .pricelist small { color: var(--muted); }
-  .note { color: var(--muted); font-size: .85rem; margin-top: 8px; }
-
-  .info { margin-top: 26px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
-  .info section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
-  .info h2 { margin: 0 0 8px; font-size: 1rem; }
-  .info p { margin: 2px 0; font-size: .92rem; }
-  .hours { width: 100%; border-collapse: collapse; font-size: .92rem; }
-  .hours td { padding: 2px 0; }
-  .hours td:last-child { text-align: right; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  form label { display: block; font-weight: 600; font-size: .9rem; margin: 12px 0 4px; }
+  form label small { font-weight: 400; color: var(--muted); }
+  input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  textarea { resize: vertical; min-height: 70px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 520px) { .three { grid-template-columns: 1fr 1fr; } }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 11px; font-size: .85rem; }
+  .chip:hover { border-color: var(--brand); color: var(--brand); }
+  .hint { font-size: .84rem; color: var(--muted); margin: 4px 0 0; }
+  .error { color: var(--danger); font-size: .88rem; margin: 10px 0 0; }
 
   .btn { border: 0; border-radius: 10px; padding: 10px 14px; background: var(--brand); color: #fff; font-weight: 600; text-align: center; text-decoration: none; display: inline-block; }
   .btn:hover { background: var(--brand-dark); }
   .btn:disabled { background: #b9c2bf; cursor: not-allowed; }
-  .btn.secondary { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+  .btn.secondary { background: var(--card); color: var(--brand); border: 1px solid var(--brand); }
+  .btn.warn { background: var(--accent); }
+  .btn.danger { background: var(--danger); }
   .btn.small { padding: 6px 10px; font-size: .85rem; }
   .btn.block { width: 100%; padding: 13px; font-size: 1rem; }
-  .linkbtn { border: 0; background: none; color: var(--danger); padding: 0; font-size: .85rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
-  /* Predal za naročilo */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 20; }
-  .drawer {
-    position: fixed; top: 0; right: 0; bottom: 0; z-index: 21;
-    width: min(480px, 100%); background: var(--bg);
-    display: flex; flex-direction: column; padding-top: env(safe-area-inset-top);
-  }
-  .drawer[hidden], .overlay[hidden] { display: none; }
-  .drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-  .drawer-head h2 { margin: 0; font-size: 1.15rem; }
-  .drawer-head small { display: block; color: var(--muted); font-size: .8rem; }
+  .order { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+  .order.due { border-color: var(--warn-line); background: var(--warn-bg); }
+  .order.late { border-color: #e7b3ae; background: var(--danger-bg); }
+  .order .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .order .num { font-weight: 800; color: var(--brand); letter-spacing: .03em; }
+  .order .who { font-weight: 600; }
+  .order .who a { font-weight: 400; }
+  .order .desc { margin: 6px 0 0; font-size: .92rem; white-space: pre-line; }
+  .order .dates { margin: 6px 0 0; font-size: .82rem; color: var(--muted); }
+  .order .open { border: 0; background: none; color: var(--muted); font-size: .82rem; padding: 0; text-decoration: underline; }
+  .pill { display: inline-block; font-size: .74rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--brand-soft); color: var(--brand); }
+  .pill.sprejeto { background: #eef0f6; color: #4a5a8a; }
+  .pill.caka { background: var(--brand-soft); color: var(--brand); }
+  .pill.opomnik, .pill.opomnjeno { background: var(--warn-bg); color: #a3591b; border: 1px solid var(--warn-line); }
+  .pill.koncno, .pill.humana { background: var(--danger-bg); color: var(--danger); }
+  .pill.izdano { background: #eceeed; color: var(--muted); }
+  .pill.zavrzeno { background: #eceeed; color: var(--muted); text-decoration: line-through; }
+
+  .customer { margin-bottom: 14px; }
+  .customer > .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .customer > .head b { font-size: 1.05rem; }
+  .empty { color: var(--muted); text-align: center; padding: 22px 0; }
+  .search { position: sticky; top: 64px; z-index: 5; background: var(--bg); padding: 4px 0 10px; }
+  .search input { border-radius: 999px; padding: 12px 16px; font-size: 1rem; }
+
+  .done { text-align: center; }
+  .done .bignum { font-size: 2.2rem; font-weight: 800; color: var(--brand); letter-spacing: .06em; margin: 4px 0; }
+  .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
+  .callout.ok { background: var(--brand-soft); border-color: #b9d1c7; }
+  .policy { font-size: .88rem; }
+  .policy ol { margin: 6px 0 0; padding-left: 20px; }
+  details summary { cursor: pointer; color: var(--brand); font-weight: 600; margin: 18px 0 10px; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; display: grid; place-items: end center; }
+  @media (min-width: 640px) { .modal-bg { place-items: center; } }
+  .modal { background: var(--bg); width: min(560px, 100%); max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+  @media (min-width: 640px) { .modal { border-radius: 18px; } }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .modal-head h3 { margin: 0; font-size: 1.1rem; }
   .close { border: 0; background: none; font-size: 1.6rem; line-height: 1; color: var(--muted); }
-  .drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
-  .drawer-foot { border-top: 1px solid var(--line); padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--card); }
+  .msg { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; white-space: pre-line; }
+  .timeline { list-style: none; padding: 0; margin: 10px 0 0; font-size: .88rem; }
+  .timeline li { padding: 4px 0 4px 18px; position: relative; color: var(--muted); }
+  .timeline li::before { content: ''; position: absolute; left: 4px; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .timeline li.on { color: var(--text); }
+  .timeline li.on::before { background: var(--brand); }
 
-  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 14px; }
-  .tabs button { border: 0; background: none; padding: 8px; border-radius: 9px; font-weight: 600; color: var(--brand); }
-  .tabs button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-
-  .item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
-  .item .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-  .item .kind { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
-  .item p { margin: 4px 0 0; font-size: .9rem; color: var(--muted); }
-  .item .price { font-weight: 700; white-space: nowrap; }
-
-  .services { display: grid; gap: 6px; }
-  .svc { display: flex; gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-weight: 400; margin: 0; }
-  .svc input { width: auto; margin: 0; }
-  .svc span { flex: 1; }
-  .svc small { color: var(--muted); white-space: nowrap; }
-
-  form label { display: block; font-weight: 600; font-size: .9rem; margin: 12px 0 4px; }
-  form input, form select, form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
-  form textarea { resize: vertical; min-height: 70px; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .check { display: flex; gap: 8px; align-items: flex-start; font-weight: 400 !important; }
-  .check input { width: auto; margin-top: 4px; }
-  .error { color: var(--danger); font-size: .88rem; margin-top: 8px; }
-  .hint { font-size: .85rem; color: var(--muted); margin: 4px 0 0; }
-
-  .sum { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 10px; }
-  .sum small { font-weight: 400; color: var(--muted); display: block; }
-  .empty { color: var(--muted); text-align: center; padding: 26px 0; }
-
-  .done { text-align: center; padding: 10px 0; }
-  .done .code { font-size: 1.6rem; font-weight: 800; letter-spacing: .08em; color: var(--brand); margin: 6px 0 12px; }
-  .summary { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; font-size: .92rem; }
-  .summary p { margin: 4px 0; }
-  .callout { background: #fff4e8; border: 1px solid #f2cfa6; border-radius: 10px; padding: 10px 12px; font-size: .9rem; margin: 10px 0; text-align: left; }
-
-  .toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 30; font-size: .92rem; }
-  .toast[hidden] { display: none; }
-  footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 24px 16px 32px; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 40; font-size: .92rem; max-width: calc(100% - 32px); }
+  .loading { opacity: .6; pointer-events: none; }
 </style>
 </head>
 <body>
 
 <header>
-  <a class="logo" href="#">
+  <a class="logo" href="#/">
     <img src="icon.svg" alt="">
-    <span><b>Bucka Dizajn</b><small>Pick&amp;Collect</small></span>
+    <span><b>Bucka Dizajn</b><small>Pick&amp;Collect<span class="mode" id="mode"></span></small></span>
   </a>
-  <button class="head-btn" data-open="list" aria-label="Moje naročilo">
-    Moje naročilo <span class="badge" id="itemCount" hidden>0</span>
-  </button>
+  <button class="iconbtn" data-nav="#/nastavitve" aria-label="Nastavitve">Nastavitve</button>
 </header>
 
-<main>
-  <div class="hero">
-    <h1>Popravila in šivanje po meri</h1>
-    <p>Prijavi oblačila na spletu, izberi termin za oddajo in jih prevzemi, ko so gotova.</p>
-  </div>
-
-  <div class="choices">
-    <button class="choice" data-open="repair">
-      <span class="ico"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg></span>
-      <span><b>Popravilo oblačil</b><span>Krajšanje, ožanje, menjava zadrge, krpanje …</span></span>
-    </button>
-    <button class="choice" data-open="custom">
-      <span class="ico"><svg viewBox="0 0 24 24"><path d="M8 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4-3c0 1.7-1.8 3-4 3S8 4.7 8 3Z"/></svg></span>
-      <span><b>Izdelava po naročilu</b><span>Oblačila in izdelki, sešiti po tvojih merah in željah.</span></span>
-    </button>
-  </div>
-
-  <ol class="steps">
-    <li><b>Prijava</b>Opiši kose in izberi storitve.</li>
-    <li><b>Oddaja</b>Izberi termin in prinesi oblačila.</li>
-    <li><b>Izdelava</b>Ko je naročilo gotovo, te obvestimo.</li>
-    <li><b>Prevzem</b>Prevzemi kose in plačaj ob prevzemu.</li>
-  </ol>
-
-  <h2 class="section">Okvirni cenik</h2>
-  <div class="pricelist" id="pricelist"></div>
-  <p class="note">Cene so okvirne. Končno ceno potrdimo ob oddaji, ko si oblačilo ogledamo.</p>
-
-  <h2 class="section">Rok za prevzem</h2>
-  <div class="callout" id="pickupPolicy"></div>
-
-  <div class="info">
-    <section>
-      <h2>Kje smo</h2>
-      <p id="shopAddress"></p>
-      <p id="shopContact"></p>
-    </section>
-    <section>
-      <h2>Delovni čas (oddaja in prevzem)</h2>
-      <table class="hours" id="hoursTable"></table>
-    </section>
-  </div>
-</main>
-
-<footer>© <span id="year"></span> Bucka Dizajn · Pick&amp;Collect</footer>
-
-<div class="overlay" id="overlay" hidden></div>
-<aside class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
-  <div class="drawer-head">
-    <div><h2 id="drawerTitle"></h2><small id="drawerStep"></small></div>
-    <button class="close" data-close aria-label="Zapri">×</button>
-  </div>
-  <div class="drawer-body" id="drawerBody"></div>
-  <div class="drawer-foot" id="drawerFoot"></div>
-</aside>
-
+<main id="app"></main>
+<div id="modal"></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
 /* ================================================================
-   NASTAVITVE – tukaj uredite podatke delavnice, storitve in termine.
+   NASTAVITVE POSLOVALNICE
+   Roke nastavite enako tudi v google-apps-script/Code.gs.
    ================================================================ */
-const SHOP = {
-  name: 'Bucka Dizajn',
-  // Na ta naslov se pošlje prijava (odpre se e-poštni program stranke).
-  orderEmail: 'info@bucka-dizajn.si',
+const CONFIG = {
+  shopName: 'Bucka Dizajn',
   phone: '+386 40 000 000',
   address: 'Primerna ulica 1, 1000 Ljubljana',
-  currency: 'EUR',
-  // Najmanj toliko ur vnaprej je mogoče izbrati termin oddaje.
-  leadHours: 2,
-  // Koliko dni vnaprej je mogoče izbrati termin oddaje.
-  daysAhead: 14,
-  // Dolžina enega termina v minutah.
-  slotMinutes: 15,
-  // Delovni čas po dnevih (0 = nedelja … 6 = sobota); null = zaprto.
-  hours: {
-    1: ['09:00', '17:00'],
-    2: ['09:00', '17:00'],
-    3: ['09:00', '17:00'],
-    4: ['09:00', '19:00'],
-    5: ['09:00', '17:00'],
-    6: ['09:00', '12:00'],
-    0: null,
-  },
-  // Dnevi, ko je delavnica zaprta (prazniki, dopust), oblika LLLL-MM-DD.
-  closedDates: ['2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02'],
-  // Naslov spletne aplikacije Google Apps Script (glej google-apps-script/NAVODILA.md).
-  // Če je prazen, se prijava pošlje z e-poštnim programom stranke.
-  backendUrl: '',
-  // Pogoji prevzema – enake vrednosti nastavite tudi v google-apps-script/Code.gs.
-  pickupDays: 14,       // rok za prevzem (koledarski dnevi od obvestila »gotovo«)
-  reminderWorkDays: 3,  // dodatni delovni dnevi po opomniku
-  discardWorkDays: 22,  // po toliko delovnih dneh od obvestila »gotovo« sledi končno obvestilo
+  hours: 'pon–pet 9–17, sob 9–12',
+
+  pickupDays: 14,       // stranka mora prevzeti v toliko koledarskih dneh od obvestila »gotovo«
+  reminderWorkDays: 3,  // po opomniku ima še toliko delovnih dni
+  discardWorkDays: 22,  // končno obvestilo na ta delovni dan od obvestila »gotovo«
   donation: 'Humana',
+
+  workDays: [1, 2, 3, 4, 5], // 0 = nedelja … 6 = sobota
+  holidays: [
+    '2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02', '2027-02-08',
+    '2027-03-28', '2027-03-29', '2027-04-27', '2027-05-01', '2027-05-02',
+    '2027-06-25', '2027-08-15', '2027-10-31', '2027-11-01', '2027-12-25', '2027-12-26',
+  ],
 };
 
-// Vrste oblačil, med katerimi stranka izbira.
-const GARMENTS = ['Hlače', 'Kavbojke', 'Krilo', 'Obleka', 'Srajca / bluza', 'Majica', 'Suknjič / blazer',
-  'Jakna / plašč', 'Pulover', 'Zavese / tekstil za dom', 'Drugo'];
-
-// STORITVE POPRAVIL – primeri, zamenjajte s pravimi. price = cena "od", days = delovni dnevi izdelave.
-const REPAIRS = [
-  { id: 'krajsanje',      name: 'Krajšanje / podaljšanje',   price: 9,  days: 3 },
-  { id: 'krajsanje-orig', name: 'Krajšanje z originalnim robom (kavbojke)', price: 12, days: 3 },
-  { id: 'ozanje',         name: 'Ožanje / širjenje',         price: 14, days: 4 },
-  { id: 'zadrga',         name: 'Menjava zadrge',            price: 12, days: 3 },
-  { id: 'zadrga-jakna',   name: 'Menjava zadrge na jakni',   price: 22, days: 5 },
-  { id: 'rokavi',         name: 'Krajšanje rokavov',         price: 12, days: 3 },
-  { id: 'krpanje',        name: 'Krpanje / šivanje raztrganine', price: 6, days: 2 },
-  { id: 'gumbi',          name: 'Prišitje gumbov',           price: 2,  days: 1 },
-  { id: 'podloga',        name: 'Menjava podloge',           price: 35, days: 7 },
-];
-
-// IZDELAVA PO NAROČILU – primeri.
-const CUSTOM = [
-  { id: 'obleka',  name: 'Obleka po meri',            price: 150, days: 15 },
-  { id: 'krilo',   name: 'Krilo po meri',             price: 70,  days: 10 },
-  { id: 'hlace',   name: 'Hlače po meri',             price: 90,  days: 10 },
-  { id: 'srajca',  name: 'Srajca / bluza po meri',    price: 80,  days: 10 },
-  { id: 'kostum',  name: 'Kostum (pustni, gledališki)', price: 90, days: 15 },
-  { id: 'dom',     name: 'Zavese, prti, blazine',     price: 30,  days: 7 },
-  { id: 'drugo',   name: 'Drugo (opišite)',           price: 0,   days: 10 },
-];
+// Pogoste storitve – en dotik jih doda v opis.
+const QUICK_REPAIRS = ['Krajšanje hlač', 'Krajšanje kavbojk (orig. rob)', 'Ožanje', 'Širjenje', 'Menjava zadrge',
+  'Krajšanje rokavov', 'Krpanje', 'Prišitje gumbov', 'Menjava podloge', 'Krajšanje krila / obleke'];
 
 /* ================================================================ */
 
-const $ = (sel) => document.querySelector(sel);
-const fmt = new Intl.NumberFormat('sl-SI', { style: 'currency', currency: SHOP.currency, maximumFractionDigits: 2, minimumFractionDigits: 0 });
-const DAY_NAMES = ['nedelja', 'ponedeljek', 'torek', 'sreda', 'četrtek', 'petek', 'sobota'];
-const ITEMS_KEY = 'bucka-items';
-const CUSTOMER_KEY = 'bucka-customer';
-const ORDERS_KEY = 'bucka-orders';
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SETTINGS_KEY = 'bucka-settings';
+const LOCAL_KEY = 'bucka-orders-v2';
 
-function load(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
-}
-function save(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* zasebni način ipd. */ }
-}
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-function pad(n) { return String(n).padStart(2, '0'); }
-function isoDate(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
-function toMinutes(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-function hhmm(min) { return `${pad(Math.floor(min / 60))}:${pad(min % 60)}`; }
-function dateLabel(d) { return `${capitalize(DAY_NAMES[d.getDay()])}, ${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`; }
+function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; } }
 
-const repairById = Object.fromEntries(REPAIRS.map((s) => [s.id, s]));
-const customById = Object.fromEntries(CUSTOM.map((s) => [s.id, s]));
+/* ---------- Datumi (vse v obliki LLLL-MM-DD) ---------- */
 
-// Kosi v trenutni prijavi: { kind: 'repair', garment, services: [id], note } ali { kind: 'custom', type, note, deadline }
-let items = load(ITEMS_KEY, []).filter((it) =>
-  it.kind === 'repair' ? it.services?.every((id) => repairById[id]) : customById[it.type]);
-let view = 'list';      // list | add | booking | done
-let addKind = 'repair'; // repair | custom
-let lastOrder = null;
+const pad = (n) => String(n).padStart(2, '0');
+const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const today = () => iso(new Date());
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+const isWorkDay = (s) => CONFIG.workDays.includes(parse(s).getDay()) && !CONFIG.holidays.includes(s);
+function addWorkDays(s, n) {
+  let x = s;
+  while (n > 0) { x = addDays(x, 1); if (isWorkDay(x)) n--; }
+  return x;
+}
+const fmt = (s) => { if (!s) return ''; const d = parse(s); return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`; };
+const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 86400000);
+const maxIso = (a, b) => (a > b ? a : b);
 
-/* ---------- Izračuni ---------- */
+/* ---------- Faze naročila in roki ---------- */
 
-function itemPrice(it) {
-  return it.kind === 'repair'
-    ? it.services.reduce((s, id) => s + repairById[id].price, 0)
-    : customById[it.type].price;
+// Kdaj je na vrsti končno obvestilo (na 22. delovni dan, a ne pred iztekom roka po opomniku).
+function finalDue(o) {
+  return maxIso(addWorkDays(o.readyDate, CONFIG.discardWorkDays), addWorkDays(o.lastDeadline, 1));
 }
-function itemDays(it) {
-  return it.kind === 'repair'
-    ? Math.max(...it.services.map((id) => repairById[id].days))
-    : customById[it.type].days;
-}
-function itemTitle(it) {
-  return it.kind === 'repair' ? it.garment : customById[it.type].name;
-}
-function itemDetail(it) {
-  return it.kind === 'repair' ? it.services.map((id) => repairById[id].name).join(', ') : '';
-}
-function totalPrice() { return items.reduce((s, it) => s + itemPrice(it), 0); }
-function hasUnpriced() { return items.some((it) => itemPrice(it) === 0); }
 
-function isOpen(d) {
-  return !!SHOP.hours[d.getDay()] && !SHOP.closedDates.includes(isoDate(d));
-}
-// Prišteje delovne dni (dneve, ko je delavnica odprta).
-function addWorkDays(date, n) {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  let left = n;
-  while (left > 0) {
-    d.setDate(d.getDate() + 1);
-    if (isOpen(d)) left--;
+function stage(o, t = today()) {
+  if (o.status === 'sprejeto') return { key: 'sprejeto', label: 'V popravilu' };
+  if (o.status === 'izdano') return { key: 'izdano', label: 'Izdano' };
+  if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: `Oddano v ${CONFIG.donation}` };
+  // status 'gotovo'
+  if (!o.reminderDate) {
+    if (t > o.deadline) return { key: 'opomnik', label: 'Pošlji opomnik', due: true };
+    const left = daysBetween(t, o.deadline);
+    return { key: 'caka', label: left === 0 ? 'Čaka – rok danes' : `Čaka na prevzem · še ${left} ${left === 1 ? 'dan' : left === 2 ? 'dneva' : left < 5 ? 'dnevi' : 'dni'}` };
   }
-  return d;
-}
-// Predviden prevzem: od dneva oddaje + najdaljši čas izdelave med kosi.
-function readyDate(dropOffIso) {
-  const [y, m, d] = dropOffIso.split('-').map(Number);
-  const days = Math.max(...items.map(itemDays));
-  return addWorkDays(new Date(y, m - 1, d), days);
+  if (!o.finalDate) {
+    if (t >= finalDue(o)) return { key: 'koncno', label: 'Pošlji končno obvestilo', due: true };
+    return { key: 'opomnjeno', label: `Opomnjeno · zadnji rok ${fmt(o.lastDeadline)}` };
+  }
+  return { key: 'humana', label: `Odda se v ${CONFIG.donation}`, due: true };
 }
 
-// Prosti termini za oddajo: [{ date, label, slots }]
-function dropOffDays(now = new Date()) {
-  const earliest = new Date(now.getTime() + SHOP.leadHours * 3600 * 1000);
-  const days = [];
-  for (let i = 0; i <= SHOP.daysAhead; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-    if (!isOpen(d)) continue;
-    const [open, close] = SHOP.hours[d.getDay()].map(toMinutes);
-    const slots = [];
-    for (let m = open; m + SHOP.slotMinutes <= close; m += SHOP.slotMinutes) {
-      if (new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, m) >= earliest) slots.push(hhmm(m));
+/* ---------- Sporočila strankam ---------- */
+
+function message(type, o) {
+  const sig = `${CONFIG.shopName}, ${CONFIG.address}, ${CONFIG.phone}`;
+  if (type === 'ready') {
+    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so popravljena in čakajo na prevzem. ` +
+      `Rok za prevzem: ${fmt(o.deadline)}. Delovni čas: ${CONFIG.hours}. ${sig}`;
+  }
+  if (type === 'reminder') {
+    const last = o.lastDeadline || addWorkDays(today(), CONFIG.reminderWorkDays);
+    return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
+      `Prosimo, prevzemite jih v ${CONFIG.reminderWorkDays} delovnih dneh, najkasneje do ${fmt(last)}. ` +
+      `Ker blaga ne skladiščimo, neprevzeta oblačila oddamo v zabojnik ${CONFIG.donation}. ${sig}`;
+  }
+  return `Pozdravljeni, ker oblačil (št. ${o.num}) niste prevzeli v določenem času, smatramo, da jih ne potrebujete. ` +
+    `Ker pri nas blaga ne skladiščimo, jih bomo oddali v zabojnik ${CONFIG.donation}. ${sig}`;
+}
+const MSG_TITLE = { ready: 'Obvestilo: oblačila so gotova', reminder: 'Opomnik za prevzem', final: 'Končno obvestilo' };
+
+function smsLink(phone, text) {
+  const n = phone.replace(/[^\d+]/g, '');
+  const sep = /iPhone|iPad|Mac/.test(navigator.userAgent) ? '&' : '?';
+  return `sms:${n}${sep}body=${encodeURIComponent(text)}`;
+}
+
+/* ---------- Shranjevanje: lokalno ali Google preglednica ---------- */
+
+const settings = lsGet(SETTINGS_KEY, { url: '', key: '' });
+let orders = [];
+
+const store = {
+  remote: () => !!settings.url,
+  async call(action, payload = {}) {
+    const res = await fetch(settings.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ key: settings.key, action, ...payload }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'Napaka strežnika');
+    return json;
+  },
+  async load() {
+    if (this.remote()) orders = (await this.call('list')).orders;
+    else orders = lsGet(LOCAL_KEY, []);
+  },
+  async create(o) {
+    if (this.remote()) {
+      const saved = (await this.call('create', { order: o })).order;
+      orders.push(saved);
+      return saved;
     }
-    if (!slots.length) continue;
-    const prefix = i === 0 ? 'Danes' : i === 1 ? 'Jutri' : capitalize(DAY_NAMES[d.getDay()]);
-    days.push({ date: isoDate(d), label: `${prefix}, ${d.getDate()}. ${d.getMonth() + 1}.`, slots });
-  }
-  return days;
+    o.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    o.num = 'P-' + pad4(orders.reduce((m, x) => Math.max(m, Number(x.num.slice(2)) || 0), 0) + 1);
+    o.createdAt = new Date().toISOString();
+    orders.push(o);
+    this.saveLocal();
+    return o;
+  },
+  async update(id, patch) {
+    const i = orders.findIndex((o) => o.id === id);
+    if (this.remote()) {
+      orders[i] = (await this.call('update', { id, patch })).order;
+    } else {
+      orders[i] = { ...orders[i], ...patch, updatedAt: new Date().toISOString() };
+      this.saveLocal();
+    }
+    return orders[i];
+  },
+  saveLocal() {
+    if (!lsSet(LOCAL_KEY, orders)) toast('Shranjevanje na napravo ni uspelo!');
+  },
+};
+const pad4 = (n) => String(n).padStart(4, '0');
+const money = (v) => new Intl.NumberFormat('sl-SI', { style: 'currency', currency: 'EUR' }).format(Number(v));
+
+/* ---------- Usmerjanje ---------- */
+
+let route = location.hash || '#/';
+let searchQuery = '';
+let lastCreated = null;
+
+window.addEventListener('hashchange', () => { route = location.hash || '#/'; render(); window.scrollTo(0, 0); });
+function nav(hash) { location.hash = hash; }
+
+function render() {
+  $('#mode').textContent = store.remote() ? 'preglednica' : 'ta naprava';
+  const app = $('#app');
+  if (route.startsWith('#/popravilo')) return renderRepair(app, route.split('/')[2] || 'prevzem');
+  if (route === '#/nastavitve') return renderSettings(app);
+  renderHome(app);
 }
 
-/* ---------- Glavna stran ---------- */
+/* ---------- Domov ---------- */
 
-function renderPricelist() {
-  const table = (list) => list.map((s) => `
-    <tr><td>${esc(s.name)}<br><small>izdelava ~${s.days} ${s.days === 1 ? 'delovni dan' : 'delovnih dni'}</small></td>
-    <td>${s.price ? 'od ' + fmt.format(s.price) : 'po dogovoru'}</td></tr>`).join('');
-  $('#pricelist').innerHTML = `
-    <section><h3>Popravila</h3><table>${table(REPAIRS)}</table></section>
-    <section><h3>Izdelava po naročilu</h3><table>${table(CUSTOM)}</table></section>`;
+function renderHome(app) {
+  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const n = (pred) => repairs.filter(pred).length;
+  const due = n((o) => stage(o).due);
+  app.innerHTML = `
+    <h1>Izberi sektor</h1>
+    <div class="sectors">
+      <button class="sector" data-nav="#/popravilo/prevzem">
+        <b>Popravilo oblačil</b>
+        <span>Prevzem oblačil v poslovalnico, izdaja popravljenih oblačil in roki za prevzem.</span>
+        <div class="stats">
+          <span class="pill sprejeto">V popravilu: ${n((o) => o.status === 'sprejeto')}</span>
+          <span class="pill caka">Čaka na prevzem: ${n((o) => o.status === 'gotovo')}</span>
+          ${due ? `<span class="pill opomnik">Za urediti danes: ${due}</span>` : ''}
+        </div>
+      </button>
+      <button class="sector" disabled>
+        <b>Izdelava po naročilu</b>
+        <span>Kmalu.</span>
+      </button>
+    </div>`;
 }
 
-function renderInfo() {
-  const tel = SHOP.phone.replace(/\s/g, '');
-  $('#shopAddress').textContent = SHOP.address;
-  $('#shopContact').innerHTML = `<a href="tel:${esc(tel)}">${esc(SHOP.phone)}</a> · <a href="mailto:${esc(SHOP.orderEmail)}">${esc(SHOP.orderEmail)}</a>`;
-  $('#hoursTable').innerHTML = [1, 2, 3, 4, 5, 6, 0].map((d) => {
-    const h = SHOP.hours[d];
-    return `<tr><td>${capitalize(DAY_NAMES[d])}</td><td>${h ? `${h[0]} – ${h[1]}` : 'zaprto'}</td></tr>`;
-  }).join('');
-  $('#pickupPolicy').innerHTML = policyText();
-  $('#year').textContent = new Date().getFullYear();
+/* ---------- Sektor: popravilo oblačil ---------- */
+
+function renderRepair(app, tab) {
+  const due = orders.filter((o) => o.sector === 'popravilo' && stage(o).due).length;
+  const tabs = [['prevzem', 'Prevzem'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
+  app.innerHTML = `
+    <button class="back" data-nav="#/">‹ Sektorji</button>
+    <h1>Popravilo oblačil</h1>
+    <div class="tabs" role="tablist">
+      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/popravilo/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}</button>`).join('')}
+    </div>
+    <div id="tab"></div>`;
+  const el = $('#tab');
+  if (tab === 'izdaja') renderIssue(el);
+  else if (tab === 'pregled') renderOverview(el);
+  else renderIntake(el);
 }
 
-function renderBadge() {
-  $('#itemCount').textContent = items.length;
-  $('#itemCount').hidden = items.length === 0;
-}
+/* ---- Prevzem v poslovalnico ---- */
 
-/* ---------- Predal ---------- */
-
-function setHead(title, step) {
-  $('#drawerTitle').textContent = title;
-  $('#drawerStep').textContent = step || '';
-}
-
-function renderDrawer() {
-  ({ list: renderList, add: renderAdd, booking: renderBooking, done: renderDone })[view]();
-}
-
-function renderList() {
-  setHead('Moje naročilo', items.length ? 'Korak 1 od 2 – kosi za oddajo' : '');
-  const body = $('#drawerBody');
-  if (!items.length) {
-    body.innerHTML = `<p class="empty">Še nisi dodal/a nobenega kosa.</p>
-      <div class="two">
-        <button class="btn" data-add="repair">+ Popravilo</button>
-        <button class="btn" data-add="custom">+ Po naročilu</button>
-      </div>` + renderHistory();
-    $('#drawerFoot').innerHTML = '<button class="btn block secondary" data-close>Zapri</button>';
+function renderIntake(el) {
+  if (lastCreated) {
+    const o = lastCreated;
+    el.innerHTML = `
+      <div class="card done">
+        <p>Oblačila prevzeta. Številka za listek:</p>
+        <div class="bignum">${esc(o.num)}</div>
+        <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · prevzeto ${fmt(o.received)}</p>
+        <div class="actions" style="justify-content:center">
+          <button class="btn" id="newIntake">Nov prevzem</button>
+          <button class="btn secondary" data-open="${esc(o.id)}">Odpri naročilo</button>
+        </div>
+      </div>`;
     return;
   }
-  body.innerHTML = items.map((it, i) => `
-    <div class="item">
-      <div class="top">
-        <div><div class="kind">${it.kind === 'repair' ? 'Popravilo' : 'Po naročilu'}</div><b>${esc(itemTitle(it))}</b></div>
-        <span class="price">${itemPrice(it) ? 'od ' + fmt.format(itemPrice(it)) : 'po dogovoru'}</span>
-      </div>
-      ${itemDetail(it) ? `<p>${esc(itemDetail(it))}</p>` : ''}
-      ${it.note ? `<p>„${esc(it.note)}“</p>` : ''}
-      ${it.deadline ? `<p>Želen rok: ${esc(formatIso(it.deadline))}</p>` : ''}
-      <p style="text-align:right"><button class="linkbtn" data-remove="${i}">Odstrani</button></p>
-    </div>`).join('') + `
-    <div class="two">
-      <button class="btn secondary" data-add="repair">+ Popravilo</button>
-      <button class="btn secondary" data-add="custom">+ Po naročilu</button>
-    </div>`;
-  $('#drawerFoot').innerHTML = `
-    <div class="sum"><span>Okvirna cena<small>${hasUnpriced() ? 'brez postavk po dogovoru · ' : ''}potrdimo ob oddaji</small></span><span>od ${fmt.format(totalPrice())}</span></div>
-    <button class="btn block" data-go="booking">Izberi termin oddaje</button>`;
-}
-
-function formatIso(iso) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d}. ${m}. ${y}`;
-}
-
-function renderHistory() {
-  const orders = load(ORDERS_KEY, []);
-  if (!orders.length) return '';
-  return `<h3 style="font-size:1rem;margin:22px 0 6px">Moja zadnja naročila</h3>` +
-    orders.slice(0, 5).map((o) => `
-      <div class="item">
-        <div class="top"><b>${esc(o.code)}</b><span>${o.items} ${o.items === 1 ? 'kos' : 'kosov'}</span></div>
-        <p>Oddaja: ${esc(o.dropOff)}</p>
-        <p>Predviden prevzem: ${esc(o.ready)}</p>
-      </div>`).join('');
-}
-
-function renderAdd() {
-  const repair = addKind === 'repair';
-  setHead(repair ? 'Dodaj popravilo' : 'Izdelava po naročilu');
-  $('#drawerBody').innerHTML = `
-    <div class="tabs" role="tablist">
-      <button data-kind="repair" aria-pressed="${repair}">Popravilo</button>
-      <button data-kind="custom" aria-pressed="${!repair}">Po naročilu</button>
-    </div>
-    <form id="addForm" novalidate>
-      ${repair ? `
-        <label for="aGarment">Oblačilo</label>
-        <select id="aGarment" name="garment">${GARMENTS.map((g) => `<option>${esc(g)}</option>`).join('')}</select>
-        <label>Kaj je treba narediti?</label>
-        <div class="services">
-          ${REPAIRS.map((s) => `
-            <label class="svc"><input type="checkbox" name="services" value="${s.id}">
-              <span>${esc(s.name)}</span><small>od ${fmt.format(s.price)}</small></label>`).join('')}
+  el.innerHTML = `
+    <form class="card" id="intakeForm" novalidate>
+      <div class="two">
+        <div>
+          <label for="iDate">Datum prevzema</label>
+          <input id="iDate" name="received" type="date" value="${today()}" max="${today()}">
         </div>
-        <label for="aNote">Opis (neobvezno)</label>
-        <textarea id="aNote" name="note" placeholder="npr. skrajšati za 3 cm, raztrgan žep zadaj levo …"></textarea>
-      ` : `
-        <label for="aType">Kaj želiš, da izdelamo?</label>
-        <select id="aType" name="type">${CUSTOM.map((s) => `<option value="${s.id}">${esc(s.name)}${s.price ? ' – od ' + fmt.format(s.price) : ''}</option>`).join('')}</select>
-        <label for="aNote">Opis želje</label>
-        <textarea id="aNote" name="note" rows="4" placeholder="Kroj, material, barva, priložnost … Navdih (slike) lahko prineseš ob oddaji ali pošlješ po e-pošti."></textarea>
-        <label for="aDeadline">Želen rok (neobvezno)</label>
-        <input id="aDeadline" name="deadline" type="date" min="${isoDate(new Date())}">
-        <p class="hint">Ob oddaji vzamemo mere in se dogovorimo za material. Lastno blago lahko prineseš s seboj.</p>
-      `}
+        <div>
+          <label for="iPieces">Število kosov</label>
+          <input id="iPieces" name="pieces" type="number" min="1" max="99" value="1" inputmode="numeric">
+        </div>
+      </div>
+      <label for="iPhone">Telefon</label>
+      <input id="iPhone" name="phone" type="tel" autocomplete="off" inputmode="tel" placeholder="040 123 456">
+      <p class="hint" id="knownCustomer" hidden></p>
+      <label for="iName">Ime in priimek</label>
+      <input id="iName" name="name" autocomplete="off">
+      <label for="iEmail">E-pošta <small>(neobvezno – za samodejna obvestila)</small></label>
+      <input id="iEmail" name="email" type="email" autocomplete="off">
+      <label for="iDesc">Kaj je treba narediti</label>
+      <textarea id="iDesc" name="description" placeholder="npr. črne hlače – krajšanje za 3 cm"></textarea>
+      <div class="chips">${QUICK_REPAIRS.map((q) => `<button type="button" class="chip" data-quick="${esc(q)}">+ ${esc(q)}</button>`).join('')}</div>
+      <div class="two">
+        <div>
+          <label for="iPrice">Cena (€) <small>(neobvezno)</small></label>
+          <input id="iPrice" name="price" inputmode="decimal" placeholder="npr. 12">
+        </div>
+        <div>
+          <label for="iDue">Dogovorjeno do <small>(neobvezno)</small></label>
+          <input id="iDue" name="dueDate" type="date" min="${today()}">
+        </div>
+      </div>
+      <label for="iNote">Opomba <small>(neobvezno)</small></label>
+      <input id="iNote" name="note">
       <p class="error" id="formError" hidden></p>
+      <button class="btn block" style="margin-top:14px" id="saveIntake">Shrani prevzem</button>
     </form>`;
-  $('#drawerFoot').innerHTML = `
-    <div class="two">
-      <button class="btn secondary" data-go="list">Prekliči</button>
-      <button class="btn" id="saveItem">Dodaj kos</button>
-    </div>`;
+
+  // Znana stranka: po vnosu telefona predlagaj ime in e-pošto.
+  $('#iPhone').addEventListener('input', () => {
+    const p = digits($('#iPhone').value);
+    const known = p.length >= 6 && [...orders].reverse().find((o) => digits(o.phone) === p);
+    const hint = $('#knownCustomer');
+    hint.hidden = !known;
+    if (known) {
+      hint.innerHTML = `Znana stranka: <b>${esc(known.name)}</b> <button type="button" class="chip" id="useKnown">Uporabi</button>`;
+      $('#useKnown').onclick = () => {
+        $('#iName').value = known.name;
+        if (known.email) $('#iEmail').value = known.email;
+        hint.hidden = true;
+      };
+    }
+  });
 }
 
-function saveItem() {
-  const form = $('#addForm');
-  const fd = new FormData(form);
-  const note = (fd.get('note') || '').trim();
-  let item;
-  if (addKind === 'repair') {
-    const services = fd.getAll('services');
-    if (!services.length) return showError('Izberi vsaj eno storitev.');
-    item = { kind: 'repair', garment: fd.get('garment'), services, note };
+const digits = (s) => String(s || '').replace(/\D/g, '').replace(/^386/, '0');
+const pieces = (n) => (Number(n) === 1 ? 'kos' : Number(n) === 2 ? 'kosa' : Number(n) <= 4 ? 'kosi' : 'kosov');
+
+async function saveIntake() {
+  const f = Object.fromEntries(new FormData($('#intakeForm')));
+  const err = (m) => { $('#formError').textContent = m; $('#formError').hidden = false; };
+  const o = {
+    sector: 'popravilo',
+    received: f.received || today(),
+    name: f.name.trim(),
+    phone: f.phone.trim(),
+    email: f.email.trim(),
+    pieces: Math.max(1, Number(f.pieces) || 1),
+    description: f.description.trim(),
+    price: f.price.trim().replace(',', '.'),
+    dueDate: f.dueDate || '',
+    note: f.note.trim(),
+    status: 'sprejeto',
+  };
+  if (!o.name) return err('Vpiši ime in priimek.');
+  if (digits(o.phone).length < 6) return err('Vpiši telefonsko številko.');
+  if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return err('E-poštni naslov ni veljaven.');
+  if (!o.description) return err('Opiši, kaj je treba narediti.');
+  if (o.price && isNaN(Number(o.price))) return err('Cena mora biti število.');
+  if (o.received > today()) return err('Datum prevzema ne more biti v prihodnosti.');
+  const saved = await busy(() => store.create(o));
+  if (saved) { lastCreated = saved; render(); }
+}
+
+/* ---- Izdaja stranki ---- */
+
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+function renderIssue(el) {
+  el.innerHTML = `
+    <div class="search"><input id="q" type="search" placeholder="Išči po imenu, telefonu ali številki …" value="${esc(searchQuery)}" autocomplete="off"></div>
+    <div id="results"></div>`;
+  const q = $('#q');
+  q.addEventListener('input', () => { searchQuery = q.value; renderResults(); });
+  renderResults();
+  if (!matchMedia('(pointer: coarse)').matches) q.focus();
+}
+
+function renderResults() {
+  const el = $('#results');
+  const q = norm(searchQuery.trim());
+  const qd = digits(searchQuery);
+  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  let list;
+  if (!q) {
+    list = repairs.filter((o) => o.status === 'gotovo');
   } else {
-    const type = fd.get('type');
-    if (!note) return showError('Na kratko opiši, kaj želiš.');
-    item = { kind: 'custom', type, note, deadline: fd.get('deadline') || '' };
+    list = repairs.filter((o) =>
+      norm(o.name).includes(q) || norm(o.num).includes(q) || (qd.length >= 3 && digits(o.phone).includes(qd)));
   }
-  items.push(item);
-  save(ITEMS_KEY, items);
-  view = 'list';
-  renderAll();
-  toast('Kos dodan');
+  // Združi po stranki (ime + telefon).
+  const groups = new Map();
+  for (const o of list) {
+    const k = norm(o.name) + '|' + digits(o.phone);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  }
+  if (!groups.size) {
+    el.innerHTML = `<p class="empty">${q ? 'Ni zadetkov.' : 'Trenutno ni gotovih oblačil, ki bi čakala na izdajo.'}</p>`;
+    return;
+  }
+  const rank = { gotovo: 0, sprejeto: 1, izdano: 2, zavrzeno: 3 };
+  el.innerHTML = (q ? '' : '<p class="hint" style="margin-bottom:10px">Gotova oblačila, ki čakajo na izdajo. Za iskanje vpiši ime ali telefon.</p>') +
+    [...groups.values()]
+      .sort((a, b) => a[0].name.localeCompare(b[0].name, 'sl'))
+      .map((g) => {
+        g.sort((a, b) => rank[a.status] - rank[b.status] || b.received.localeCompare(a.received));
+        const open = g.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
+        const closed = g.filter((o) => !open.includes(o));
+        return `
+          <div class="customer">
+            <div class="head"><b>${esc(g[0].name)}</b><a href="tel:${esc(g[0].phone.replace(/[^\d+]/g, ''))}">${esc(g[0].phone)}</a></div>
+            ${open.map((o) => orderCard(o, { hideWho: true })).join('') || '<p class="hint">Ni odprtih naročil.</p>'}
+            ${closed.length ? `<details><summary>Zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o, { hideWho: true })).join('')}</details>` : ''}
+          </div>`;
+      }).join('');
 }
 
-function renderBooking() {
-  setHead('Termin oddaje in podatki', 'Korak 2 od 2');
-  const c = load(CUSTOMER_KEY, {});
-  const days = dropOffDays();
-  $('#drawerBody').innerHTML = `
-    <form id="bookForm" novalidate>
-      <div class="two">
-        <div>
-          <label for="fDay">Dan oddaje</label>
-          <select id="fDay" name="day">${days.map((d) => `<option value="${d.date}">${esc(d.label)}</option>`).join('')}</select>
-        </div>
-        <div>
-          <label for="fSlot">Ura</label>
-          <select id="fSlot" name="slot"></select>
-        </div>
+/* ---- Pregled ---- */
+
+function renderOverview(el) {
+  const t = today();
+  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const urgency = ['humana', 'koncno', 'opomnik'];
+  const due = repairs.filter((o) => stage(o, t).due)
+    .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
+  const inRepair = repairs.filter((o) => o.status === 'sprejeto').sort((a, b) => a.received.localeCompare(b.received));
+  const waiting = repairs.filter((o) => o.status === 'gotovo' && !stage(o, t).due).sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const closedDate = (o) => o.handedDate || o.discardedDate || '';
+  const closed = repairs.filter((o) => o.status === 'izdano' || o.status === 'zavrzeno')
+    .sort((a, b) => closedDate(b).localeCompare(closedDate(a))).slice(0, 30);
+  el.innerHTML = `
+    <h2>Za urediti danes ${due.length ? `<span class="count">${due.length}</span>` : ''}</h2>
+    ${due.map((o) => orderCard(o)).join('') || '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
+    <h2>V popravilu (${inRepair.length})</h2>
+    ${inRepair.map((o) => orderCard(o)).join('') || '<p class="empty">Ni oblačil v popravilu.</p>'}
+    <h2>Čaka na prevzem (${waiting.length})</h2>
+    ${waiting.map((o) => orderCard(o)).join('') || '<p class="empty">Nič ne čaka na prevzem.</p>'}
+    <details><summary>Zadnja zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o)).join('')}</details>
+    <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
+}
+
+function policyHtml() {
+  return `<b>Roki za prevzem</b>
+    <ol>
+      <li>Ko so oblačila gotova, stranko obvestimo – rok za prevzem je <b>${CONFIG.pickupDays} dni</b>.</li>
+      <li>Po izteku roka pošljemo <b>opomnik</b>: stranka ima še <b>${CONFIG.reminderWorkDays} delovne dni</b>.</li>
+      <li>Na <b>${CONFIG.discardWorkDays}. delovni dan</b> od obvestila (ne pred iztekom roka po opomniku) pošljemo
+        <b>končno obvestilo</b>, da blago oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
+      <li>Oblačila odnesemo v zabojnik in jih označimo kot oddana.</li>
+    </ol>`;
+}
+
+/* ---- Kartica naročila ---- */
+
+function orderCard(o, { hideWho = false } = {}) {
+  const st = stage(o);
+  const cls = st.key === 'koncno' || st.key === 'humana' ? 'late' : st.due ? 'due' : '';
+  const dates = [`prevzeto ${fmt(o.received)}`];
+  if (o.dueDate && o.status === 'sprejeto') dates.push(`dogovorjeno do ${fmt(o.dueDate)}`);
+  if (o.readyDate) dates.push(`gotovo ${fmt(o.readyDate)}`);
+  if (o.deadline && o.status === 'gotovo') dates.push(`rok za prevzem ${fmt(o.deadline)}`);
+  if (o.handedDate) dates.push(`izdano ${fmt(o.handedDate)}`);
+  if (o.discardedDate) dates.push(`oddano ${fmt(o.discardedDate)}`);
+  return `
+    <div class="order ${cls}">
+      <div class="top">
+        <div><span class="num">${esc(o.num)}</span> ${hideWho ? '' : `· <span class="who">${esc(o.name)} · <a href="tel:${esc(o.phone.replace(/[^\d+]/g, ''))}">${esc(o.phone)}</a></span>`}</div>
+        <span class="pill ${st.key}">${esc(st.label)}</span>
       </div>
-      <p class="hint" id="readyHint"></p>
-      ${items.some((it) => it.kind === 'repair') ? `
-        <label for="fPickup">Želen datum prevzema</label>
-        <select id="fPickup" name="pickup"></select>
-        <p class="hint">Izberi lahko dan od predvidenega dne, ko bo popravilo gotovo, do izteka roka za prevzem.</p>` : ''}
-      <label for="fName">Ime in priimek</label>
-      <input id="fName" name="name" autocomplete="name" value="${esc(c.name || '')}">
-      <div class="two">
-        <div>
-          <label for="fPhone">Telefon</label>
-          <input id="fPhone" name="phone" type="tel" autocomplete="tel" value="${esc(c.phone || '')}">
-        </div>
-        <div>
-          <label for="fEmail">E-pošta</label>
-          <input id="fEmail" name="email" type="email" autocomplete="email" value="${esc(c.email || '')}">
-        </div>
-      </div>
-      <p class="hint">Na e-pošto pošiljamo obvestilo, ko je naročilo gotovo, in opomnike o roku za prevzem.</p>
-      <label for="fNotify">Ko je naročilo gotovo, me obvestite po</label>
-      <select id="fNotify" name="notify">
-        <option value="SMS">SMS</option>
-        <option value="klicu">telefonskem klicu</option>
-        <option value="e-pošti">e-pošti</option>
-      </select>
-      <label class="check"><input type="checkbox" name="terms"> Seznanjen/a sem s pogoji prevzema: gotove kose prevzamem v ${SHOP.pickupDays} dneh od obvestila, sicer jih delavnica po opomniku in izteku roka odda v zabojnik ${esc(SHOP.donation)}.</label>
-      <label class="check"><input type="checkbox" name="agree"> Strinjam se, da delavnica moje podatke uporabi samo za izvedbo tega naročila.</label>
-      <p class="error" id="formError" hidden></p>
-    </form>`;
-  $('#drawerFoot').innerHTML = `
-    <div class="two">
-      <button class="btn secondary" data-go="list">Nazaj</button>
-      <button class="btn" id="submitOrder" ${days.length ? '' : 'disabled'}>Pošlji prijavo</button>
+      <p class="desc">${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(o.description)}${o.price ? ` · <b>${esc(money(o.price))}</b>` : ''}</p>
+      <p class="dates">${dates.join(' · ')} · <button class="open" data-open="${esc(o.id)}">podrobnosti</button></p>
+      <div class="actions">${cardActions(o, st)}</div>
     </div>`;
-  if (!days.length) return showError('Trenutno ni prostih terminov. Pokliči nas na ' + SHOP.phone + '.');
-  const update = () => {
-    const day = days.find((d) => d.date === $('#fDay').value);
-    $('#fSlot').innerHTML = day.slots.map((s) => `<option value="${s}">${s}</option>`).join('');
-    const ready = readyDate(day.date);
-    $('#readyHint').textContent = `Predviden prevzem gotovih kosov: ${dateLabel(ready)} ali kasneje.`;
-    const pickup = $('#fPickup');
-    if (pickup) {
-      const prev = pickup.value;
-      pickup.innerHTML = '<option value="">Čim prej – ko bo gotovo</option>' +
-        pickupDates(ready).map((d) => `<option value="${isoDate(d)}">${esc(dateLabel(d))}</option>`).join('');
-      if ([...pickup.options].some((o) => o.value === prev)) pickup.value = prev;
-    }
-  };
-  $('#fDay').addEventListener('change', update);
-  update();
 }
 
-// Dnevi, ko je delavnica odprta, od predvidenega dne, ko bo gotovo, do izteka roka za prevzem.
-function pickupDates(ready) {
-  const list = [];
-  for (let i = 0; i <= SHOP.pickupDays; i++) {
-    const d = new Date(ready.getFullYear(), ready.getMonth(), ready.getDate() + i);
-    if (isOpen(d)) list.push(d);
+function cardActions(o, st) {
+  const id = esc(o.id);
+  switch (st.key) {
+    case 'sprejeto': return `<button class="btn small" data-act="ready" data-id="${id}">Označi kot gotovo</button>`;
+    case 'caka':
+    case 'opomnjeno': return `<button class="btn small" data-act="issue" data-id="${id}">Izdaj stranki</button>
+      <button class="btn small secondary" data-act="notify" data-type="${o.reminderDate ? 'reminder' : 'ready'}" data-id="${id}">Ponovno obvesti</button>`;
+    case 'opomnik': return `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji opomnik</button>
+      <button class="btn small secondary" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
+    case 'koncno': return `<button class="btn small danger" data-act="notify" data-type="final" data-id="${id}">Pošlji končno obvestilo</button>
+      <button class="btn small secondary" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
+    case 'humana': return `<button class="btn small danger" data-act="discard" data-id="${id}">Oddano v ${esc(CONFIG.donation)}</button>
+      <button class="btn small secondary" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
+    default: return '';
   }
-  return list;
 }
 
-function policyText() {
-  return `Gotove kose je treba prevzeti v <b>${SHOP.pickupDays} dneh</b> od obvestila, da je naročilo gotovo.
-    Če jih v tem času ne prevzameš, ti samodejno pošljemo opomnik in imaš še <b>${SHOP.reminderWorkDays} delovne dni</b> za prevzem.
-    Ker blaga ne skladiščimo, kose, ki niso prevzeti do ${SHOP.discardWorkDays}. delovnega dne od obvestila,
-    oddamo v zabojnik <b>${esc(SHOP.donation)}</b> – o tem te obvestimo s končnim sporočilom.`;
+/* ---------- Dejanja ---------- */
+
+async function markReady(id) {
+  const t = today();
+  const o = await busy(() => store.update(id, { status: 'gotovo', readyDate: t, deadline: addDays(t, CONFIG.pickupDays) }));
+  render();
+  if (o) openNotify(o, 'ready');
 }
 
-function showError(msg) {
-  const el = $('#formError');
-  if (!el) return;
-  el.textContent = msg;
-  el.hidden = !msg;
+async function markNotified(o, type) {
+  const t = today();
+  const patch = type === 'reminder' && !o.reminderDate
+    ? { reminderDate: t, lastDeadline: addWorkDays(t, CONFIG.reminderWorkDays) }
+    : type === 'final' && !o.finalDate ? { finalDate: t }
+    : type === 'ready' && !o.readyNotified ? { readyNotified: t } : null;
+  if (patch) await busy(() => store.update(o.id, patch));
+  closeModal();
+  render();
+  toast('Zabeleženo');
 }
 
-function orderCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return 'BD-' + Array.from(crypto.getRandomValues(new Uint32Array(5)), (n) => chars[n % chars.length]).join('');
+function openNotify(o, type) {
+  // Pri opomniku najprej izračunaj zadnji rok, da je v besedilu.
+  const view = type === 'reminder' && !o.reminderDate ? { ...o, lastDeadline: addWorkDays(today(), CONFIG.reminderWorkDays) } : o;
+  const text = message(type, view);
+  const already = { ready: o.readyNotified, reminder: o.reminderDate, final: o.finalDate }[type];
+  showModal(MSG_TITLE[type] + ` · ${esc(o.num)}`, `
+    <p><b>${esc(o.name)}</b> · ${esc(o.phone)}${o.email ? ` · ${esc(o.email)}` : ''}</p>
+    <div class="msg">${esc(text)}</div>
+    ${store.remote() && o.email ? '<p class="hint">Stranka ima e-pošto – preglednica ji to sporočilo pošlje tudi samodejno.</p>' : ''}
+    <div class="actions">
+      <a class="btn" href="${esc(smsLink(o.phone, text))}">Pošlji SMS</a>
+      ${o.email ? `<a class="btn secondary" href="mailto:${esc(o.email)}?subject=${encodeURIComponent(MSG_TITLE[type] + ' – ' + CONFIG.shopName)}&body=${encodeURIComponent(text)}">E-pošta</a>` : ''}
+      <a class="btn secondary" href="tel:${esc(o.phone.replace(/[^\d+]/g, ''))}">Pokliči</a>
+      <button class="btn secondary" id="copyMsg">Kopiraj</button>
+    </div>
+    <button class="btn block ${already ? 'secondary' : ''}" style="margin-top:14px" id="confirmNotify">${already ? 'Zapri' : 'Stranka je obveščena – zabeleži'}</button>
+    ${type === 'ready' && !already ? '<p class="hint" style="text-align:center">Rok za prevzem teče od danes ne glede na to.</p>' : ''}`);
+  $('#copyMsg').onclick = () => navigator.clipboard?.writeText(text).then(() => toast('Kopirano'));
+  $('#confirmNotify').onclick = () => (already ? closeModal() : markNotified(o, type));
 }
 
-function submitOrder() {
-  const data = Object.fromEntries(new FormData($('#bookForm')));
-  const name = (data.name || '').trim();
-  const phone = (data.phone || '').trim();
-  const email = (data.email || '').trim();
-  if (!name) return showError('Vpiši ime in priimek.');
-  if (!/^[+\d][\d\s/-]{5,}$/.test(phone)) return showError('Vpiši veljavno telefonsko številko.');
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('E-poštni naslov ni veljaven.');
-  if (data.notify === 'e-pošti' && !email) return showError('Za obvestilo po e-pošti vpiši e-poštni naslov.');
-  if (!data.terms) return showError('Za oddajo potrdi, da si seznanjen/a s pogoji prevzema.');
-  if (!data.agree) return showError('Za oddajo potrdi soglasje.');
-  const day = dropOffDays().find((d) => d.date === data.day);
-  if (!day || !day.slots.includes(data.slot)) return showError('Izbrani termin ni več na voljo. Izberi drugega.');
-  showError('');
-  save(CUSTOMER_KEY, { name, phone, email });
-
-  const readyD = readyDate(day.date);
-  const pickupD = data.pickup ? pickupDates(readyD).find((d) => isoDate(d) === data.pickup) : null;
-  const order = {
-    code: orderCode(),
-    createdAt: new Date().toISOString(),
-    dropOff: `${day.label} ob ${data.slot}`,
-    dropOffDate: day.date,
-    ready: dateLabel(readyD),
-    readyDate: isoDate(readyD),
-    pickupWish: pickupD ? dateLabel(pickupD) : '',
-    pickupWishDate: pickupD ? isoDate(pickupD) : '',
-    customer: { name, phone, email, notify: data.notify },
-    items: items.slice(),
-    total: totalPrice(),
-    unpriced: hasUnpriced(),
+function confirmIssue(o) {
+  const st = stage(o);
+  showModal(`Izdaja ${esc(o.num)}`, `
+    <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
+    <p>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(o.description)}</p>
+    ${o.price ? `<p style="font-size:1.2rem">Za plačilo: <b>${esc(money(o.price))}</b></p>` : ''}
+    ${o.status === 'sprejeto' ? '<div class="callout">To naročilo še ni označeno kot gotovo.</div>' : ''}
+    ${st.key === 'humana' ? '<div class="callout">Stranka je že prejela končno obvestilo – preveri, da blago še ni oddano.</div>' : ''}
+    <button class="btn block" style="margin-top:14px" id="doIssue">Potrdi izdajo stranki</button>`);
+  $('#doIssue').onclick = async () => {
+    const ok = await busy(() => store.update(o.id, { status: 'izdano', handedDate: today() }));
+    closeModal(); render();
+    if (ok) toast(`${o.num} izdano`);
   };
-  order.text = [
-    `Nova prijava ${order.code}`,
-    '',
-    `Oddaja: ${order.dropOff}`,
-    `Predviden prevzem: ${order.ready}`,
-    order.pickupWish ? `Želen datum prevzema: ${order.pickupWish}` : null,
-    '',
-    'Kosi:',
-    ...order.items.map((it, i) => {
-      const lines = [`${i + 1}. [${it.kind === 'repair' ? 'Popravilo' : 'Po naročilu'}] ${itemTitle(it)}` +
-        (itemPrice(it) ? ` – od ${fmt.format(itemPrice(it))}` : ' – po dogovoru')];
-      if (itemDetail(it)) lines.push(`   Storitve: ${itemDetail(it)}`);
-      if (it.note) lines.push(`   Opis: ${it.note}`);
-      if (it.deadline) lines.push(`   Želen rok: ${formatIso(it.deadline)}`);
-      return lines.join('\n');
-    }),
-    '',
-    `Okvirna cena: od ${fmt.format(order.total)}${order.unpriced ? ' (+ postavke po dogovoru)' : ''}`,
-    '',
-    `Stranka: ${name}`,
-    `Telefon: ${phone}`,
-    email ? `E-pošta: ${email}` : null,
-    `Obvestilo, ko je gotovo: po ${data.notify}`,
-  ].filter((l) => l !== null).join('\n');
-
-  order.items = order.items.map((it) => ({ ...it, title: itemTitle(it), detail: itemDetail(it), price: itemPrice(it) }));
-
-  const history = load(ORDERS_KEY, []);
-  history.unshift({ code: order.code, dropOff: order.dropOff, ready: order.pickupWish || order.ready, items: order.items.length });
-  save(ORDERS_KEY, history.slice(0, 20));
-
-  items = [];
-  save(ITEMS_KEY, items);
-  lastOrder = order;
-  view = 'done';
-  sendOrder(order);
 }
 
-// Pošlje prijavo v Google preglednico; če to ne uspe (ali ni nastavljeno), odpre e-poštni program.
-async function sendOrder(order) {
-  order.via = 'sending';
-  renderAll();
-  if (SHOP.backendUrl) {
+function confirmDiscard(o) {
+  showModal(`Oddaja v ${esc(CONFIG.donation)} · ${esc(o.num)}`, `
+    <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
+    <p>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(o.description)}</p>
+    <p class="hint">Gotovo ${fmt(o.readyDate)} · rok ${fmt(o.deadline)} · opomnik ${fmt(o.reminderDate)} · končno obvestilo ${fmt(o.finalDate)}</p>
+    <button class="btn block danger" style="margin-top:14px" id="doDiscard">Blago je oddano v zabojnik ${esc(CONFIG.donation)}</button>`);
+  $('#doDiscard').onclick = async () => {
+    const ok = await busy(() => store.update(o.id, { status: 'zavrzeno', discardedDate: today() }));
+    closeModal(); render();
+    if (ok) toast('Zabeleženo');
+  };
+}
+
+function openDetail(o) {
+  const st = stage(o);
+  const steps = [
+    ['Prevzeto v poslovalnico', o.received],
+    ['Gotovo', o.readyDate],
+    ['Stranka obveščena', o.readyNotified],
+    ['Rok za prevzem', o.deadline],
+    ['Opomnik poslan', o.reminderDate],
+    ['Zadnji rok po opomniku', o.lastDeadline],
+    ['Končno obvestilo', o.finalDate],
+    ['Izdano stranki', o.handedDate],
+    [`Oddano v ${CONFIG.donation}`, o.discardedDate],
+  ];
+  const editable = o.status === 'sprejeto' || o.status === 'gotovo';
+  const dis = editable ? '' : 'disabled';
+  showModal(`Naročilo ${esc(o.num)} <span class="pill ${st.key}">${esc(st.label)}</span>`, `
+    <form id="editForm" novalidate>
+      <div class="two">
+        <div><label>Ime in priimek</label><input name="name" value="${esc(o.name)}" ${dis}></div>
+        <div><label>Telefon</label><input name="phone" type="tel" value="${esc(o.phone)}" ${dis}></div>
+      </div>
+      <label>E-pošta</label><input name="email" type="email" value="${esc(o.email)}" ${dis}>
+      <div class="three">
+        <div><label>Datum prevzema</label><input name="received" type="date" value="${esc(o.received)}" ${dis}></div>
+        <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
+        <div><label>Cena (€)</label><input name="price" inputmode="decimal" value="${esc(o.price)}" ${dis}></div>
+      </div>
+      <label>Opis</label><textarea name="description" ${dis}>${esc(o.description)}</textarea>
+      <label>Opomba</label><input name="note" value="${esc(o.note)}" ${dis}>
+      <p class="error" id="editError" hidden></p>
+    </form>
+    <ul class="timeline">${steps.map(([l, d]) => `<li class="${d ? 'on' : ''}">${l}${d ? `: <b>${fmt(d)}</b>` : ''}</li>`).join('')}</ul>
+    <div class="actions">
+      ${editable ? '<button class="btn" id="saveEdit">Shrani spremembe</button>' : ''}
+      ${o.status === 'gotovo' && !o.reminderDate ? '<button class="btn secondary" id="backToRepair">Vrni v popravilo</button>' : ''}
+      ${o.status === 'izdano' ? '<button class="btn secondary" id="undoIssue">Razveljavi izdajo</button>' : ''}
+    </div>`);
+  $('#saveEdit')?.addEventListener('click', async () => {
+    const f = Object.fromEntries(new FormData($('#editForm')));
+    const e = $('#editError');
+    const fail = (m) => { e.textContent = m; e.hidden = false; };
+    if (!f.name.trim() || digits(f.phone).length < 6 || !f.description.trim()) return fail('Ime, telefon in opis so obvezni.');
+    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) return fail('E-poštni naslov ni veljaven.');
+    if (f.received > today()) return fail('Datum prevzema ne more biti v prihodnosti.');
+    if (f.price.trim() && isNaN(Number(f.price.trim().replace(',', '.')))) return fail('Cena mora biti število.');
+    const ok = await busy(() => store.update(o.id, {
+      name: f.name.trim(), phone: f.phone.trim(), email: f.email.trim(), received: f.received || o.received,
+      pieces: Math.max(1, Number(f.pieces) || 1), price: f.price.trim().replace(',', '.'),
+      description: f.description.trim(), note: f.note.trim(),
+    }));
+    closeModal(); render();
+    if (ok) toast('Shranjeno');
+  });
+  $('#backToRepair')?.addEventListener('click', async () => {
+    await busy(() => store.update(o.id, { status: 'sprejeto', readyDate: '', deadline: '', readyNotified: '' }));
+    closeModal(); render();
+  });
+  $('#undoIssue')?.addEventListener('click', async () => {
+    await busy(() => store.update(o.id, { status: o.readyDate ? 'gotovo' : 'sprejeto', handedDate: '' }));
+    closeModal(); render();
+  });
+}
+
+/* ---------- Nastavitve ---------- */
+
+function renderSettings(app) {
+  app.innerHTML = `
+    <button class="back" data-nav="#/">‹ Sektorji</button>
+    <h1>Nastavitve</h1>
+    <div class="card">
+      <b>Shranjevanje podatkov</b>
+      ${store.remote()
+        ? '<div class="callout ok" style="margin-top:8px">Povezano z Google preglednico. Vse naprave v poslovalnici vidijo iste podatke, stranke z e-pošto prejemajo obvestila samodejno.</div>'
+        : `<div class="callout" style="margin-top:8px">Podatki so shranjeni <b>samo na tej napravi</b> (${orders.length} naročil). Za skupno rabo na več napravah in samodejna e-poštna obvestila povežite Google preglednico (navodila: <code>google-apps-script/NAVODILA.md</code>).</div>`}
+      <form id="settingsForm" novalidate>
+        <label for="sUrl">URL Google Apps Script <small>(konča se z /exec)</small></label>
+        <input id="sUrl" name="url" value="${esc(settings.url)}" placeholder="https://script.google.com/macros/s/…/exec">
+        <label for="sKey">Ključ za dostop</label>
+        <input id="sKey" name="key" value="${esc(settings.key)}" autocomplete="off">
+        <p class="error" id="setError" hidden></p>
+        <div class="actions">
+          <button class="btn" id="saveSettings">Shrani in poveži</button>
+          ${store.remote() ? '<button class="btn secondary" id="disconnect">Prekini povezavo</button>' : ''}
+        </div>
+      </form>
+    </div>
+    ${store.remote() ? '' : `
+    <div class="card" style="margin-top:14px">
+      <b>Varnostna kopija</b>
+      <p class="hint">Shranite kopijo podatkov s te naprave ali jo naložite na drugo napravo.</p>
+      <div class="actions">
+        <button class="btn secondary" id="exportData">Izvozi (JSON)</button>
+        <label class="btn secondary" style="margin:0">Uvozi<input type="file" id="importData" accept="application/json" hidden></label>
+      </div>
+    </div>`}
+    <div class="card policy" style="margin-top:14px">${policyHtml()}</div>`;
+
+  $('#saveSettings').onclick = async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData($('#settingsForm')));
+    const url = f.url.trim();
+    const err = $('#setError');
+    if (url && !/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { err.textContent = 'URL mora biti naslov Google Apps Script.'; err.hidden = false; return; }
+    const prev = { ...settings };
+    Object.assign(settings, { url, key: f.key.trim() });
     try {
-      const res = await fetch(SHOP.backendUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // brez CORS predpoverbe
-        body: JSON.stringify(order),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Napaka strežnika');
-      order.via = 'server';
-      return renderAll();
-    } catch (err) {
-      console.warn('Pošiljanje na strežnik ni uspelo, uporabim e-pošto.', err);
+      await busy(() => store.load(), true);
+      lsSet(SETTINGS_KEY, settings);
+      toast(url ? 'Povezano' : 'Shranjeno');
+      nav('#/');
+    } catch (ex) {
+      Object.assign(settings, prev);
+      err.textContent = 'Povezava ni uspela: ' + ex.message;
+      err.hidden = false;
     }
-  }
-  order.via = 'email';
-  renderAll();
-  sendEmail(order);
+  };
+  $('#disconnect')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    Object.assign(settings, { url: '', key: '' });
+    lsSet(SETTINGS_KEY, settings);
+    await store.load();
+    render();
+  });
+  $('#exportData')?.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(orders, null, 2)], { type: 'application/json' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `bucka-narocila-${today()}.json` });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $('#importData')?.addEventListener('change', async (e) => {
+    try {
+      const data = JSON.parse(await e.target.files[0].text());
+      if (!Array.isArray(data) || data.some((o) => !o.id || !o.num)) throw new Error();
+      if (!confirm(`Uvozim ${data.length} naročil? Obstoječa naročila na tej napravi (${orders.length}) bodo zamenjana.`)) return;
+      orders = data;
+      store.saveLocal();
+      toast('Uvoženo');
+      render();
+    } catch { toast('Datoteka ni veljavna'); }
+  });
 }
 
-function sendEmail(order) {
-  const subject = `Prijava ${order.code} – oddaja ${order.dropOff}`;
-  location.href = `mailto:${SHOP.orderEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(order.text)}`;
-}
+/* ---------- Pomožno: modal, toast, nalaganje ---------- */
 
-function renderDone() {
-  const o = lastOrder;
-  const tel = SHOP.phone.replace(/\s/g, '');
-  setHead('Prijava pripravljena');
-  $('#drawerBody').innerHTML = `
-    <div class="done">
-      <p>Številka naročila</p>
-      <div class="code">${esc(o.code)}</div>
-      ${o.via === 'sending' ? '<div class="callout">Pošiljam prijavo …</div>'
-        : o.via === 'server' ? '<div class="callout" style="background:var(--brand-soft);border-color:#b9d1c7">Prijava je oddana.' + (o.customer.email ? ' Potrdilo smo poslali tudi na tvoj e-poštni naslov.' : '') + '</div>'
-        : `<div class="callout">Odprl se je tvoj e-poštni program s pripravljenim sporočilom.
-        Prijava je oddana, ko sporočilo <b>pošlješ</b>.</div>`}
-      <div class="summary">
-        <p><b>Oddaja:</b> ${esc(o.dropOff)}</p>
-        <p><b>Naslov:</b> ${esc(SHOP.address)}</p>
-        <p><b>Predviden prevzem:</b> ${esc(o.ready)}</p>
-        ${o.pickupWish ? `<p><b>Želen prevzem:</b> ${esc(o.pickupWish)}</p>` : ''}
-        <p><b>Kosi:</b> ${o.items.map((it) => esc(itemTitle(it))).join(', ')}</p>
-        <p><b>Okvirna cena:</b> od ${fmt.format(o.total)} – plačilo ob prevzemu</p>
+function showModal(title, html) {
+  $('#modal').innerHTML = `
+    <div class="modal-bg" id="modalBg">
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-head"><h3>${title}</h3><button class="close" id="closeModal" aria-label="Zapri">×</button></div>
+        ${html}
       </div>
-      <p class="hint" style="margin-top:12px">Ob oddaji povej številko naročila. Oblačila naj bodo oprana.</p>
-      <div class="callout" style="font-size:.85rem">${policyText()}</div>
     </div>`;
-  $('#drawerFoot').innerHTML = `
-    ${o.via === 'email' ? '<button class="btn block" id="resend">Ponovno odpri e-pošto</button>' : ''}
-    <div class="two" style="${o.via === 'email' ? 'margin-top:8px' : ''}">
-      <button class="btn secondary" id="copyOrder">Kopiraj prijavo</button>
-      <a class="btn secondary" href="tel:${esc(tel)}">Pokliči nas</a>
-    </div>`;
+  $('#closeModal').onclick = closeModal;
+  $('#modalBg').addEventListener('click', (e) => { if (e.target.id === 'modalBg') closeModal(); });
 }
-
-/* ---------- Splošno ---------- */
-
-function openDrawer() {
-  $('#overlay').hidden = false;
-  $('#drawer').hidden = false;
-  document.body.style.overflow = 'hidden';
-  renderDrawer();
-}
-function closeDrawer() {
-  $('#overlay').hidden = true;
-  $('#drawer').hidden = true;
-  document.body.style.overflow = '';
-  if (view === 'done' || view === 'add') view = 'list';
-}
+function closeModal() { $('#modal').innerHTML = ''; }
 
 let toastTimer;
 function toast(msg) {
@@ -790,46 +838,60 @@ function toast(msg) {
   el.textContent = msg;
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
 }
 
-function renderAll() {
-  renderBadge();
-  if (!$('#drawer').hidden) renderDrawer();
+// Izvede asinhrono dejanje in med tem zaklene zaslon; ob napaki prikaže sporočilo in vrne undefined.
+async function busy(fn, rethrow = false) {
+  document.body.classList.add('loading');
+  try { return await fn(); }
+  catch (e) {
+    if (rethrow) throw e;
+    toast('Napaka: ' + e.message);
+  } finally { document.body.classList.remove('loading'); }
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a[data-close]');
+  const t = e.target.closest('[data-nav], [data-open], [data-act], [data-quick], #newIntake, #saveIntake');
   if (!t) return;
-  const d = t.dataset;
-  if (d.open) {
-    if (d.open === 'list') view = 'list';
-    else { view = 'add'; addKind = d.open; }
-    return openDrawer();
+  if (t.dataset.nav) {
+    e.preventDefault();
+    lastCreated = null;
+    if (location.hash === t.dataset.nav) return render();
+    return nav(t.dataset.nav);
   }
-  if ('close' in d) return closeDrawer();
-  if (d.add) { view = 'add'; addKind = d.add; return renderDrawer(); }
-  if (d.kind) { addKind = d.kind; return renderDrawer(); }
-  if (d.go) {
-    if (d.go === 'booking' && !items.length) return;
-    view = d.go; return renderDrawer();
+  if (t.dataset.quick) {
+    const d = $('#iDesc');
+    d.value = (d.value.trim() ? d.value.trim() + ', ' : '') + t.dataset.quick.toLowerCase();
+    return d.focus();
   }
-  if (d.remove) { items.splice(Number(d.remove), 1); save(ITEMS_KEY, items); return renderAll(); }
-  switch (t.id) {
-    case 'saveItem': saveItem(); break;
-    case 'submitOrder': submitOrder(); break;
-    case 'resend': sendEmail(lastOrder); break;
-    case 'copyOrder':
-      navigator.clipboard?.writeText(lastOrder.text).then(() => toast('Prijava kopirana'), () => toast('Kopiranje ni uspelo'));
-      break;
+  if (t.id === 'newIntake') { lastCreated = null; return render(); }
+  if (t.id === 'saveIntake') { e.preventDefault(); return saveIntake(); }
+  const o = orders.find((x) => x.id === (t.dataset.open || t.dataset.id));
+  if (!o) return;
+  if (t.dataset.open) return openDetail(o);
+  switch (t.dataset.act) {
+    case 'ready': return markReady(o.id);
+    case 'notify': return openNotify(o, t.dataset.type);
+    case 'issue': return confirmIssue(o);
+    case 'discard': return confirmDiscard(o);
   }
 });
-$('#overlay').addEventListener('click', closeDrawer);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#drawer').hidden) closeDrawer(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-renderInfo();
-renderPricelist();
-renderBadge();
+// Ob vrnitvi v aplikacijo osveži podatke iz preglednice (druge naprave, samodejna obvestila).
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && store.remote() && !$('#modal').innerHTML && !document.querySelector('#intakeForm')) {
+    try { await store.load(); render(); } catch { /* brez povezave */ }
+  }
+});
+
+(async () => {
+  $('#app').innerHTML = '<p class="empty">Nalagam …</p>';
+  try { await store.load(); }
+  catch (e) { toast('Nalaganje iz preglednice ni uspelo: ' + e.message); }
+  render();
+})();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
