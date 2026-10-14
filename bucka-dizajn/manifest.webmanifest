@@ -1,0 +1,14 @@
+{
+  "name": "Bucka Dizajn Pick&Collect",
+  "short_name": "Bucka P&C",
+  "description": "Oddaja oblačil v popravilo ali izdelavo po meri in prevzem gotovih kosov.",
+  "lang": "sl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#2f5d50",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
