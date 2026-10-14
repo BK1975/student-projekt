@@ -46,7 +46,7 @@ Na vrhu skripte v [`index.html`](index.html):
 
 - `CONFIG` – ime, telefon, naslov in delovni čas (za besedilo sporočil), roki (`pickupDays`,
   `reminderWorkDays`, `discardWorkDays`), delovni dnevi in prazniki
-- `DEFAULT_SERVICES` – začetni seznam storitev za hitro izbiro pri prevzemu (brez cen – cene so v blagajni);
+- `DEFAULT_SERVICES` – začetni seznam storitev po ceniku Bucka Dizajn, razvrščen po skupinah (brez cen – cene so v blagajni);
   seznam sicer urejate v aplikaciji: Nastavitve → Storitve
 
 Enake roke in praznike nastavite tudi v `google-apps-script/Code.gs`. Po spremembi datotek v `sw.js`

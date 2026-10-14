@@ -126,6 +126,11 @@
   .policy { font-size: .88rem; }
   .policy ol { margin: 6px 0 0; padding-left: 20px; }
   details summary { cursor: pointer; color: var(--brand); font-weight: 600; margin: 18px 0 10px; }
+  .svc-group { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin-top: 6px; background: var(--card); }
+  .svc-group summary { margin: 0; padding: 10px 0; }
+  .svc-group summary small { color: var(--muted); font-weight: 400; }
+  .svc-group[open] { padding-bottom: 10px; }
+  .svc-group .chips { margin-top: 0; }
 
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; display: grid; place-items: end center; }
   @media (min-width: 640px) { .modal-bg { place-items: center; } }
@@ -183,12 +188,102 @@ const CONFIG = {
   ],
 };
 
-// Začetni seznam storitev (brez cen – cene so v blagajni). Urejate ga v aplikaciji (Nastavitve → Storitve).
+// Začetni seznam storitev po ceniku Bucka Dizajn (brez cen – cene so v blagajni). Urejate ga v aplikaciji (Nastavitve → Storitve).
 const DEFAULT_SERVICES = [
-  { group: 'Popravila', name: 'Hlače' },
-  { group: 'Popravila', name: 'Srajce in majice' },
-  { group: 'Popravila', name: 'Obleke in krila' },
-  { group: 'Popravila', name: 'Jakne in plašči' },
+  // Hlače
+  { group: 'Hlače', name: 'Krajšanje hlač strojno' },
+  { group: 'Hlače', name: 'Krajšanje hlač jersey' },
+  { group: 'Hlače', name: 'Krajšanje hlač (razporek, zavihek, trak, elastika)' },
+  { group: 'Hlače', name: 'Krajšanje hlač original rob' },
+  { group: 'Hlače', name: 'Krajšanje hlač skriti rob' },
+  { group: 'Hlače', name: 'Krajšanje hlač nataknjen rob' },
+  { group: 'Hlače', name: 'Ožanje ali širjenje hlač v pasu' },
+  { group: 'Hlače', name: 'Ožanje hlač jeans v pasu' },
+  { group: 'Hlače', name: 'Ožanje ali širjenje hlačnice' },
+  { group: 'Hlače', name: 'Menjava skrite zadrge do 20 cm' },
+  { group: 'Hlače', name: 'Menjava skrite zadrge nad 20 cm' },
+  { group: 'Hlače', name: 'Menjava zadrge' },
+  { group: 'Hlače', name: 'Menjava zadrge jeans' },
+  { group: 'Hlače', name: 'Menjava gumba' },
+  { group: 'Hlače', name: 'Menjava elastike v pasu' },
+  { group: 'Hlače', name: 'Krpanje lukenj' },
+  { group: 'Hlače', name: 'Menjava žepov' },
+  { group: 'Hlače', name: 'Krajšanje pasu' },
+  // Krilo
+  { group: 'Krilo', name: 'Ožanje ali širjenje krila (zadrga, dolžina)' },
+  { group: 'Krilo', name: 'Krajšanje (klasično krilo s podlogo)' },
+  { group: 'Krilo', name: 'Daljšanje (klasično krilo s podlogo)' },
+  { group: 'Krilo', name: 'Krajšanje, brez podloge (strojno)' },
+  { group: 'Krilo', name: 'Daljšanje, brez podloge (strojno)' },
+  { group: 'Krilo', name: 'Krajšanje (plise, več gub)' },
+  { group: 'Krilo', name: 'Menjava podloge (strankina podloga)' },
+  { group: 'Krilo', name: 'Menjava skrite zadrge' },
+  { group: 'Krilo', name: 'Menjava zadrge' },
+  { group: 'Krilo', name: 'Menjava kovinske zadrge' },
+  { group: 'Krilo', name: 'Izdelava podloge (strankina podloga)' },
+  { group: 'Krilo', name: 'Odstranitev pasu' },
+  // Jakna
+  { group: 'Jakna', name: 'Krajšanje dolžine (moška, ženska)' },
+  { group: 'Jakna', name: 'Krajšanje rokavov brez gumbov' },
+  { group: 'Jakna', name: 'Krajšanje rokavov z gumbi' },
+  { group: 'Jakna', name: 'Menjava podloge, brez žepov (strankina podloga)' },
+  { group: 'Jakna', name: 'Menjava podloge z žepi (strankina podloga)' },
+  { group: 'Jakna', name: 'Menjava podloge usnjena jakna (strankina podloga)' },
+  { group: 'Jakna', name: 'Ožanje' },
+  // Plašč
+  { group: 'Plašč', name: 'Krajšanje dolžine' },
+  { group: 'Plašč', name: 'Menjava podloge brez žepov (strankina podloga)' },
+  { group: 'Plašč', name: 'Menjava podloge z žepi (strankina podloga)' },
+  { group: 'Plašč', name: 'Krajšanje rokavov' },
+  { group: 'Plašč', name: 'Krajšanje rokavov z gumbi' },
+  { group: 'Plašč', name: 'Krajšanje balonarja (strojno)' },
+  { group: 'Plašč', name: 'Menjava žepov' },
+  { group: 'Plašč', name: 'Ožanje plašča' },
+  // Srajce in majice
+  { group: 'Srajce in majice', name: 'Obračanje manšete' },
+  { group: 'Srajce in majice', name: 'Obračanje ovratnika' },
+  { group: 'Srajce in majice', name: 'Krajšanje rokavov strojno (jersey)' },
+  { group: 'Srajce in majice', name: 'Srajčni rokav' },
+  { group: 'Srajce in majice', name: 'Srajčni rokav (prestavljanje razporka)' },
+  { group: 'Srajce in majice', name: 'Krajšanje dolžine majice, srajce, bluze' },
+  // Odeje, zavese, prt
+  { group: 'Odeje, zavese, prt', name: 'Šivanje traku na odejo' },
+  { group: 'Odeje, zavese, prt', name: 'Šivanje zaves (tekoči meter)' },
+  { group: 'Odeje, zavese, prt', name: 'Šivanje zaves gubanje' },
+  { group: 'Odeje, zavese, prt', name: 'Šivanje tekačev' },
+  { group: 'Odeje, zavese, prt', name: 'Robljenje prta' },
+  { group: 'Odeje, zavese, prt', name: 'Robljenje prta z okrasnim trakom' },
+  { group: 'Odeje, zavese, prt', name: 'Krajšanje zaves (1 cm rob)' },
+  { group: 'Odeje, zavese, prt', name: 'Krajšanje zaves z okrasnim trakom' },
+  { group: 'Odeje, zavese, prt', name: 'Krajšanje zaves (širok rob)' },
+  // Bunda
+  { group: 'Bunda', name: 'Krajšanje rokavov (elastika)' },
+  { group: 'Bunda', name: 'Krajšanje rokavov (ježek, zapenjanje)' },
+  { group: 'Bunda', name: 'Menjava zadrge (vatirana do 50 cm)' },
+  { group: 'Bunda', name: 'Menjava zadrge (vatirana 50–80 cm)' },
+  { group: 'Bunda', name: 'Menjava zadrge (puh do 50 cm)' },
+  { group: 'Bunda', name: 'Menjava zadrge (puh 50–80 cm)' },
+  { group: 'Bunda', name: 'Menjava zadrge nad 80 cm po naročilu' },
+  { group: 'Bunda', name: 'Kombinezon' },
+  { group: 'Bunda', name: 'Kovinska zadrga (do 50 cm)' },
+  { group: 'Bunda', name: 'Kovinska zadrga (od 50–80 cm)' },
+  { group: 'Bunda', name: 'Kovinska zadrga po naročilu' },
+  { group: 'Bunda', name: 'Ožanje bunde' },
+  // Manjša popravila
+  { group: 'Manjša popravila', name: 'Krpanje, obšivanje lukenj' },
+  { group: 'Manjša popravila', name: 'Režijska ura' },
+  // Šivanje po meri
+  { group: 'Šivanje po meri', name: 'Izdelava hlač' },
+  { group: 'Šivanje po meri', name: 'Hlače na elastiko' },
+  { group: 'Šivanje po meri', name: 'Izdelava hlač z žepi' },
+  { group: 'Šivanje po meri', name: 'Šivanje klasičnega krila' },
+  { group: 'Šivanje po meri', name: 'Šivanje krila z žepi' },
+  { group: 'Šivanje po meri', name: 'Šivanje ženske jakne s podlogo' },
+  { group: 'Šivanje po meri', name: 'Šivanje ženske jakne' },
+  { group: 'Šivanje po meri', name: 'Šivanje podložene obleke' },
+  { group: 'Šivanje po meri', name: 'Šivanje obleke jersey' },
+  { group: 'Šivanje po meri', name: 'Šivanje maje' },
+  { group: 'Šivanje po meri', name: 'Izdelava bluze, srajce' },
 ];
 
 /* ================================================================ */
@@ -430,8 +525,10 @@ function renderIntake(el) {
       <input id="iEmail" name="email" type="email" autocomplete="off">
       <label>Storitve</label>
       ${serviceGroups().map(([g, list]) => `
-        <p class="hint" style="margin-top:8px">${esc(g)}</p>
-        <div class="chips">${list.map((x) => `<button type="button" class="chip" data-svc="${serviceList.indexOf(x)}">+ ${esc(x.name)}</button>`).join('')}</div>`).join('')}
+        <details class="svc-group">
+          <summary>${esc(g)} <small>(${list.length})</small></summary>
+          <div class="chips">${list.map((x) => `<button type="button" class="chip" data-svc="${serviceList.indexOf(x)}">+ ${esc(x.name)}</button>`).join('')}</div>
+        </details>`).join('')}
       <div id="picked"></div>
       <label for="iDesc">Opis <small>(podrobnosti, npr. »črne hlače – krajšanje za 3 cm«)</small></label>
       <textarea id="iDesc" name="description"></textarea>
@@ -473,14 +570,15 @@ function renderIntake(el) {
 
 /* ---- Seznam storitev (brez cen – cene so v blagajni) ---- */
 
-let picked = []; // izbrane storitve pri prevzemu: { name, qty }
+let picked = []; // izbrane storitve pri prevzemu: { group, name, qty }
 
 function serviceGroups() {
   const m = new Map();
   serviceList.forEach((x) => { if (!m.has(x.group)) m.set(x.group, []); m.get(x.group).push(x); });
   return [...m];
 }
-const servicesText = (o) => (o.services || []).map((x) => (x.qty > 1 ? `${x.qty} × ` : '') + x.name).join(', ');
+const svcName = (x) => (x.group ? `${x.group} – ${x.name}` : x.name);
+const servicesText = (o) => (o.services || []).map((x) => (x.qty > 1 ? `${x.qty} × ` : '') + svcName(x)).join(', ');
 const orderText = (o) => [servicesText(o), o.description].filter(Boolean).join(' – ');
 
 function renderPicked() {
@@ -490,7 +588,7 @@ function renderPicked() {
     <div class="card" style="margin-top:10px;padding:8px 12px">
       ${picked.map((x, i) => `
         <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-          <span style="flex:1">${esc(x.name)}</span>
+          <span style="flex:1">${esc(svcName(x))}</span>
           <button type="button" class="chip" data-qty="${i}" data-d="-1" aria-label="Manj">−</button>
           <b>${x.qty}</b>
           <button type="button" class="chip" data-qty="${i}" data-d="1" aria-label="Več">+</button>
@@ -531,7 +629,7 @@ async function saveIntake() {
     phone: f.phone.trim(),
     email: f.email.trim(),
     pieces: Math.max(1, Number(f.pieces) || 1),
-    services: picked.map(({ name, qty }) => ({ name, qty })),
+    services: picked.map(({ group, name, qty }) => ({ group, name, qty })),
     description: f.description.trim(),
     price: f.price.trim().replace(',', '.'),
     dueDate: f.dueDate || '',
@@ -775,7 +873,7 @@ function openDetail(o) {
         <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
         <div><label>Cena (€)</label><input name="price" inputmode="decimal" value="${esc(o.price)}" ${dis}></div>
       </div>
-      ${o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}`).join('<br>')}</p>` : ''}
+      ${o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(svcName(x))}`).join('<br>')}</p>` : ''}
       <label>Opis</label><textarea name="description" ${dis}>${esc(o.description)}</textarea>
       <label>Opomba</label><input name="note" value="${esc(o.note)}" ${dis}>
       <p class="error" id="editError" hidden></p>
@@ -965,9 +1063,9 @@ document.addEventListener('click', (e) => {
   }
   if (t.dataset.svc) {
     const x = serviceList[Number(t.dataset.svc)];
-    const have = picked.find((p) => p.name === x.name);
+    const have = picked.find((p) => p.name === x.name && p.group === x.group);
     if (have) have.qty++;
-    else picked.push({ name: x.name, qty: 1 });
+    else picked.push({ group: x.group, name: x.name, qty: 1 });
     return renderPicked();
   }
   if (t.dataset.qty) {
