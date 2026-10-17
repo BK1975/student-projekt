@@ -23,18 +23,24 @@ potrebna.
   zaključena naročila. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank je
   bilo ta dan **Prevzetih**, **V popravilu** in **Gotovih**, z imeni strank in številkami naročil.
 
-**Roki za prevzem:**
+**Roki za prevzem in obvestila strankam:**
 
-1. Ko je naročilo označeno kot **gotovo**, se stranko obvesti: za prevzem ima **14 delovnih dni**.
-2. **Delovni dan pred iztekom roka** gre **opomnik**.
-3. Po roku teče **zamudnina 0,50 € na dan** (koledarski dnevi), razen če se stranka javi – takrat v
-   podrobnostih naročila ali ob izdaji označite »Brez zamudnine«. Ob izdaji aplikacija izračuna zamudnino
-   in znesek za plačilo.
-4. Oblačila, ki niso prevzeta v **enem mesecu** od obvestila, se oddajo v zabojnik **Humana**; zaposleni
-   jih označi kot »Oddano v Humana«.
+1. **Gotovo** – stranka dobi obvestilo: za prevzem ima **14 delovnih dni**, po roku zamudnina
+   **0,50 € na dan**, neprevzeta oblačila po enem mesecu oddamo v zabojnik **Humana**.
+2. **Opomnik** – delovni dan pred iztekom roka.
+3. **Obvestilo o zamudnini** – dan po izteku roka (zamudnina se šteje za vsak koledarski dan).
+4. **Opozorilo pred oddajo** – 21 dni po obvestilu »gotovo«, z datumom oddaje v zabojnik in zneskom
+   zamudnine do tega dne. Če je isti dan na vrsti tudi obvestilo o zamudnini, gre samo opozorilo.
+5. **Oddaja v Humano** – en mesec po obvestilu »gotovo«; zaposleni označi »Oddano v Humana«.
 
-Primer: gotovo 29. 9. → opomnik pet 16. 10. → rok za prevzem pon 19. 10. → zamudnina od 20. 10. →
-oddaja v Humano od 29. 10.
+Če se stranka javi, v podrobnostih naročila ali ob izdaji označite »Brez zamudnine«. Ob izdaji aplikacija
+izračuna zamudnino in znesek za plačilo.
+
+Primer: gotovo čet 15. 10. → opomnik tor 3. 11. → rok sre 4. 11. → zamudnina in opozorilo čet 5. 11. →
+oddaja v Humano od ned 15. 11.
+
+Besedila sporočil so v `index.html` (funkcija `message`) in v `google-apps-script/Code.gs` (funkcija
+`sporocilo`); naslov, telefon in delovni čas pa v `CONFIG` oziroma `NASTAVITVE`.
 
 **Prevzemni listek:** po shranjenem prevzemu (ali v podrobnostih naročila) z gumbom **Natisni listek**.
 Zgornji del dobi stranka (podatki, storitve, pogoji prevzema), spodnji odrezek s številko se pripne na
