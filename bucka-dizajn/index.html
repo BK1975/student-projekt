@@ -148,6 +148,13 @@
 
   .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 40; font-size: .92rem; max-width: calc(100% - 32px); }
   .loading { opacity: .6; pointer-events: none; }
+  table.stats { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  table.stats th, table.stats td { padding: 7px 3px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.stats th:first-child, table.stats td:first-child { text-align: left; padding-left: 8px; }
+  table.stats th:last-child, table.stats td:last-child { padding-right: 8px; }
+  table.stats th { background: var(--brand-soft); color: var(--brand); font-weight: 700; white-space: normal; line-height: 1.2; }
+  table.stats tr.today td { background: var(--warn-bg); font-weight: 600; }
+  table.stats small { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -785,9 +792,27 @@ async function saveIntake() {
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+/* ---- Razvrščanje po datumu (velja za Izdajo in Pregled) ---- */
+
+const SORT_KEY = 'bucka-sort';
+let sortNewest = lsGet(SORT_KEY, true);
+const DNI = ['nedelja', 'ponedeljek', 'torek', 'sreda', 'četrtek', 'petek', 'sobota'];
+const dayLabel = (s) => { const d = parse(s); const n = DNI[d.getDay()]; return `${n.charAt(0).toUpperCase()}${n.slice(1)}, ${fmt(s)}`; };
+const byDate = (get) => (a, b) => (sortNewest ? get(b).localeCompare(get(a)) : get(a).localeCompare(get(b)));
+
+function sortSwitch() {
+  return `<div class="tabs" style="grid-template-columns:1fr 1fr;margin:0 0 12px" role="group" aria-label="Razvrsti">
+    <button data-sort="new" aria-selected="${sortNewest}">Najnovejše najprej</button>
+    <button data-sort="old" aria-selected="${!sortNewest}">Najstarejše najprej</button>
+  </div>`;
+}
+
+/* ---- Izdaja stranki ---- */
+
 function renderIssue(el) {
   el.innerHTML = `
     <div class="search"><input id="q" type="search" placeholder="Išči po imenu, telefonu ali številki …" value="${esc(searchQuery)}" autocomplete="off"></div>
+    ${sortSwitch()}
     <div id="results"></div>`;
   const q = $('#q');
   q.addEventListener('input', () => { searchQuery = q.value; renderResults(); });
@@ -807,10 +832,10 @@ function renderResults() {
     list = repairs.filter((o) =>
       norm(o.name).includes(q) || norm(o.num).includes(q) || norm(orderText(o)).includes(q) || (qd.length >= 3 && digits(o.phone).includes(qd)));
   }
-  // Združi po stranki (ime + telefon).
+  // Združi po stranki (telefon).
   const groups = new Map();
   for (const o of list) {
-    const k = norm(o.name) + '|' + digits(o.phone);
+    const k = digits(o.phone);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(o);
   }
@@ -818,24 +843,30 @@ function renderResults() {
     el.innerHTML = `<p class="empty">${q ? 'Ni zadetkov.' : 'Trenutno ni gotovih oblačil, ki bi čakala na izdajo.'}</p>`;
     return;
   }
-  const rank = { gotovo: 0, sprejeto: 1, izdano: 2, zavrzeno: 3 };
-  el.innerHTML = (q ? '' : '<p class="hint" style="margin-bottom:10px">Gotova oblačila, ki čakajo na izdajo. Za iskanje vpiši ime ali telefon.</p>') +
-    [...groups.values()]
-      .sort((a, b) => a[0].name.localeCompare(b[0].name, 'sl'))
-      .map((g) => {
-        g.sort((a, b) => rank[a.status] - rank[b.status] || b.received.localeCompare(a.received));
-        const open = g.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
-        const closed = g.filter((o) => !open.includes(o));
-        return `
-          <div class="customer">
-            <div class="head"><b>${esc(g[0].name)}</b><a href="tel:${esc(g[0].phone.replace(/[^\d+]/g, ''))}">${esc(g[0].phone)}</a></div>
-            ${open.map((o) => orderCard(o, { hideWho: true })).join('') || '<p class="hint">Ni odprtih naročil.</p>'}
-            ${closed.length ? `<details><summary>Zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o, { hideWho: true })).join('')}</details>` : ''}
-          </div>`;
-      }).join('');
+  // Datum skupine: zadnji (ali prvi) datum prevzema med naročili stranke.
+  const groupDate = (g) => g.map((o) => o.received).sort()[sortNewest ? g.length - 1 : 0];
+  const sorted = [...groups.values()].sort(byDate(groupDate));
+  let lastHead = '';
+  el.innerHTML = (q ? '' : '<p class="hint" style="margin-bottom:10px">Gotova oblačila, ki čakajo na izdajo, razvrščena po datumu prevzema. Za iskanje vpiši ime ali telefon.</p>') +
+    sorted.map((g) => {
+      g.sort(byDate((o) => o.received));
+      const open = g.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
+      const closed = g.filter((o) => !open.includes(o));
+      const d = groupDate(g);
+      const head = d !== lastHead ? `<h2 style="margin-top:18px">${esc(dayLabel(d))}</h2>` : '';
+      lastHead = d;
+      return `${head}
+        <div class="customer">
+          <div class="head"><b>${esc(g[0].name)}</b><a href="tel:${esc(g[0].phone.replace(/[^\d+]/g, ''))}">${esc(g[0].phone)}</a></div>
+          ${open.map((o) => orderCard(o, { hideWho: true })).join('') || '<p class="hint">Ni odprtih naročil.</p>'}
+          ${closed.length ? `<details><summary>Zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o, { hideWho: true })).join('')}</details>` : ''}
+        </div>`;
+    }).join('');
 }
 
 /* ---- Pregled ---- */
+
+let statsMonth = today().slice(0, 7);
 
 function renderOverview(el) {
   const t = today();
@@ -843,20 +874,108 @@ function renderOverview(el) {
   const urgency = ['humana', 'koncno', 'opomnik'];
   const due = repairs.filter((o) => stage(o, t).due)
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
-  const inRepair = repairs.filter((o) => o.status === 'sprejeto').sort((a, b) => a.received.localeCompare(b.received));
-  const waiting = repairs.filter((o) => o.status === 'gotovo' && !stage(o, t).due).sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const inRepair = repairs.filter((o) => o.status === 'sprejeto').sort(byDate((o) => o.received));
+  const waiting = repairs.filter((o) => o.status === 'gotovo' && !stage(o, t).due).sort(byDate((o) => o.readyDate));
   const closedDate = (o) => o.handedDate || o.discardedDate || '';
   const closed = repairs.filter((o) => o.status === 'izdano' || o.status === 'zavrzeno')
     .sort((a, b) => closedDate(b).localeCompare(closedDate(a))).slice(0, 30);
   el.innerHTML = `
     <h2>Za urediti danes ${due.length ? `<span class="count">${due.length}</span>` : ''}</h2>
     ${due.map((o) => orderCard(o)).join('') || '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
+    <h2>Evidenca</h2>
+    <div id="stats"></div>
     <h2>V popravilu (${inRepair.length})</h2>
+    ${sortSwitch()}
     ${inRepair.map((o) => orderCard(o)).join('') || '<p class="empty">Ni oblačil v popravilu.</p>'}
     <h2>Čaka na prevzem (${waiting.length})</h2>
     ${waiting.map((o) => orderCard(o)).join('') || '<p class="empty">Nič ne čaka na prevzem.</p>'}
     <details><summary>Zadnja zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o)).join('')}</details>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
+  renderStats();
+}
+
+// Evidenca po dneh za izbrani mesec.
+function dailyStats(month) {
+  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const [y, m] = month.split('-').map(Number);
+  const last = Math.min(new Date(y, m, 0).getDate(), month === today().slice(0, 7) ? parse(today()).getDate() : 31);
+  const rows = [];
+  for (let d = 1; d <= last; d++) {
+    const day = `${month}-${pad(d)}`;
+    const received = repairs.filter((o) => o.received === day);
+    const row = {
+      day,
+      received: received.length,
+      pieces: received.reduce((n, o) => n + (Number(o.pieces) || 1), 0),
+      ready: repairs.filter((o) => o.readyDate === day).length,
+      // Pričakovano za izdajo: gotova oblačila, ki so ta dan čakala na stranko.
+      expected: repairs.filter((o) => o.readyDate && o.readyDate <= day
+        && !(o.handedDate && o.handedDate < day) && !(o.discardedDate && o.discardedDate < day)).length,
+      handed: repairs.filter((o) => o.handedDate === day).length,
+      discarded: repairs.filter((o) => o.discardedDate === day).length,
+    };
+    const active = row.received || row.ready || row.handed || row.discarded;
+    if (active || isWorkDay(day)) rows.push(row);
+  }
+  return rows;
+}
+
+function renderStats() {
+  const month = statsMonth;
+  const rows = dailyStats(month);
+  const sum = (k) => rows.reduce((n, r) => n + r[k], 0);
+  const inMonth = (d) => d && d.startsWith(month);
+  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const avg = (list) => (list.length ? (list.reduce((a, b) => a + b, 0) / list.length).toFixed(1).replace('.', ',') : '–');
+  const repairDays = avg(repairs.filter((o) => inMonth(o.readyDate)).map((o) => daysBetween(o.received, o.readyDate)));
+  const waitDays = avg(repairs.filter((o) => inMonth(o.handedDate) && o.readyDate).map((o) => daysBetween(o.readyDate, o.handedDate)));
+  // Najpogostejše storitve med prevzemi v mesecu.
+  const counts = new Map();
+  repairs.filter((o) => inMonth(o.received)).forEach((o) => (o.services || []).forEach((x) => {
+    const k = svcName(x);
+    counts.set(k, (counts.get(k) || 0) + (Number(x.qty) || 1));
+  }));
+  const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const shown = [...rows].sort(byDate((r) => r.day));
+  const tile = (label, value, sub = '') => `<div class="card" style="padding:10px 12px"><div class="hint" style="margin:0">${label}</div><div style="font-size:1.4rem;font-weight:800;color:var(--brand)">${value}</div>${sub ? `<div class="hint" style="margin:0">${sub}</div>` : ''}</div>`;
+  $('#stats').innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="month" id="statsMonth" value="${month}" max="${today().slice(0, 7)}" style="max-width:200px">
+      <button class="btn small secondary" id="exportStats">Izvozi CSV</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+      ${tile('Prevzeto', sum('received'), `${sum('pieces')} kosov`)}
+      ${tile('Gotovo', sum('ready'))}
+      ${tile('Izdano', sum('handed'))}
+      ${tile(`Oddano v ${esc(CONFIG.donation)}`, sum('discarded'))}
+      ${tile('Popravilo traja', repairDays, 'dni v povprečju')}
+      ${tile('Stranka pride po', waitDays, 'dneh v povprečju')}
+    </div>
+    <div class="card" style="margin-top:10px;padding:0;overflow-x:auto">
+      <table class="stats">
+        <thead><tr><th>Dan</th><th title="Prevzeta naročila (kosi)">Prevzeto</th><th>Gotovo</th><th title="Gotova oblačila, ki so ta dan čakala na stranko">Za izdajo</th><th>Izdano</th><th title="Oddano v zabojnik ${esc(CONFIG.donation)}">Zabojnik</th></tr></thead>
+        <tbody>${shown.map((r) => `
+          <tr class="${r.day === today() ? 'today' : ''}">
+            <td>${esc(DNI[parse(r.day).getDay()].slice(0, 3).replace(/^./, (c) => c.toUpperCase()))} ${parse(r.day).getDate()}. ${parse(r.day).getMonth() + 1}.</td>
+            <td>${r.received ? `${r.received} <small>(${r.pieces})</small>` : '·'}</td>
+            <td>${r.ready || '·'}</td>
+            <td>${r.expected || '·'}</td>
+            <td>${r.handed || '·'}</td>
+            <td>${r.discarded || '·'}</td>
+          </tr>`).join('') || '<tr><td colspan="6" class="hint">Ni podatkov.</td></tr>'}</tbody>
+      </table>
+    </div>
+    <p class="hint">»Za izdajo« = gotova oblačila, ki so ta dan čakala na stranko. Primerjaj ga z »Izdano«.</p>
+    ${top.length ? `<div class="card" style="margin-top:10px"><b>Najpogostejše storitve</b><ol style="margin:6px 0 0;padding-left:20px">${top.map(([n, c]) => `<li>${esc(n)} – ${c}×</li>`).join('')}</ol></div>` : ''}`;
+  $('#statsMonth').addEventListener('change', (e) => { if (e.target.value) { statsMonth = e.target.value; renderStats(); } });
+  $('#exportStats').onclick = () => {
+    const lines = [['Datum', 'Prevzeto naročil', 'Prevzeto kosov', 'Gotovo', 'Za izdajo', 'Izdano', `Oddano v ${CONFIG.donation}`].join(';')]
+      .concat(rows.map((r) => [fmt(r.day), r.received, r.pieces, r.ready, r.expected, r.handed, r.discarded].join(';')));
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `bucka-evidenca-${month}.csv` });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 }
 
 function policyHtml() {
@@ -1183,8 +1302,9 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-sort], [data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
   if (!t) return;
+  if (t.dataset.sort) { sortNewest = t.dataset.sort === 'new'; lsSet(SORT_KEY, sortNewest); return render(); }
   if (t.dataset.nav) {
     e.preventDefault();
     lastCreated = null;

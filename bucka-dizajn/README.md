@@ -15,8 +15,13 @@ potrebna.
 - **Prevzem** – oblačila stranke se sprejmejo v poslovalnico: izbira obstoječe stranke (ali **+ Nova
   stranka**), datum prevzema, število kosov, storitve (po skupinah iz cenika, brez cen), opis, neobvezna
   cena in dogovorjeni rok. Vsak prevzem dobi številko za listek (`P-0001`, `P-0002` …).
-- **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki. Brez iskanja so
-  prikazana vsa gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
+- **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki in razvrščena po
+  datumu prevzema (najnovejše ali najstarejše najprej, z naslovom dneva). Brez iskanja so prikazana vsa
+  gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
+- **Pregled → Evidenca** – za izbrani mesec po dneh: prevzeto (naročila in kosi), gotovo, **za izdajo**
+  (gotova oblačila, ki so ta dan čakala na stranko), **izdano** in oddano v zabojnik. Povzetek meseca,
+  povprečno trajanje popravila, povprečno koliko dni stranka pride po oblačila, najpogostejše storitve in
+  izvoz v CSV (Excel).
 - **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), oblačila v popravilu,
   oblačila, ki čakajo na prevzem, in zadnja zaključena naročila.
 
