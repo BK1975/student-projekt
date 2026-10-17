@@ -8,7 +8,7 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
 - Stranke so v listu **Stranke**, seznam storitev (brez cen) pa v listu **Storitve** in velja za vse naprave. Urejate ga v aplikaciji
   (Nastavitve → Storitve).
 - Ko zaposleni v aplikaciji označi naročilo kot **gotovo**, stranka z e-pošto samodejno prejme
-  obvestilo z rokom za prevzem (14 delovnih dni), zamudnino (0,50 € na dan po roku) in datumom, od
+  obvestilo z rokom za prevzem (14 delovnih dni), zamudnino (0,50 € za vsak delovni dan po roku) in datumom, od
   katerega neprevzeta oblačila oddamo v zabojnik **Humana** (en mesec od obvestila).
 - Vsak dan ob 8.00 skripta strankam z e-pošto samodejno pošlje:
   1. **opomnik** delovni dan pred iztekom roka,
@@ -16,8 +16,9 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
   3. **opozorilo pred oddajo** zadnji delovni dan pred oddajo v zabojnik (če je isti dan na vrsti tudi
      obvestilo o zamudnini, gre samo opozorilo, ki vsebuje oboje).
 
-  Roki in obvestila se štejejo samo po dnevih, ko je poslovalnica odprta (`delovniDnevi`, `prazniki`);
-  ob drugih dneh skripta ničesar ne pošlje.
+  Roki, zamudnina in obvestila se štejejo samo po dnevih, ko je poslovalnica odprta (`delovniDnevi`,
+  `prazniki` in dnevi odsotnosti iz lista **Odsotnosti**, ki jih označite v aplikaciji); ob drugih dneh
+  skripta ničesar ne pošlje.
 - Poslovalnica dobi dnevni povzetek po e-pošti: kaj je bilo poslano samodejno, komu je treba poslati
   opomnik po SMS (stranke brez e-pošte) in katera oblačila je treba oddati v zabojnik.
 
@@ -52,7 +53,7 @@ povezovanjem jih po potrebi izvozite (Nastavitve → Izvozi) in vnesite znova.
 - Seznam praznikov vsako leto dopolnite.
 - Po spremembi `Code.gs`: **Uvedi → Upravljaj uvedbe → ✎ → Različica: Nova različica**, da URL ostane enak.
 - Če ste skripto namestili pred dodajanjem seznama storitev, po posodobitvi `Code.gs` še enkrat zaženite
-  **nastavi** (doda manjkajoče liste Storitve in Stranke ter stolpec »Storitve«; obstoječi podatki ostanejo).
+  **nastavi** (doda manjkajoče liste Storitve, Stranke in Odsotnosti ter nove stolpce; obstoječi podatki ostanejo).
 - Preglednico lahko berete in filtrirate, a podatke urejajte v aplikaciji. Ne spreminjajte vrstnega reda
   stolpcev in ne brišite stolpca **ID**.
 

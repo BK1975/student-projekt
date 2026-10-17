@@ -25,7 +25,7 @@ const NASTAVITVE = {
 
   // Enako kot CONFIG v index.html:
   rokPrevzemaDelovnihDni: 14, // za prevzem ima stranka toliko delovnih dni od obvestila »gotovo«
-  zamudninaNaDan: 0.5,        // € na dan po roku za prevzem
+  zamudninaNaDan: 0.5,        // € za vsak delovni dan po roku za prevzem
   oddajaPoMesecih: 1,         // po toliko mesecih od obvestila »gotovo« neprevzeto oddamo v zabojnik
   najmanjDniPoRoku: 3,        // oddaja v zabojnik najprej toliko delovnih dni po roku za prevzem
   zabojnik: 'Humana',
@@ -54,9 +54,12 @@ const POLJA = [
   ['services', 'Storitve'], // nove stolpce dodajajte samo na konec
   ['feeWaived', 'Brez zamudnine'], ['lateFee', 'Zamudnina (€)'],
   ['lateNoticeDate', 'Obvestilo o zamudnini'], ['warnDate', 'Opozorilo pred oddajo'],
+  ['items', 'Kosi'],
 ];
 const LIST_STORITVE = 'Storitve';
 const LIST_STRANKE = 'Stranke';
+const LIST_ODSOTNOSTI = 'Odsotnosti';
+const JSON_POLJA = ['services', 'items'];
 const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno']];
 const KLJUCI = POLJA.map((p) => p[0]);
 const STOLPEC = Object.fromEntries(KLJUCI.map((k, i) => [k, i + 1]));
@@ -74,6 +77,9 @@ function nastavi() {
   const storitve = ss.getSheetByName(LIST_STORITVE) || ss.insertSheet(LIST_STORITVE);
   storitve.getRange(1, 1, 1, 2).setValues([['Skupina', 'Storitev']]).setFontWeight('bold').setBackground('#e5eeea');
   storitve.setFrozenRows(1);
+  const ods = ss.getSheetByName(LIST_ODSOTNOSTI) || ss.insertSheet(LIST_ODSOTNOSTI);
+  ods.getRange(1, 1).setValue('Datum odsotnosti').setFontWeight('bold').setBackground('#e5eeea');
+  ods.getRange(2, 1, ods.getMaxRows() - 1, 1).setNumberFormat('@');
   const stranke = ss.getSheetByName(LIST_STRANKE) || ss.insertSheet(LIST_STRANKE);
   stranke.getRange(1, 1, 1, POLJA_STRANKE.length).setValues([POLJA_STRANKE.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
   stranke.setFrozenRows(1);
@@ -99,7 +105,8 @@ function doPost(e) {
   lock.waitLock(20000);
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
-    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke() });
+    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti() });
+    if (req.action === 'saveAbsences') { shraniOdsotnosti(req.absences || []); return json({ ok: true }); }
     if (req.action === 'saveCustomer') return json({ ok: true, customer: shraniStranko(req.customer || {}) });
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
     if (req.action === 'create') return json({ ok: true, order: ustvari(sh, req.order || {}) });
@@ -122,6 +129,7 @@ function ustvari(sh, vnos) {
   const o = {};
   KLJUCI.forEach((k) => { o[k] = vnos[k]; });
   o.services = Array.isArray(vnos.services) ? vnos.services : [];
+  o.items = Array.isArray(vnos.items) ? vnos.items : [];
   o.id = Utilities.getUuid();
   o.num = predpona + String(zadnja + 1).padStart(4, '0');
   o.sector = sector;
@@ -169,6 +177,7 @@ function dnevniPregled() {
   };
   vsa(sh).forEach((v) => {
     const o = v.o;
+    if (o.status === 'gotovo' && o.readyDate) o.deadline = dodajDelovneDni(o.readyDate, NASTAVITVE.rokPrevzemaDelovnihDni);
     const faza = faza_(o, t);
     const vrsta = VRSTE[faza];
     if (vrsta) {
@@ -237,26 +246,26 @@ function prejsnjiDelovniDan(s) {
 function sporocilo(vrsta, o, t) {
   const konec = `\n\nDelovni čas: ${NASTAVITVE.delovniCas}.\n${NASTAVITVE.imeDelavnice}, ${NASTAVITVE.naslov}, tel. ${NASTAVITVE.telefon}`;
   const evri = (x) => `${x.toFixed(2).replace('.', ',')} €`;
-  const zamudnina = evri(NASTAVITVE.zamudninaNaDan);
+  const zamudnina = `${evri(NASTAVITVE.zamudninaNaDan)} za vsak delovni dan`;
   if (vrsta === 'ready') {
     return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
-      `Po tem roku zaračunamo zamudnino ${zamudnina} na dan, oblačila, ki niso prevzeta v enem mesecu ` +
+      `Po tem roku zaračunamo zamudnino ${zamudnina}, oblačila, ki niso prevzeta v enem mesecu ` +
       `(do ${fmt(oddajaOd(o))}), pa oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
   }
   if (vrsta === 'reminder') {
     const kdaj = dodajDni(t || danes(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : fmt(o.deadline);
     return `Pozdravljeni, opominjamo vas, da je ${kdaj} zadnji dan za prevzem vaših oblačil (št. ${o.num}) brez zamudnine. ` +
-      `Od naslednjega dne zaračunamo zamudnino ${zamudnina} na dan.` + konec;
+      `Po tem roku zaračunamo zamudnino ${zamudnina}.` + konec;
   }
   if (vrsta === 'late') {
     return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
-      `Od ${fmt(dodajDni(o.deadline, 1))} zaračunavamo zamudnino ${zamudnina} na dan. ` +
+      `Od ${fmt(odprtOdDne(dodajDni(o.deadline, 1)))} zaračunavamo zamudnino ${zamudnina}. ` +
       `Oblačila, ki niso prevzeta do ${fmt(oddajaOd(o))}, oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
   }
-  const dni = Math.max(0, Math.round((razcleni(t || danes()) - razcleni(o.deadline)) / 86400000));
+  const dni = dniZamude(o, t || danes());
   return `Pozdravljeni, vaša oblačila (št. ${o.num}) še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(oddajaOd(o))}, ` +
     `jih bomo oddali v zabojnik ${NASTAVITVE.zabojnik}.` +
-    (dni && !o.feeWaived ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${zamudnina} na dan; ` +
+    (dni && !o.feeWaived ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${zamudnina}; ` +
       `do danes znaša ${evri(dni * NASTAVITVE.zamudninaNaDan)}.` : '') + konec;
 }
 
@@ -272,7 +281,7 @@ function vsa(sh) {
   return sh.getRange(2, 1, n, KLJUCI.length).getDisplayValues()
     .map((vr, i) => {
       const o = Object.fromEntries(KLJUCI.map((k, j) => [k, vr[j]]));
-      try { o.services = o.services ? JSON.parse(o.services) : []; } catch (e) { o.services = []; }
+      JSON_POLJA.forEach((k) => { try { o[k] = o[k] ? JSON.parse(o[k]) : []; } catch (e) { o[k] = []; } });
       return { vrstica: i + 2, o };
     })
     .filter((v) => v.o.id);
@@ -280,7 +289,7 @@ function vsa(sh) {
 
 // Vrednosti za zapis v vrstico: storitve kot JSON, vse ostalo kot besedilo.
 function vrsticaIz(o) {
-  return KLJUCI.map((k) => (k === 'services' ? JSON.stringify(o.services || []) : o[k] == null ? '' : String(o[k])));
+  return KLJUCI.map((k) => (JSON_POLJA.includes(k) ? JSON.stringify(o[k] || []) : o[k] == null ? '' : String(o[k])));
 }
 
 function preberiStoritve() {
@@ -351,7 +360,33 @@ function iso(d) {
 }
 function dodajDni(s, n) { const d = razcleni(s); d.setDate(d.getDate() + n); return iso(d); }
 function jeDelovniDan(s) {
-  return NASTAVITVE.delovniDnevi.includes(razcleni(s).getDay()) && !NASTAVITVE.prazniki.includes(s);
+  return NASTAVITVE.delovniDnevi.includes(razcleni(s).getDay()) && !NASTAVITVE.prazniki.includes(s) && !odsotnosti().includes(s);
+}
+
+/* ---------- Odsotnosti (dnevi, ko je poslovalnica zaprta) ---------- */
+
+let odsotnostiCache = null;
+function odsotnosti() {
+  if (odsotnostiCache) return odsotnostiCache;
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_ODSOTNOSTI);
+  odsotnostiCache = !sh || sh.getLastRow() < 2 ? []
+    : sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().map((r) => r[0]).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  return odsotnostiCache;
+}
+function shraniOdsotnosti(list) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_ODSOTNOSTI);
+  if (!sh) throw new Error('Ni lista Odsotnosti – zaženite funkcijo nastavi');
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 1).clearContent();
+  const vrstice = list.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().map((d) => [d]);
+  if (vrstice.length) { const r = sh.getRange(2, 1, vrstice.length, 1); r.setNumberFormat('@'); r.setValues(vrstice); }
+  odsotnostiCache = null;
+}
+
+// Delovni dnevi zamude po roku (do t).
+function dniZamude(o, t) {
+  let n = 0;
+  for (let d = dodajDni(o.deadline, 1); d <= t; d = dodajDni(d, 1)) if (jeDelovniDan(d)) n++;
+  return n;
 }
 function dodajDelovneDni(s, n) {
   let x = s;

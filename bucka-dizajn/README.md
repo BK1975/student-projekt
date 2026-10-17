@@ -12,24 +12,27 @@ potrebna.
   opomba. Nova stranka se doda z gumbom **+ Nova**, obstoječo lahko uredite (podatki se posodobijo tudi
   na njenih naročilih). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumba
   **Nov prevzem** in **Naročila**. Stranka se prepozna po telefonski številki.
-- **Prevzem** – oblačila stranke se sprejmejo v poslovalnico: izbira obstoječe stranke (ali **+ Nova
-  stranka**), datum prevzema, število kosov, storitve (po skupinah iz cenika, brez cen), opis, neobvezna
-  cena in dogovorjeni rok. Vsak prevzem dobi številko za listek (`P-0001`, `P-0002` …).
+- **Prevzem** – izbira stranke (ali **+ Nova stranka**), datum prevzema, neobvezni dogovorjeni rok in
+  kosi: z gumbom **+ DODAJ NOV KOS** izberete vrsto kosa (hlače, krilo, jakna …), eno ali več storitev
+  zanj in opombo. Število kosov se izračuna samo. Vsak prevzem dobi številko (`P-0001` …).
 - **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki in razvrščena po
   datumu prevzema (najnovejše ali najstarejše najprej, z naslovom dneva). Brez iskanja so prikazana vsa
   gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
 - **V popravilu** – vsa oblačila, ki so v delu, razvrščena po datumu prevzema; z gumbom **Označi kot gotovo**.
 - **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), **Evidenca** in zadnja
-  zaključena naročila. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank je
-  bilo ta dan **Prevzetih**, **V popravilu** in **Gotovih**, z imeni strank in številkami naročil.
+  **Koledar odsotnosti**. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank
+  je bilo ta dan **V popravilu**, **Gotovih** in **Prevzetih** – vsak seznam se odpre s klikom. V koledarju
+  odsotnosti s klikom označite dneve, ko je poslovalnica zaprta (dopust, bolniška); ti dnevi se ne štejejo
+  v rok za prevzem in ne v zamudnino.
 
 **Roki za prevzem in obvestila strankam** (šteje se samo dneve, ko je poslovalnica odprta: torek–petek,
-brez praznikov):
+brez praznikov in brez dni odsotnosti iz koledarja):
 
 1. **Gotovo** – stranka dobi obvestilo: za prevzem ima **14 delovnih dni**, po roku zamudnina
-   **0,50 € na dan**, neprevzeta oblačila po enem mesecu oddamo v zabojnik **Humana**.
+   **0,50 € za vsak delovni dan**, neprevzeta oblačila po enem mesecu oddamo v zabojnik **Humana**.
 2. **Opomnik** – delovni dan pred iztekom roka.
-3. **Obvestilo o zamudnini** – prvi delovni dan po izteku roka (zamudnina se šteje za vsak koledarski dan).
+3. **Obvestilo o zamudnini** – prvi delovni dan po izteku roka. Zamudnina se šteje samo za delovne dneve
+   (torek–petek, brez praznikov in dni odsotnosti).
 4. **Opozorilo pred oddajo** – zadnji delovni dan pred oddajo, z datumom oddaje in zneskom zamudnine.
    Če je isti dan na vrsti tudi obvestilo o zamudnini, gre samo opozorilo.
 5. **Oddaja v Humano** – en mesec po obvestilu »gotovo«; če ta dan poslovalnica ni odprta, se datum
@@ -44,9 +47,10 @@ opozorilo pet 13. 11. → oddaja v Humano tor 17. 11.
 Besedila sporočil so v `index.html` (funkcija `message`) in v `google-apps-script/Code.gs` (funkcija
 `sporocilo`); naslov, telefon in delovni čas pa v `CONFIG` oziroma `NASTAVITVE`.
 
-**Prevzemni listek:** v zavihku **Prevzem** – po shranjenem prevzemu ali v seznamu »Zadnji prevzemi« z
-gumbom **Natisni listek**. Zgornji del dobi stranka (podatki, storitve, pogoji prevzema), spodnji odrezek s
-številko se pripne na oblačilo. Listek je oblikovan za termo tiskalnik s papirjem širine 56 mm.
+**Prevzemni listek** (zavihek **Prevzem**, termo papir 56 mm): zgornji del dobi stranka – podatki
+poslovalnice (naslov, telefon, delovni čas), stranka, številka naročila, datum prevzema, število kosov in
+pogoji prevzema. Spodnji odrezek ostane v poslovalnici – številka naročila, stranka s telefonom, datum
+prevzema in vsi kosi s storitvami in opombami.
 
 Obvestila se pošiljajo s pripravljenim SMS (en dotik), po e-pošti ali s klicem. Če je povezana Google
 preglednica, strankam z e-pošto obvestila pošilja **samodejno**.

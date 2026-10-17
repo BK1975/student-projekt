@@ -77,10 +77,20 @@
   textarea { resize: vertical; min-height: 70px; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .two > *, .three > * { min-width: 0; }
   @media (max-width: 520px) { .three { grid-template-columns: 1fr 1fr; } }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 11px; font-size: .85rem; }
   .chip:hover { border-color: var(--brand); color: var(--brand); }
+  .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .stat-box summary::-webkit-details-marker { display: none; }
+  .stat-box[open] summary b { color: var(--brand); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: .85rem; }
+  .cal .h { font-weight: 700; color: var(--muted); padding: 4px 0; }
+  .cal button, .cal span.d { border: 1px solid var(--line); border-radius: 8px; padding: 8px 0; background: var(--card); }
+  .cal span.d.closed { background: #f0eeea; color: #b0aaa0; border-color: transparent; }
+  .cal button.absent { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
+  .cal .today { outline: 2px solid var(--accent); }
   .hint { font-size: .84rem; color: var(--muted); margin: 4px 0 0; }
   .error { color: var(--danger); font-size: .88rem; margin: 10px 0 0; }
 
@@ -164,7 +174,8 @@
   .ticket p { margin: 1mm 0; }
   .ticket .t-terms { font-size: 6.8pt; line-height: 1.3; margin-top: 1.5mm; border-top: 1px dashed #000; padding-top: 1.5mm; }
   .ticket .t-cut { margin: 3mm 0 2mm; font-size: 7pt; white-space: nowrap; overflow: hidden; }
-  .ticket .t-tag { text-align: center; }
+  .ticket .t-staff .t-num { font-size: 15pt; }
+  .ticket ol { margin: 1mm 0; padding-left: 4mm; }
   @media print {
     @page { size: 56mm auto; margin: 0; }
     html, body { background: #fff; margin: 0; }
@@ -318,6 +329,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SETTINGS_KEY = 'bucka-settings';
 const LOCAL_KEY = 'bucka-orders-v2';
+const ABSENCES_KEY = 'bucka-absences';
 const SERVICES_KEY = 'bucka-services';
 const CUSTOMERS_KEY = 'bucka-customers';
 
@@ -331,7 +343,8 @@ const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const today = () => iso(new Date());
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
-const isWorkDay = (s) => CONFIG.workDays.includes(parse(s).getDay()) && !CONFIG.holidays.includes(s);
+let absences = []; // dnevi odsotnosti (LLLL-MM-DD) – poslovalnica je zaprta
+const isWorkDay = (s) => CONFIG.workDays.includes(parse(s).getDay()) && !CONFIG.holidays.includes(s) && !absences.includes(s);
 function addWorkDays(s, n) {
   let x = s;
   while (n > 0) { x = addDays(x, 1); if (isWorkDay(x)) n--; }
@@ -371,10 +384,17 @@ const lateNoticeDue = (o) => openOnOrAfter(addDays(o.deadline, 1));
 const warnDue = (o) => maxIso(prevWorkDay(discardDue(o)), lateNoticeDue(o));
 const dayWord = (n) => (n === 1 ? 'dan' : n === 2 ? 'dneva' : n < 5 ? 'dnevi' : 'dni');
 // Zamudnina: koledarski dnevi po roku za prevzem (do danes oziroma do izdaje).
+// Zamudnina: delovni dnevi (ko je poslovalnica odprta) po roku za prevzem – do danes oziroma do izdaje.
 function lateDays(o, t = today()) {
   if (!o.deadline) return 0;
   const end = o.handedDate || t;
-  return Math.max(0, daysBetween(o.deadline, end));
+  let n = 0;
+  for (let d = addDays(o.deadline, 1); d <= end; d = addDays(d, 1)) if (isWorkDay(d)) n++;
+  return n;
+}
+// Rok za prevzem se izračuna sproti, da upošteva tudi kasneje vpisane odsotnosti.
+function refreshDeadlines() {
+  orders.forEach((o) => { if (o.status === 'gotovo' && o.readyDate) o.deadline = addWorkDays(o.readyDate, CONFIG.pickupWorkDays); });
 }
 const lateFee = (o, t) => (o.feeWaived ? 0 : lateDays(o, t) * CONFIG.lateFeePerDay);
 
@@ -388,7 +408,7 @@ function stage(o, t = today()) {
   if (t >= lateNoticeDue(o) && !o.lateNoticeDate) return { key: 'zamudnina', label: 'Pošlji obvestilo o zamudnini', due: true };
   if (t > o.deadline) {
     const n = lateDays(o, t);
-    return { key: 'zamuda', label: `Zamuda ${n} ${dayWord(n)}${o.feeWaived ? ' · brez zamudnine' : ` · ${money(lateFee(o, t))}`}` };
+    return { key: 'zamuda', label: `Zamuda ${n} ${n === 1 ? 'del. dan' : 'del. dni'}${o.feeWaived ? ' · brez zamudnine' : ` · ${money(lateFee(o, t))}`}` };
   }
   if (!o.reminderDate && t >= reminderDue(o)) return { key: 'opomnik', label: 'Pošlji opomnik', due: true };
   const left = daysBetween(t, o.deadline);
@@ -398,27 +418,27 @@ function stage(o, t = today()) {
 /* ---------- Sporočila strankam ---------- */
 
 function message(type, o) {
-  const fee = money(CONFIG.lateFeePerDay);
+  const fee = `${money(CONFIG.lateFeePerDay)} za vsak delovni dan`;
   const end = `\n\nDelovni čas: ${CONFIG.hours}.\n${CONFIG.shopName}, ${CONFIG.address}, tel. ${CONFIG.phone}`;
   if (type === 'ready') {
     return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
-      `Po tem roku zaračunamo zamudnino ${fee} na dan, oblačila, ki niso prevzeta v enem mesecu ` +
+      `Po tem roku zaračunamo zamudnino ${fee}, oblačila, ki niso prevzeta v enem mesecu ` +
       `(do ${fmt(discardDue(o))}), pa oddamo v zabojnik ${CONFIG.donation}.` + end;
   }
   if (type === 'reminder') {
     const when = addDays(today(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : dayLabel(o.deadline).toLowerCase();
     return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem vaših oblačil (št. ${o.num}) brez zamudnine. ` +
-      `Od naslednjega dne zaračunamo zamudnino ${fee} na dan.` + end;
+      `Po tem roku zaračunamo zamudnino ${fee}.` + end;
   }
   if (type === 'late') {
     return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
-      `Od ${fmt(addDays(o.deadline, 1))} zaračunavamo zamudnino ${fee} na dan. ` +
+      `Od ${fmt(lateNoticeDue(o))} zaračunavamo zamudnino ${fee}. ` +
       `Oblačila, ki niso prevzeta do ${fmt(discardDue(o))}, oddamo v zabojnik ${CONFIG.donation}.` + end;
   }
   const late = lateDays(o) > 0 && !o.feeWaived;
   return `Pozdravljeni, vaša oblačila (št. ${o.num}) še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(discardDue(o))}, ` +
     `jih bomo oddali v zabojnik ${CONFIG.donation}.` +
-    (late ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${fee} na dan; do danes znaša ${money(lateFee(o))}.` : '') + end;
+    (late ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${fee}; do danes znaša ${money(lateFee(o))}.` : '') + end;
 }
 const MSG_TITLE = { ready: 'Obvestilo: oblačila so gotova', reminder: 'Opomnik za prevzem', late: 'Obvestilo o zamudnini', warning: `Opozorilo pred oddajo v ${CONFIG.donation}` };
 const MSG_FIELD = { ready: 'readyNotified', reminder: 'reminderDate', late: 'lateNoticeDate', warning: 'warnDate' };
@@ -454,17 +474,29 @@ const store = {
       orders = res.orders;
       serviceList = res.services && res.services.length ? res.services : DEFAULT_SERVICES;
       customerRecords = res.customers || [];
+      absences = res.absences || [];
     } else {
       orders = lsGet(LOCAL_KEY, []);
       serviceList = lsGet(SERVICES_KEY, DEFAULT_SERVICES);
       customerRecords = lsGet(CUSTOMERS_KEY, []);
+      absences = lsGet(ABSENCES_KEY, []);
     }
-    orders.forEach((o) => { if (!Array.isArray(o.services)) o.services = []; });
+    orders.forEach((o) => {
+      if (!Array.isArray(o.services)) o.services = [];
+      if (!Array.isArray(o.items)) o.items = [];
+    });
+    refreshDeadlines();
   },
   async saveServices(list) {
     if (this.remote()) await this.call('saveServices', { services: list });
     else if (!lsSet(SERVICES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
     serviceList = list;
+  },
+  async saveAbsences(list) {
+    if (this.remote()) await this.call('saveAbsences', { absences: list });
+    else if (!lsSet(ABSENCES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
+    absences = list;
+    refreshDeadlines();
   },
   async saveCustomer(c) {
     if (this.remote()) {
@@ -613,40 +645,33 @@ function renderIntake(el) {
           <input id="iDate" name="received" type="date" value="${today()}" max="${today()}">
         </div>
         <div>
-          <label for="iPieces">Število kosov</label>
-          <input id="iPieces" name="pieces" type="number" min="1" max="99" value="1" inputmode="numeric">
-        </div>
-      </div>
-      <label for="cSearch">Stranka</label>
-      <div id="customerBox"></div>
-      <label>Storitve</label>
-      ${serviceGroups().map(([g, list]) => `
-        <details class="svc-group">
-          <summary>${esc(g)} <small>(${list.length})</small></summary>
-          <div class="chips">${list.map((x) => `<button type="button" class="chip" data-svc="${serviceList.indexOf(x)}">+ ${esc(x.name)}</button>`).join('')}</div>
-        </details>`).join('')}
-      <div id="picked"></div>
-      <label for="iDesc">Opis <small>(podrobnosti, npr. »črne hlače – krajšanje za 3 cm«)</small></label>
-      <textarea id="iDesc" name="description"></textarea>
-      <div class="two">
-        <div>
-          <label for="iPrice">Cena (€) <small>(neobvezno)</small></label>
-          <input id="iPrice" name="price" inputmode="decimal" placeholder="npr. 12">
-        </div>
-        <div>
           <label for="iDue">Dogovorjeno do <small>(neobvezno)</small></label>
           <input id="iDue" name="dueDate" type="date" min="${today()}">
         </div>
       </div>
-      <label for="iNote">Opomba <small>(neobvezno)</small></label>
-      <input id="iNote" name="note">
+      <label for="cSearch">Stranka</label>
+      <div id="customerBox"></div>
+      <label>Kosi</label>
+      <div id="itemsBox"></div>
+      <button type="button" class="btn block secondary" style="margin-top:8px" data-additem>+ DODAJ NOV KOS</button>
       <p class="error" id="formError" hidden></p>
       <button class="btn block" style="margin-top:14px" id="saveIntake">Shrani prevzem</button>
     </form>
     ${recentIntakes()}`;
 
-  picked = [];
-  renderPicked();
+  intakeItems = [];
+  renderItems();
+  const box = $('#itemsBox');
+  box.addEventListener('change', (e) => {
+    if (e.target.dataset.garment === undefined) return;
+    const it = intakeItems[Number(e.target.dataset.garment)];
+    it.garment = e.target.value;
+    it.services = [];
+    renderItems();
+  });
+  box.addEventListener('input', (e) => {
+    if (e.target.dataset.itemnote !== undefined) intakeItems[Number(e.target.dataset.itemnote)].note = e.target.value;
+  });
 
   renderCustomerBox();
 }
@@ -790,30 +815,47 @@ function renderCustomerList() {
 
 /* ---- Seznam storitev (brez cen – cene so v blagajni) ---- */
 
-let picked = []; // izbrane storitve pri prevzemu: { group, name, qty }
+// Kosi pri prevzemu: { garment, services: [ime storitve], note }
+let intakeItems = [];
+const EXTRA_GROUP = 'Manjša popravila'; // storitve te skupine so na voljo pri vsakem kosu
 
 function serviceGroups() {
   const m = new Map();
   serviceList.forEach((x) => { if (!m.has(x.group)) m.set(x.group, []); m.get(x.group).push(x); });
   return [...m];
 }
+const garmentTypes = () => serviceGroups().map(([g]) => g).filter((g) => g !== EXTRA_GROUP);
+function servicesFor(garment) {
+  const own = serviceList.filter((x) => x.group === garment).map((x) => x.name);
+  const extra = serviceList.filter((x) => x.group === EXTRA_GROUP && x.group !== garment).map((x) => x.name);
+  return [...own, ...extra.filter((n) => !own.includes(n))];
+}
 const svcName = (x) => (x.group ? `${x.group} – ${x.name}` : x.name);
+const itemText = (it) => `${it.garment}${it.services.length ? ` – ${it.services.join(', ')}` : ''}${it.note ? ` (${it.note})` : ''}`;
 const servicesText = (o) => (o.services || []).map((x) => (x.qty > 1 ? `${x.qty} × ` : '') + svcName(x)).join(', ');
-const orderText = (o) => [servicesText(o), o.description].filter(Boolean).join(' – ');
+const orderText = (o) => (o.items && o.items.length
+  ? o.items.map(itemText).join('; ')
+  : [servicesText(o), o.description].filter(Boolean).join(' – '));
 
-function renderPicked() {
-  const el = $('#picked');
-  if (!el) return;
-  el.innerHTML = picked.length ? `
-    <div class="card" style="margin-top:10px;padding:8px 12px">
-      ${picked.map((x, i) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-          <span style="flex:1">${esc(svcName(x))}</span>
-          <button type="button" class="chip" data-qty="${i}" data-d="-1" aria-label="Manj">−</button>
-          <b>${x.qty}</b>
-          <button type="button" class="chip" data-qty="${i}" data-d="1" aria-label="Več">+</button>
-        </div>`).join('')}
-    </div>` : '';
+function renderItems() {
+  const box = $('#itemsBox');
+  if (!box) return;
+  box.innerHTML = intakeItems.map((it, i) => `
+    <div class="card" style="margin-top:8px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>Kos ${i + 1}</b>
+        <button type="button" class="close" style="font-size:1.3rem" data-removeitem="${i}" aria-label="Odstrani kos">×</button>
+      </div>
+      <select data-garment="${i}" aria-label="Vrsta kosa" style="margin-top:6px">
+        <option value="">– izberi kos –</option>
+        ${garmentTypes().map((g) => `<option ${g === it.garment ? 'selected' : ''}>${esc(g)}</option>`).join('')}
+      </select>
+      ${it.garment ? `
+        <div class="chips" style="margin-top:8px">
+          ${servicesFor(it.garment).map((n) => `<button type="button" class="chip ${it.services.includes(n) ? 'on' : ''}" data-itemsvc="${i}" data-name="${esc(n)}">${it.services.includes(n) ? '✓ ' : '+ '}${esc(n)}</button>`).join('')}
+        </div>` : ''}
+      <input data-itemnote="${i}" value="${esc(it.note)}" placeholder="Opomba (npr. skrajšati za 3 cm)" style="margin-top:8px">
+    </div>`).join('') || '<p class="hint">Dodaj vsaj en kos.</p>';
 }
 
 // Vrstice »Skupina; Storitev« (dodatni stolpci, npr. cena, se prezrejo).
@@ -844,22 +886,25 @@ async function saveIntake() {
   const err = (m) => { $('#formError').textContent = m; $('#formError').hidden = false; };
   const c = intakeKey && customers().find((x) => x.key === intakeKey);
   if (!c) return err('Izberi stranko ali dodaj novo.');
+  if (!intakeItems.length) return err('Dodaj vsaj en kos.');
+  const bad = intakeItems.findIndex((it) => !it.garment || (!it.services.length && !it.note.trim()));
+  if (bad >= 0) return err(`Pri kosu ${bad + 1} izberi vrsto in vsaj eno storitev (ali vpiši opombo).`);
+  const items = intakeItems.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note.trim() }));
   const o = {
     sector: 'popravilo',
     received: f.received || today(),
     name: c.name,
     phone: c.phone,
     email: c.email || '',
-    pieces: Math.max(1, Number(f.pieces) || 1),
-    services: picked.map(({ group, name, qty }) => ({ group, name, qty })),
-    description: f.description.trim(),
-    price: f.price.trim().replace(',', '.'),
+    pieces: items.length,
+    items,
+    services: items.flatMap((it) => it.services.map((name) => ({ group: it.garment, name, qty: 1 }))),
+    description: '',
+    price: '',
     dueDate: f.dueDate || '',
-    note: f.note.trim(),
+    note: '',
     status: 'sprejeto',
   };
-  if (!o.description && !o.services.length) return err('Izberi storitev ali opiši, kaj je treba narediti.');
-  if (o.price && isNaN(Number(o.price))) return err('Cena mora biti število.');
   if (o.received > today()) return err('Datum prevzema ne more biti v prihodnosti.');
   const saved = await busy(() => store.create(o));
   if (saved) { lastCreated = saved; intakeKey = null; render(); }
@@ -964,8 +1009,44 @@ function renderOverview(el) {
     ${due.map((o) => orderCard(o)).join('') || '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
     <h2>Evidenca</h2>
     <div id="stats"></div>
+    <h2>Koledar odsotnosti</h2>
+    <div id="absences" class="card"></div>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
   renderStats();
+  renderAbsences();
+}
+
+let calMonth = today().slice(0, 7);
+
+// Koledar: klik na delovni dan ga označi kot odsotnost (poslovalnica zaprta – ne šteje v roke in zamudnino).
+function renderAbsences() {
+  const el = $('#absences');
+  if (!el) return;
+  const [y, m] = calMonth.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const days = new Date(y, m, 0).getDate();
+  const lead = (first.getDay() + 6) % 7; // ponedeljek = 0
+  const name = first.toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' });
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<span></span>');
+  for (let d = 1; d <= days; d++) {
+    const ds = `${calMonth}-${pad(d)}`;
+    const regular = CONFIG.workDays.includes(parse(ds).getDay()) && !CONFIG.holidays.includes(ds);
+    const cls = ds === today() ? 'today' : '';
+    cells.push(regular
+      ? `<button class="${cls} ${absences.includes(ds) ? 'absent' : ''}" data-absent="${ds}" title="${absences.includes(ds) ? 'Odsotnost – klikni za preklic' : 'Klikni za odsotnost'}">${d}</button>`
+      : `<span class="d closed ${cls}" title="Zaprto">${d}</span>`);
+  }
+  const inMonth = absences.filter((a) => a.startsWith(calMonth));
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <button class="btn small secondary" data-cal="-1" aria-label="Prejšnji mesec">‹</button>
+      <b style="text-transform:capitalize">${esc(name)}</b>
+      <button class="btn small secondary" data-cal="1" aria-label="Naslednji mesec">›</button>
+    </div>
+    <div class="cal">${['pon', 'tor', 'sre', 'čet', 'pet', 'sob', 'ned'].map((d) => `<span class="h">${d}</span>`).join('')}${cells.join('')}</div>
+    <p class="hint" style="margin-top:8px">Klikni delovni dan, da ga označiš kot odsotnost (rdeče). Dnevi odsotnosti se ne štejejo v rok za prevzem in ne v zamudnino. Sivi dnevi so zaprti.</p>
+    ${inMonth.length ? `<p class="hint">Odsotnost ta mesec: ${inMonth.map((a) => fmt(a)).join(', ')}</p>` : ''}`;
 }
 
 // Evidenca za en dan: stranke, katerih oblačila so bila ta dan prevzeta, v popravilu ali gotova.
@@ -986,18 +1067,18 @@ function renderStats() {
     const people = new Map();
     list.forEach((o) => { const k = digits(o.phone); people.set(k, [...(people.get(k) || []), o]); });
     return `
-      <div class="card" style="padding:12px 14px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <b>${label}</b>
+      <details class="card stat-box" style="padding:12px 14px">
+        <summary style="display:flex;justify-content:space-between;align-items:baseline;list-style:none;cursor:pointer">
+          <b>▸ ${label}</b>
           <span style="font-size:1.6rem;font-weight:800;color:var(--brand)">${people.size}</span>
-        </div>
+        </summary>
         <div class="hint" style="margin:0 0 6px">${people.size === 1 ? 'stranka' : people.size === 2 ? 'stranki' : people.size <= 4 && people.size ? 'stranke' : 'strank'} · ${list.length} ${list.length === 1 ? 'naročilo' : list.length === 2 ? 'naročili' : list.length <= 4 && list.length ? 'naročila' : 'naročil'}</div>
         ${[...people.values()].map((os) => `
           <div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:.9rem">
             <span>${esc(os[0].name)}</span>
             <span>${os.map((o) => `<button class="open" data-open="${esc(o.id)}" style="border:0;background:none;padding:0;color:var(--brand);font-weight:700">${esc(o.num)}</button>`).join(', ')}</span>
           </div>`).join('')}
-      </div>`;
+      </details>`;
   };
   $('#stats').innerHTML = `
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
@@ -1018,9 +1099,9 @@ function renderStats() {
 function policyHtml() {
   return `<b>Roki za prevzem</b>
     <ol>
-      <li>Ko so oblačila gotova, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>.</li>
+      <li>Ko so oblačila gotova, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
       <li>Delovni dan pred iztekom roka pošljemo <b>opomnik</b>.</li>
-      <li>Dan po roku pošljemo <b>obvestilo o zamudnini</b> – teče ${money(CONFIG.lateFeePerDay)} na dan, razen če se stranka javi in se dogovorimo drugače.</li>
+      <li>Dan po roku pošljemo <b>obvestilo o zamudnini</b> – ${money(CONFIG.lateFeePerDay)} za vsak delovni dan (brez dni odsotnosti), razen če se stranka javi in se dogovorimo drugače.</li>
       <li>Zadnji delovni dan pred oddajo pošljemo <b>opozorilo</b> z datumom oddaje v zabojnik (če je isti dan na vrsti tudi obvestilo o zamudnini, gre eno sporočilo).</li>
       <li>Oblačila, ki niso prevzeta v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
     </ol>`;
@@ -1119,7 +1200,7 @@ function confirmIssue(o) {
     <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
     <p>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(orderText(o))}</p>
     ${o.price ? `<p style="margin:4px 0">Popravilo: <b>${esc(money(o.price))}</b></p>` : ''}
-    ${n ? `<p style="margin:4px 0">Zamudnina: ${n} ${dayWord(n)} × ${money(CONFIG.lateFeePerDay)} = <b>${money(n * CONFIG.lateFeePerDay)}</b>
+    ${n ? `<p style="margin:4px 0">Zamudnina: ${n} ${n === 1 ? 'delovni dan' : n === 2 ? 'delovna dneva' : n < 5 ? 'delovni dnevi' : 'delovnih dni'} × ${money(CONFIG.lateFeePerDay)} = <b>${money(n * CONFIG.lateFeePerDay)}</b>
       ${o.feeWaived ? '<span class="pill">ne zaračunamo</span>' : ''}</p>` : ''}
     ${o.price || fee ? `<p style="font-size:1.2rem;margin:8px 0">Za plačilo: <b>${money(total)}</b></p>` : ''}
     ${n && !o.feeWaived ? '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="waiveFee" style="width:auto"> Zamudnine ne zaračunamo (dogovor s stranko)</label>' : ''}
@@ -1174,7 +1255,8 @@ function openDetail(o) {
         <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
         <div><label>Cena (€)</label><input name="price" inputmode="decimal" value="${esc(o.price)}" ${dis}></div>
       </div>
-      ${o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(svcName(x))}`).join('<br>')}</p>` : ''}
+      ${o.items.length ? `<label>Kosi</label><ol style="margin:0;padding-left:20px">${o.items.map((it) => `<li>${esc(itemText(it))}</li>`).join('')}</ol>`
+        : o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(svcName(x))}`).join('<br>')}</p>` : ''}
       <label>Opis</label><textarea name="description" ${dis}>${esc(o.description)}</textarea>
       <label>Opomba</label><input name="note" value="${esc(o.note)}" ${dis}>
       ${o.status === 'gotovo' ? `<label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="feeWaived" style="width:auto" ${o.feeWaived ? 'checked' : ''}> Brez zamudnine (stranka se je javila)</label>` : ''}
@@ -1191,7 +1273,7 @@ function openDetail(o) {
     const f = Object.fromEntries(new FormData($('#editForm')));
     const e = $('#editError');
     const fail = (m) => { e.textContent = m; e.hidden = false; };
-    if (!f.description.trim() && !o.services.length) return fail('Opis je obvezen.');
+    if (!f.description.trim() && !o.services.length && !o.items.length) return fail('Opis je obvezen.');
     if (f.received > today()) return fail('Datum prevzema ne more biti v prihodnosti.');
     if (f.price.trim() && isNaN(Number(f.price.trim().replace(',', '.')))) return fail('Cena mora biti število.');
     const ok = await busy(() => store.update(o.id, {
@@ -1216,29 +1298,41 @@ function openDetail(o) {
 /* ---------- Prevzemni listek ---------- */
 
 function printTicket(o) {
-  const services = (o.services || []).map((x) => `<li>${x.qty > 1 ? `${x.qty} × ` : ''}${esc(svcName(x))}</li>`).join('');
+  const items = o.items && o.items.length ? o.items.map(itemText)
+    : [orderText(o)].filter(Boolean);
+  const hours = CONFIG.hours.split(';').map((h) => esc(h.trim())).join('<br>');
   $('#print').innerHTML = `
     <div class="ticket">
-      <div class="t-shop"><b>${esc(CONFIG.shopName)}</b><br>${esc(CONFIG.address)}<br>tel. ${esc(CONFIG.phone)}<br>${esc(CONFIG.hours)}</div>
+      <div class="t-shop">
+        <b>${esc(CONFIG.shopName)}</b><br>${esc(CONFIG.address)}<br>tel. ${esc(CONFIG.phone)}
+        <div style="margin-top:1.5mm"><b style="font-size:7.5pt">Delovni čas</b><br>${hours}</div>
+      </div>
       <div class="t-title">Prevzemni listek</div>
       <div class="t-num">${esc(o.num)}</div>
       <table>
-        <tr><td>Datum prevzema</td><td>${fmt(o.received)}</td></tr>
         <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
         <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
-        <tr><td>Kosov</td><td>${esc(o.pieces)}</td></tr>
-        ${o.dueDate ? `<tr><td>Predvideno gotovo</td><td>${fmt(o.dueDate)}</td></tr>` : ''}
-        ${o.price ? `<tr><td>Cena</td><td>${esc(money(o.price))}</td></tr>` : ''}
+        <tr><td>Datum prevzema</td><td>${fmt(o.received)}</td></tr>
+        <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
       </table>
-      ${services ? `<ul>${services}</ul>` : ''}
-      ${o.description ? `<p>${esc(o.description)}</p>` : ''}
       <div class="t-terms">
-        Ko bodo oblačila gotova, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila,
-        nato zaračunamo zamudnino ${money(CONFIG.lateFeePerDay)} na dan. Oblačila, ki niso prevzeta v enem mesecu od obvestila,
-        oddamo v zabojnik ${esc(CONFIG.donation)}. Ob prevzemu prinesite ta listek.
+        <b>Pogoji prevzema</b><br>
+        Ko bodo oblačila gotova, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila.
+        Po tem roku zaračunamo zamudnino ${money(CONFIG.lateFeePerDay)} za vsak delovni dan.
+        Oblačila, ki niso prevzeta v enem mesecu od obvestila, oddamo v zabojnik ${esc(CONFIG.donation)}.
+        Ob prevzemu prinesite ta listek.
       </div>
       <div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>
-      <div class="t-tag"><div class="t-num">${esc(o.num)}</div>${esc(o.name)} · ${esc(o.phone)}<br>${fmt(o.received)} · ${esc(o.pieces)} ${pieces(o.pieces)}</div>
+      <div class="t-staff">
+        <div class="t-num">${esc(o.num)}</div>
+        <table>
+          <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
+          <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
+          <tr><td>Datum prevzema</td><td>${fmt(o.received)}</td></tr>
+          <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
+        </table>
+        <ol>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
+      </div>
     </div>`;
   window.print();
 }
@@ -1385,7 +1479,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
@@ -1400,18 +1494,20 @@ document.addEventListener('click', (e) => {
     if (location.hash === t.dataset.nav) return render();
     return nav(t.dataset.nav);
   }
-  if (t.dataset.svc) {
-    const x = serviceList[Number(t.dataset.svc)];
-    const have = picked.find((p) => p.name === x.name && p.group === x.group);
-    if (have) have.qty++;
-    else picked.push({ group: x.group, name: x.name, qty: 1 });
-    return renderPicked();
+  if ('additem' in t.dataset) { intakeItems.push({ garment: '', services: [], note: '' }); renderItems(); $(`[data-garment="${intakeItems.length - 1}"]`)?.focus(); return; }
+  if (t.dataset.removeitem) { intakeItems.splice(Number(t.dataset.removeitem), 1); return renderItems(); }
+  if (t.dataset.itemsvc) {
+    const it = intakeItems[Number(t.dataset.itemsvc)];
+    const n = t.dataset.name;
+    it.services = it.services.includes(n) ? it.services.filter((x) => x !== n) : [...it.services, n];
+    return renderItems();
   }
-  if (t.dataset.qty) {
-    const x = picked[Number(t.dataset.qty)];
-    x.qty += Number(t.dataset.d);
-    if (x.qty < 1) picked.splice(Number(t.dataset.qty), 1);
-    return renderPicked();
+  if (t.dataset.cal) { calMonth = addMonths(calMonth + '-01', Number(t.dataset.cal)).slice(0, 7); return renderAbsences(); }
+  if (t.dataset.absent) {
+    const d = t.dataset.absent;
+    const next = absences.includes(d) ? absences.filter((x) => x !== d) : [...absences, d].sort();
+    busy(() => store.saveAbsences(next)).then(() => renderAbsences());
+    return;
   }
   if (t.id === 'newIntake') { lastCreated = null; return render(); }
   if (t.dataset.pick) { intakeKey = t.dataset.pick; return renderCustomerBox(); }
