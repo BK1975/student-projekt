@@ -18,12 +18,10 @@ potrebna.
 - **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki in razvrščena po
   datumu prevzema (najnovejše ali najstarejše najprej, z naslovom dneva). Brez iskanja so prikazana vsa
   gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
-- **Pregled → Evidenca** – za izbrani mesec po dneh: prevzeto (naročila in kosi), gotovo, **za izdajo**
-  (gotova oblačila, ki so ta dan čakala na stranko), **izdano** in oddano v zabojnik. Povzetek meseca,
-  povprečno trajanje popravila, povprečno koliko dni stranka pride po oblačila, najpogostejše storitve in
-  izvoz v CSV (Excel).
-- **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), oblačila v popravilu,
-  oblačila, ki čakajo na prevzem, in zadnja zaključena naročila.
+- **V popravilu** – vsa oblačila, ki so v delu, razvrščena po datumu prevzema; z gumbom **Označi kot gotovo**.
+- **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), **Evidenca** in zadnja
+  zaključena naročila. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank je
+  bilo ta dan **Prevzetih**, **V popravilu** in **Gotovih**, z imeni strank in številkami naročil.
 
 **Roki za prevzem:**
 

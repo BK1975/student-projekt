@@ -65,8 +65,8 @@
   .sector span { color: var(--muted); font-size: .92rem; }
   .sector .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
-  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
-  .tabs button { border: 0; background: none; padding: 9px 2px; font-size: .92rem; border-radius: 9px; font-weight: 600; color: var(--brand); position: relative; }
+  .tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+  .tabs button { border: 0; background: none; padding: 8px 2px; font-size: .84rem; line-height: 1.15; border-radius: 9px; font-weight: 600; color: var(--brand); position: relative; }
   .tabs button[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .72rem; margin-left: 4px; }
 
@@ -148,13 +148,6 @@
 
   .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 40; font-size: .92rem; max-width: calc(100% - 32px); }
   .loading { opacity: .6; pointer-events: none; }
-  table.stats { width: 100%; border-collapse: collapse; font-size: .82rem; }
-  table.stats th, table.stats td { padding: 7px 3px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  table.stats th:first-child, table.stats td:first-child { text-align: left; padding-left: 8px; }
-  table.stats th:last-child, table.stats td:last-child { padding-right: 8px; }
-  table.stats th { background: var(--brand-soft); color: var(--brand); font-weight: 700; white-space: normal; line-height: 1.2; }
-  table.stats tr.today td { background: var(--warn-bg); font-weight: 600; }
-  table.stats small { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -497,18 +490,20 @@ function renderHome(app) {
 
 function renderRepair(app, tab) {
   const due = orders.filter((o) => o.sector === 'popravilo' && stage(o).due).length;
-  const tabs = [['stranke', 'Stranke'], ['prevzem', 'Prevzem'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
+  const inRepair = orders.filter((o) => o.sector === 'popravilo' && o.status === 'sprejeto').length;
+  const tabs = [['stranke', 'Stranke'], ['prevzem', 'Prevzem'], ['popravilo', 'V popravilu'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
   app.innerHTML = `
     <button class="back" data-nav="#/">‹ Sektorji</button>
     <h1>Popravilo oblačil</h1>
     <div class="tabs" role="tablist">
-      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/popravilo/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}</button>`).join('')}
+      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/popravilo/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}${id === 'popravilo' && inRepair ? `<span class="count" style="background:var(--brand)">${inRepair}</span>` : ''}</button>`).join('')}
     </div>
     <div id="tab"></div>`;
   const el = $('#tab');
   if (tab === 'izdaja') renderIssue(el);
   else if (tab === 'pregled') renderOverview(el);
   else if (tab === 'prevzem') renderIntake(el);
+  else if (tab === 'popravilo') renderInRepair(el);
   else renderCustomers(el);
 }
 
@@ -866,7 +861,15 @@ function renderResults() {
 
 /* ---- Pregled ---- */
 
-let statsMonth = today().slice(0, 7);
+/* ---- V popravilu ---- */
+
+function renderInRepair(el) {
+  const list = orders.filter((o) => o.sector === 'popravilo' && o.status === 'sprejeto').sort(byDate((o) => o.received));
+  el.innerHTML = `${sortSwitch()}
+    ${list.map((o) => orderCard(o)).join('') || '<p class="empty">Ni oblačil v popravilu.</p>'}`;
+}
+
+let statsDay = today();
 
 function renderOverview(el) {
   const t = today();
@@ -874,8 +877,6 @@ function renderOverview(el) {
   const urgency = ['humana', 'koncno', 'opomnik'];
   const due = repairs.filter((o) => stage(o, t).due)
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
-  const inRepair = repairs.filter((o) => o.status === 'sprejeto').sort(byDate((o) => o.received));
-  const waiting = repairs.filter((o) => o.status === 'gotovo' && !stage(o, t).due).sort(byDate((o) => o.readyDate));
   const closedDate = (o) => o.handedDate || o.discardedDate || '';
   const closed = repairs.filter((o) => o.status === 'izdano' || o.status === 'zavrzeno')
     .sort((a, b) => closedDate(b).localeCompare(closedDate(a))).slice(0, 30);
@@ -884,98 +885,56 @@ function renderOverview(el) {
     ${due.map((o) => orderCard(o)).join('') || '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
     <h2>Evidenca</h2>
     <div id="stats"></div>
-    <h2>V popravilu (${inRepair.length})</h2>
-    ${sortSwitch()}
-    ${inRepair.map((o) => orderCard(o)).join('') || '<p class="empty">Ni oblačil v popravilu.</p>'}
-    <h2>Čaka na prevzem (${waiting.length})</h2>
-    ${waiting.map((o) => orderCard(o)).join('') || '<p class="empty">Nič ne čaka na prevzem.</p>'}
     <details><summary>Zadnja zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o)).join('')}</details>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
   renderStats();
 }
 
-// Evidenca po dneh za izbrani mesec.
-function dailyStats(month) {
+// Evidenca za en dan: stranke, katerih oblačila so bila ta dan prevzeta, v popravilu ali gotova.
+function dayStats(day) {
   const repairs = orders.filter((o) => o.sector === 'popravilo');
-  const [y, m] = month.split('-').map(Number);
-  const last = Math.min(new Date(y, m, 0).getDate(), month === today().slice(0, 7) ? parse(today()).getDate() : 31);
-  const rows = [];
-  for (let d = 1; d <= last; d++) {
-    const day = `${month}-${pad(d)}`;
-    const received = repairs.filter((o) => o.received === day);
-    const row = {
-      day,
-      received: received.length,
-      pieces: received.reduce((n, o) => n + (Number(o.pieces) || 1), 0),
-      ready: repairs.filter((o) => o.readyDate === day).length,
-      // Pričakovano za izdajo: gotova oblačila, ki so ta dan čakala na stranko.
-      expected: repairs.filter((o) => o.readyDate && o.readyDate <= day
-        && !(o.handedDate && o.handedDate < day) && !(o.discardedDate && o.discardedDate < day)).length,
-      handed: repairs.filter((o) => o.handedDate === day).length,
-      discarded: repairs.filter((o) => o.discardedDate === day).length,
-    };
-    const active = row.received || row.ready || row.handed || row.discarded;
-    if (active || isWorkDay(day)) rows.push(row);
-  }
-  return rows;
+  const gone = (o) => (o.handedDate && o.handedDate <= day) || (o.discardedDate && o.discardedDate <= day);
+  return {
+    received: repairs.filter((o) => o.received === day),
+    inRepair: repairs.filter((o) => o.received <= day && (!o.readyDate || o.readyDate > day) && !gone(o)),
+    ready: repairs.filter((o) => o.readyDate === day),
+  };
 }
 
 function renderStats() {
-  const month = statsMonth;
-  const rows = dailyStats(month);
-  const sum = (k) => rows.reduce((n, r) => n + r[k], 0);
-  const inMonth = (d) => d && d.startsWith(month);
-  const repairs = orders.filter((o) => o.sector === 'popravilo');
-  const avg = (list) => (list.length ? (list.reduce((a, b) => a + b, 0) / list.length).toFixed(1).replace('.', ',') : '–');
-  const repairDays = avg(repairs.filter((o) => inMonth(o.readyDate)).map((o) => daysBetween(o.received, o.readyDate)));
-  const waitDays = avg(repairs.filter((o) => inMonth(o.handedDate) && o.readyDate).map((o) => daysBetween(o.readyDate, o.handedDate)));
-  // Najpogostejše storitve med prevzemi v mesecu.
-  const counts = new Map();
-  repairs.filter((o) => inMonth(o.received)).forEach((o) => (o.services || []).forEach((x) => {
-    const k = svcName(x);
-    counts.set(k, (counts.get(k) || 0) + (Number(x.qty) || 1));
-  }));
-  const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const shown = [...rows].sort(byDate((r) => r.day));
-  const tile = (label, value, sub = '') => `<div class="card" style="padding:10px 12px"><div class="hint" style="margin:0">${label}</div><div style="font-size:1.4rem;font-weight:800;color:var(--brand)">${value}</div>${sub ? `<div class="hint" style="margin:0">${sub}</div>` : ''}</div>`;
-  $('#stats').innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="month" id="statsMonth" value="${month}" max="${today().slice(0, 7)}" style="max-width:200px">
-      <button class="btn small secondary" id="exportStats">Izvozi CSV</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
-      ${tile('Prevzeto', sum('received'), `${sum('pieces')} kosov`)}
-      ${tile('Gotovo', sum('ready'))}
-      ${tile('Izdano', sum('handed'))}
-      ${tile(`Oddano v ${esc(CONFIG.donation)}`, sum('discarded'))}
-      ${tile('Popravilo traja', repairDays, 'dni v povprečju')}
-      ${tile('Stranka pride po', waitDays, 'dneh v povprečju')}
-    </div>
-    <div class="card" style="margin-top:10px;padding:0;overflow-x:auto">
-      <table class="stats">
-        <thead><tr><th>Dan</th><th title="Prevzeta naročila (kosi)">Prevzeto</th><th>Gotovo</th><th title="Gotova oblačila, ki so ta dan čakala na stranko">Za izdajo</th><th>Izdano</th><th title="Oddano v zabojnik ${esc(CONFIG.donation)}">Zabojnik</th></tr></thead>
-        <tbody>${shown.map((r) => `
-          <tr class="${r.day === today() ? 'today' : ''}">
-            <td>${esc(DNI[parse(r.day).getDay()].slice(0, 3).replace(/^./, (c) => c.toUpperCase()))} ${parse(r.day).getDate()}. ${parse(r.day).getMonth() + 1}.</td>
-            <td>${r.received ? `${r.received} <small>(${r.pieces})</small>` : '·'}</td>
-            <td>${r.ready || '·'}</td>
-            <td>${r.expected || '·'}</td>
-            <td>${r.handed || '·'}</td>
-            <td>${r.discarded || '·'}</td>
-          </tr>`).join('') || '<tr><td colspan="6" class="hint">Ni podatkov.</td></tr>'}</tbody>
-      </table>
-    </div>
-    <p class="hint">»Za izdajo« = gotova oblačila, ki so ta dan čakala na stranko. Primerjaj ga z »Izdano«.</p>
-    ${top.length ? `<div class="card" style="margin-top:10px"><b>Najpogostejše storitve</b><ol style="margin:6px 0 0;padding-left:20px">${top.map(([n, c]) => `<li>${esc(n)} – ${c}×</li>`).join('')}</ol></div>` : ''}`;
-  $('#statsMonth').addEventListener('change', (e) => { if (e.target.value) { statsMonth = e.target.value; renderStats(); } });
-  $('#exportStats').onclick = () => {
-    const lines = [['Datum', 'Prevzeto naročil', 'Prevzeto kosov', 'Gotovo', 'Za izdajo', 'Izdano', `Oddano v ${CONFIG.donation}`].join(';')]
-      .concat(rows.map((r) => [fmt(r.day), r.received, r.pieces, r.ready, r.expected, r.handed, r.discarded].join(';')));
-    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `bucka-evidenca-${month}.csv` });
-    a.click();
-    URL.revokeObjectURL(a.href);
+  const day = statsDay;
+  const st = dayStats(day);
+  const box = (label, list, cls) => {
+    const people = new Map();
+    list.forEach((o) => { const k = digits(o.phone); people.set(k, [...(people.get(k) || []), o]); });
+    return `
+      <div class="card" style="padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <b>${label}</b>
+          <span style="font-size:1.6rem;font-weight:800;color:var(--brand)">${people.size}</span>
+        </div>
+        <div class="hint" style="margin:0 0 6px">${people.size === 1 ? 'stranka' : people.size === 2 ? 'stranki' : people.size <= 4 && people.size ? 'stranke' : 'strank'} · ${list.length} ${list.length === 1 ? 'naročilo' : list.length === 2 ? 'naročili' : list.length <= 4 && list.length ? 'naročila' : 'naročil'}</div>
+        ${[...people.values()].map((os) => `
+          <div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:.9rem">
+            <span>${esc(os[0].name)}</span>
+            <span>${os.map((o) => `<button class="open" data-open="${esc(o.id)}" style="border:0;background:none;padding:0;color:var(--brand);font-weight:700">${esc(o.num)}</button>`).join(', ')}</span>
+          </div>`).join('')}
+      </div>`;
   };
+  $('#stats').innerHTML = `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+      <button class="btn small secondary" data-day="-1" aria-label="Prejšnji dan">‹</button>
+      <input type="date" id="statsDay" value="${day}" max="${today()}" style="flex:1">
+      <button class="btn small secondary" data-day="1" aria-label="Naslednji dan" ${day >= today() ? 'disabled' : ''}>›</button>
+      ${day !== today() ? '<button class="btn small secondary" data-day="0">Danes</button>' : ''}
+    </div>
+    <p style="margin:0 0 8px;font-weight:600">${esc(dayLabel(day))}</p>
+    <div style="display:grid;gap:8px">
+      ${box('Prevzeto', st.received)}
+      ${box('V popravilu', st.inRepair)}
+      ${box('Gotovo', st.ready)}
+    </div>`;
+  $('#statsDay').addEventListener('change', (e) => { if (e.target.value) { statsDay = e.target.value > today() ? today() : e.target.value; renderStats(); } });
 }
 
 function policyHtml() {
@@ -1302,8 +1261,13 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-sort], [data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-day], [data-sort], [data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
   if (!t) return;
+  if (t.dataset.day) {
+    const n = Number(t.dataset.day);
+    statsDay = n === 0 ? today() : addDays(statsDay, n) > today() ? today() : addDays(statsDay, n);
+    return renderStats();
+  }
   if (t.dataset.sort) { sortNewest = t.dataset.sort === 'new'; lsSet(SORT_KEY, sortNewest); return render(); }
   if (t.dataset.nav) {
     e.preventDefault();
