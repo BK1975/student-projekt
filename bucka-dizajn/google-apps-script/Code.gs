@@ -27,9 +27,9 @@ const NASTAVITVE = {
   rokPrevzemaDelovnihDni: 14, // za prevzem ima stranka toliko delovnih dni od obvestila »gotovo«
   zamudninaNaDan: 0.5,        // € na dan po roku za prevzem
   oddajaPoMesecih: 1,         // po toliko mesecih od obvestila »gotovo« neprevzeto oddamo v zabojnik
-  opozoriloPoDneh: 21,        // opozorilo pred oddajo v zabojnik (dni od obvestila »gotovo«)
+  najmanjDniPoRoku: 3,        // oddaja v zabojnik najprej toliko delovnih dni po roku za prevzem
   zabojnik: 'Humana',
-  delovniDnevi: [1, 2, 3, 4, 5], // 0 = nedelja … 6 = sobota
+  delovniDnevi: [2, 3, 4, 5], // dnevi, ko je poslovalnica odprta (0 = nedelja … 6 = sobota)
   prazniki: [
     '2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02', '2027-02-08',
     '2027-03-28', '2027-03-29', '2027-04-27', '2027-05-01', '2027-05-02',
@@ -159,6 +159,7 @@ function posodobi(sh, id, patch) {
 function dnevniPregled() {
   const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
   const t = danes();
+  if (!jeDelovniDan(t)) return; // obvestila pošiljamo samo na dneve, ko je poslovalnica odprta
   const poslano = [];
   const rocno = [];
   const VRSTE = {
@@ -199,8 +200,10 @@ function dnevniPregled() {
 function faza_(o, t) {
   if (o.status !== 'gotovo' || !o.deadline || !o.readyDate) return null;
   if (t >= oddajaOd(o)) return 'humana';
-  if (!o.warnDate && t >= dodajDni(o.readyDate, NASTAVITVE.opozoriloPoDneh)) return 'opozorilo';
-  if (t > o.deadline) return o.lateNoticeDate ? null : 'zamudnina';
+  const zamudninaOd = odprtOdDne(dodajDni(o.deadline, 1));
+  const opozoriloOd = najkasnejsi(prejsnjiDelovniDan(oddajaOd(o)), zamudninaOd);
+  if (!o.warnDate && t >= opozoriloOd) return 'opozorilo';
+  if (t > o.deadline) return o.lateNoticeDate || t < zamudninaOd ? null : 'zamudnina';
   if (!o.reminderDate && t >= prejsnjiDelovniDan(o.deadline)) return 'opomnik';
   return null;
 }
@@ -211,7 +214,16 @@ function oddajaOd(o) {
   d.setDate(1);
   d.setMonth(d.getMonth() + NASTAVITVE.oddajaPoMesecih);
   d.setDate(Math.min(dan, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
-  return iso(d);
+  return najkasnejsi(odprtOdDne(iso(d)), dodajDelovneDni(o.deadline, NASTAVITVE.najmanjDniPoRoku));
+}
+
+function najkasnejsi(a, b) { return a > b ? a : b; }
+
+// Prvi dan od s naprej, ko je poslovalnica odprta.
+function odprtOdDne(s) {
+  let x = s;
+  while (!jeDelovniDan(x)) x = dodajDni(x, 1);
+  return x;
 }
 
 function prejsnjiDelovniDan(s) {
@@ -227,22 +239,22 @@ function sporocilo(vrsta, o, t) {
   const evri = (x) => `${x.toFixed(2).replace('.', ',')} €`;
   const zamudnina = evri(NASTAVITVE.zamudninaNaDan);
   if (vrsta === 'ready') {
-    return `Pozdravljeni, vaša oblačila so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
+    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
       `Po tem roku zaračunamo zamudnino ${zamudnina} na dan, oblačila, ki niso prevzeta v enem mesecu ` +
       `(do ${fmt(oddajaOd(o))}), pa oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
   }
   if (vrsta === 'reminder') {
     const kdaj = dodajDni(t || danes(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : fmt(o.deadline);
-    return `Pozdravljeni, opominjamo vas, da je ${kdaj} zadnji dan za prevzem vaših oblačil brez zamudnine. ` +
+    return `Pozdravljeni, opominjamo vas, da je ${kdaj} zadnji dan za prevzem vaših oblačil (št. ${o.num}) brez zamudnine. ` +
       `Od naslednjega dne zaračunamo zamudnino ${zamudnina} na dan.` + konec;
   }
   if (vrsta === 'late') {
-    return `Pozdravljeni, rok za prevzem vaših oblačil je potekel ${fmt(o.deadline)}. ` +
+    return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
       `Od ${fmt(dodajDni(o.deadline, 1))} zaračunavamo zamudnino ${zamudnina} na dan. ` +
       `Oblačila, ki niso prevzeta do ${fmt(oddajaOd(o))}, oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
   }
   const dni = Math.max(0, Math.round((razcleni(t || danes()) - razcleni(o.deadline)) / 86400000));
-  return `Pozdravljeni, vaša oblačila še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(oddajaOd(o))}, ` +
+  return `Pozdravljeni, vaša oblačila (št. ${o.num}) še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(oddajaOd(o))}, ` +
     `jih bomo oddali v zabojnik ${NASTAVITVE.zabojnik}.` +
     (dni && !o.feeWaived ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${zamudnina} na dan; ` +
       `do danes znaša ${evri(dni * NASTAVITVE.zamudninaNaDan)}.` : '') + konec;

@@ -151,22 +151,25 @@
   .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 40; font-size: .92rem; max-width: calc(100% - 32px); }
   .loading { opacity: .6; pointer-events: none; }
   #print { display: none; }
+  /* Prevzemni listek za termo tiskalnik (papir 56 mm, potisk ~48 mm) */
+  .ticket { width: 48mm; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #000; font-size: 8.5pt; line-height: 1.3; }
+  .ticket .t-shop { font-size: 7.5pt; text-align: center; }
+  .ticket .t-shop b { font-size: 10pt; }
+  .ticket .t-title { margin-top: 2.5mm; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 7.5pt; text-align: center; }
+  .ticket .t-num { font-size: 18pt; font-weight: 800; letter-spacing: .04em; text-align: center; line-height: 1.1; }
+  .ticket table { width: 100%; border-collapse: collapse; margin: 1.5mm 0; }
+  .ticket td { padding: .3mm 0; vertical-align: top; }
+  .ticket td:last-child { text-align: right; font-weight: 600; }
+  .ticket ul { margin: 1mm 0; padding-left: 4mm; }
+  .ticket p { margin: 1mm 0; }
+  .ticket .t-terms { font-size: 6.8pt; line-height: 1.3; margin-top: 1.5mm; border-top: 1px dashed #000; padding-top: 1.5mm; }
+  .ticket .t-cut { margin: 3mm 0 2mm; font-size: 7pt; white-space: nowrap; overflow: hidden; }
+  .ticket .t-tag { text-align: center; }
   @media print {
-    @page { margin: 6mm; }
-    body { background: #fff; }
+    @page { size: 56mm auto; margin: 0; }
+    html, body { background: #fff; margin: 0; }
     body > *:not(#print) { display: none !important; }
-    #print { display: block; color: #000; font-size: 11pt; }
-    .ticket { max-width: 76mm; }
-    .ticket .t-shop { font-size: 9pt; line-height: 1.3; }
-    .ticket .t-title { margin-top: 3mm; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 9pt; }
-    .ticket .t-num { font-size: 22pt; font-weight: 800; letter-spacing: .05em; }
-    .ticket table { width: 100%; border-collapse: collapse; margin: 2mm 0; }
-    .ticket td { padding: .5mm 0; vertical-align: top; }
-    .ticket td:last-child { text-align: right; font-weight: 600; }
-    .ticket ul { margin: 1mm 0; padding-left: 5mm; }
-    .ticket p { margin: 1mm 0; }
-    .ticket .t-terms { font-size: 8pt; line-height: 1.3; margin-top: 2mm; border-top: 1px solid #000; padding-top: 2mm; }
-    .ticket .t-cut { margin: 4mm 0 3mm; font-size: 9pt; white-space: nowrap; overflow: hidden; }
+    #print { display: block; padding: 3mm 4mm; }
   }
 </style>
 </head>
@@ -199,10 +202,11 @@ const CONFIG = {
   pickupWorkDays: 14,   // stranka ima za prevzem toliko delovnih dni od obvestila »gotovo«
   lateFeePerDay: 0.5,   // zamudnina v € za vsak dan po roku (če stranka ne sporoči drugače)
   discardAfterMonths: 1, // po toliko mesecih od obvestila »gotovo« neprevzeta oblačila oddamo v zabojnik
-  warnAfterDays: 21,    // po toliko dneh od obvestila »gotovo« opozorilo pred oddajo v zabojnik
+  minOpenDaysAfterDeadline: 3, // oddaja v zabojnik najprej toliko delovnih dni po roku (npr. ob praznikih)
   donation: 'Humana',
 
-  workDays: [1, 2, 3, 4, 5], // 0 = nedelja … 6 = sobota
+  // Dnevi, ko je poslovalnica odprta – po njih se štejejo roki (0 = nedelja … 6 = sobota).
+  workDays: [2, 3, 4, 5],
   holidays: [
     '2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02', '2027-02-08',
     '2027-03-28', '2027-03-29', '2027-04-27', '2027-05-01', '2027-05-02',
@@ -353,8 +357,18 @@ function prevWorkDay(s) {
   return x;
 }
 const reminderDue = (o) => prevWorkDay(o.deadline);             // opomnik: delovni dan pred rokom
-const discardDue = (o) => addMonths(o.readyDate, CONFIG.discardAfterMonths);
-const warnDue = (o) => addDays(o.readyDate, CONFIG.warnAfterDays);
+// Prvi dan od s naprej, ko je poslovalnica odprta.
+function openOnOrAfter(s) {
+  let x = s;
+  while (!isWorkDay(x)) x = addDays(x, 1);
+  return x;
+}
+// Oddaja v zabojnik: en mesec po »gotovo« (prvi odprti dan), a ne prej kot nekaj delovnih dni po roku.
+const discardDue = (o) => maxIso(openOnOrAfter(addMonths(o.readyDate, CONFIG.discardAfterMonths)),
+  addWorkDays(o.deadline, CONFIG.minOpenDaysAfterDeadline));
+const lateNoticeDue = (o) => openOnOrAfter(addDays(o.deadline, 1));
+// Opozorilo: zadnji odprti dan pred oddajo, a ne pred obvestilom o zamudnini.
+const warnDue = (o) => maxIso(prevWorkDay(discardDue(o)), lateNoticeDue(o));
 const dayWord = (n) => (n === 1 ? 'dan' : n === 2 ? 'dneva' : n < 5 ? 'dnevi' : 'dni');
 // Zamudnina: koledarski dnevi po roku za prevzem (do danes oziroma do izdaje).
 function lateDays(o, t = today()) {
@@ -371,7 +385,7 @@ function stage(o, t = today()) {
   // status 'gotovo'
   if (t >= discardDue(o)) return { key: 'humana', label: `Odda se v ${CONFIG.donation}`, due: true };
   if (!o.warnDate && t >= warnDue(o)) return { key: 'opozorilo', label: `Pošlji opozorilo (${CONFIG.donation})`, due: true };
-  if (t > o.deadline && !o.lateNoticeDate) return { key: 'zamudnina', label: 'Pošlji obvestilo o zamudnini', due: true };
+  if (t >= lateNoticeDue(o) && !o.lateNoticeDate) return { key: 'zamudnina', label: 'Pošlji obvestilo o zamudnini', due: true };
   if (t > o.deadline) {
     const n = lateDays(o, t);
     return { key: 'zamuda', label: `Zamuda ${n} ${dayWord(n)}${o.feeWaived ? ' · brez zamudnine' : ` · ${money(lateFee(o, t))}`}` };
@@ -387,22 +401,22 @@ function message(type, o) {
   const fee = money(CONFIG.lateFeePerDay);
   const end = `\n\nDelovni čas: ${CONFIG.hours}.\n${CONFIG.shopName}, ${CONFIG.address}, tel. ${CONFIG.phone}`;
   if (type === 'ready') {
-    return `Pozdravljeni, vaša oblačila so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
+    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
       `Po tem roku zaračunamo zamudnino ${fee} na dan, oblačila, ki niso prevzeta v enem mesecu ` +
       `(do ${fmt(discardDue(o))}), pa oddamo v zabojnik ${CONFIG.donation}.` + end;
   }
   if (type === 'reminder') {
     const when = addDays(today(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : dayLabel(o.deadline).toLowerCase();
-    return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem vaših oblačil brez zamudnine. ` +
+    return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem vaših oblačil (št. ${o.num}) brez zamudnine. ` +
       `Od naslednjega dne zaračunamo zamudnino ${fee} na dan.` + end;
   }
   if (type === 'late') {
-    return `Pozdravljeni, rok za prevzem vaših oblačil je potekel ${fmt(o.deadline)}. ` +
+    return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
       `Od ${fmt(addDays(o.deadline, 1))} zaračunavamo zamudnino ${fee} na dan. ` +
       `Oblačila, ki niso prevzeta do ${fmt(discardDue(o))}, oddamo v zabojnik ${CONFIG.donation}.` + end;
   }
   const late = lateDays(o) > 0 && !o.feeWaived;
-  return `Pozdravljeni, vaša oblačila še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(discardDue(o))}, ` +
+  return `Pozdravljeni, vaša oblačila (št. ${o.num}) še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(discardDue(o))}, ` +
     `jih bomo oddali v zabojnik ${CONFIG.donation}.` +
     (late ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${fee} na dan; do danes znaša ${money(lateFee(o))}.` : '') + end;
 }
@@ -560,6 +574,21 @@ function renderRepair(app, tab) {
 
 /* ---- Prevzem v poslovalnico ---- */
 
+// Zadnji prevzemi – za ponoven natis listka.
+function recentIntakes() {
+  const list = orders.filter((o) => o.sector === 'popravilo')
+    .sort((a, b) => (b.createdAt || b.received).localeCompare(a.createdAt || a.received)).slice(0, 10);
+  if (!list.length) return '';
+  return `<h2>Zadnji prevzemi</h2>
+    <div class="card" style="padding:4px 14px">
+      ${list.map((o) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+          <span style="flex:1"><b class="num" style="color:var(--brand)">${esc(o.num)}</b> · ${esc(o.name)}<br><small class="hint">${fmt(o.received)} · ${esc(o.pieces)} ${pieces(o.pieces)}</small></span>
+          <button class="btn small secondary" data-print="${esc(o.id)}">Natisni listek</button>
+        </div>`).join('')}
+    </div>`;
+}
+
 function renderIntake(el) {
   if (lastCreated) {
     const o = lastCreated;
@@ -613,7 +642,8 @@ function renderIntake(el) {
       <input id="iNote" name="note">
       <p class="error" id="formError" hidden></p>
       <button class="btn block" style="margin-top:14px" id="saveIntake">Shrani prevzem</button>
-    </form>`;
+    </form>
+    ${recentIntakes()}`;
 
   picked = [];
   renderPicked();
@@ -991,7 +1021,7 @@ function policyHtml() {
       <li>Ko so oblačila gotova, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>.</li>
       <li>Delovni dan pred iztekom roka pošljemo <b>opomnik</b>.</li>
       <li>Dan po roku pošljemo <b>obvestilo o zamudnini</b> – teče ${money(CONFIG.lateFeePerDay)} na dan, razen če se stranka javi in se dogovorimo drugače.</li>
-      <li>Po <b>${CONFIG.warnAfterDays} dneh</b> od obvestila pošljemo <b>opozorilo</b> z datumom oddaje v zabojnik (če je isti dan na vrsti tudi obvestilo o zamudnini, gre eno sporočilo).</li>
+      <li>Zadnji delovni dan pred oddajo pošljemo <b>opozorilo</b> z datumom oddaje v zabojnik (če je isti dan na vrsti tudi obvestilo o zamudnini, gre eno sporočilo).</li>
       <li>Oblačila, ki niso prevzeta v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
     </ol>`;
 }
@@ -1154,7 +1184,6 @@ function openDetail(o) {
     <ul class="timeline">${steps.map(([l, d]) => `<li class="${d ? 'on' : ''}">${l}${d ? `: <b>${fmt(d)}</b>` : ''}</li>`).join('')}</ul>
     <div class="actions">
       ${editable ? '<button class="btn" id="saveEdit">Shrani spremembe</button>' : ''}
-      <button class="btn secondary" data-print="${esc(o.id)}">Natisni listek</button>
       ${o.status === 'gotovo' && !o.reminderDate ? '<button class="btn secondary" id="backToRepair">Vrni v popravilo</button>' : ''}
       ${o.status === 'izdano' ? '<button class="btn secondary" id="undoIssue">Razveljavi izdajo</button>' : ''}
     </div>`);

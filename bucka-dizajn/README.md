@@ -23,28 +23,30 @@ potrebna.
   zaključena naročila. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank je
   bilo ta dan **Prevzetih**, **V popravilu** in **Gotovih**, z imeni strank in številkami naročil.
 
-**Roki za prevzem in obvestila strankam:**
+**Roki za prevzem in obvestila strankam** (šteje se samo dneve, ko je poslovalnica odprta: torek–petek,
+brez praznikov):
 
 1. **Gotovo** – stranka dobi obvestilo: za prevzem ima **14 delovnih dni**, po roku zamudnina
    **0,50 € na dan**, neprevzeta oblačila po enem mesecu oddamo v zabojnik **Humana**.
 2. **Opomnik** – delovni dan pred iztekom roka.
-3. **Obvestilo o zamudnini** – dan po izteku roka (zamudnina se šteje za vsak koledarski dan).
-4. **Opozorilo pred oddajo** – 21 dni po obvestilu »gotovo«, z datumom oddaje v zabojnik in zneskom
-   zamudnine do tega dne. Če je isti dan na vrsti tudi obvestilo o zamudnini, gre samo opozorilo.
-5. **Oddaja v Humano** – en mesec po obvestilu »gotovo«; zaposleni označi »Oddano v Humana«.
+3. **Obvestilo o zamudnini** – prvi delovni dan po izteku roka (zamudnina se šteje za vsak koledarski dan).
+4. **Opozorilo pred oddajo** – zadnji delovni dan pred oddajo, z datumom oddaje in zneskom zamudnine.
+   Če je isti dan na vrsti tudi obvestilo o zamudnini, gre samo opozorilo.
+5. **Oddaja v Humano** – en mesec po obvestilu »gotovo«; če ta dan poslovalnica ni odprta, se datum
+   premakne na prvi naslednji delovni dan (in nikoli prej kot 3 delovne dni po roku).
 
 Če se stranka javi, v podrobnostih naročila ali ob izdaji označite »Brez zamudnine«. Ob izdaji aplikacija
 izračuna zamudnino in znesek za plačilo.
 
-Primer: gotovo čet 15. 10. → opomnik tor 3. 11. → rok sre 4. 11. → zamudnina in opozorilo čet 5. 11. →
-oddaja v Humano od ned 15. 11.
+Primer: gotovo čet 15. 10. → opomnik pet 6. 11. → rok tor 10. 11. → zamudnina sre 11. 11. →
+opozorilo pet 13. 11. → oddaja v Humano tor 17. 11.
 
 Besedila sporočil so v `index.html` (funkcija `message`) in v `google-apps-script/Code.gs` (funkcija
 `sporocilo`); naslov, telefon in delovni čas pa v `CONFIG` oziroma `NASTAVITVE`.
 
-**Prevzemni listek:** po shranjenem prevzemu (ali v podrobnostih naročila) z gumbom **Natisni listek**.
-Zgornji del dobi stranka (podatki, storitve, pogoji prevzema), spodnji odrezek s številko se pripne na
-oblačilo. Listek je oblikovan za tiskalnik računov (80 mm), natisne pa se tudi na A4.
+**Prevzemni listek:** v zavihku **Prevzem** – po shranjenem prevzemu ali v seznamu »Zadnji prevzemi« z
+gumbom **Natisni listek**. Zgornji del dobi stranka (podatki, storitve, pogoji prevzema), spodnji odrezek s
+številko se pripne na oblačilo. Listek je oblikovan za termo tiskalnik s papirjem širine 56 mm.
 
 Obvestila se pošiljajo s pripravljenim SMS (en dotik), po e-pošti ali s klicem. Če je povezana Google
 preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
