@@ -108,7 +108,8 @@
   .pill.sprejeto { background: #eef0f6; color: #4a5a8a; }
   .pill.caka { background: var(--brand-soft); color: var(--brand); }
   .pill.opomnik, .pill.opomnjeno { background: var(--warn-bg); color: #a3591b; border: 1px solid var(--warn-line); }
-  .pill.koncno, .pill.humana { background: var(--danger-bg); color: var(--danger); }
+  .pill.humana { background: var(--danger-bg); color: var(--danger); }
+  .pill.zamuda { background: var(--warn-bg); color: #a3591b; border: 1px solid var(--warn-line); }
   .pill.izdano { background: #eceeed; color: var(--muted); }
   .pill.zavrzeno { background: #eceeed; color: var(--muted); text-decoration: line-through; }
 
@@ -148,6 +149,24 @@
 
   .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 40; font-size: .92rem; max-width: calc(100% - 32px); }
   .loading { opacity: .6; pointer-events: none; }
+  #print { display: none; }
+  @media print {
+    @page { margin: 6mm; }
+    body { background: #fff; }
+    body > *:not(#print) { display: none !important; }
+    #print { display: block; color: #000; font-size: 11pt; }
+    .ticket { max-width: 76mm; }
+    .ticket .t-shop { font-size: 9pt; line-height: 1.3; }
+    .ticket .t-title { margin-top: 3mm; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 9pt; }
+    .ticket .t-num { font-size: 22pt; font-weight: 800; letter-spacing: .05em; }
+    .ticket table { width: 100%; border-collapse: collapse; margin: 2mm 0; }
+    .ticket td { padding: .5mm 0; vertical-align: top; }
+    .ticket td:last-child { text-align: right; font-weight: 600; }
+    .ticket ul { margin: 1mm 0; padding-left: 5mm; }
+    .ticket p { margin: 1mm 0; }
+    .ticket .t-terms { font-size: 8pt; line-height: 1.3; margin-top: 2mm; border-top: 1px solid #000; padding-top: 2mm; }
+    .ticket .t-cut { margin: 4mm 0 3mm; font-size: 9pt; white-space: nowrap; overflow: hidden; }
+  }
 </style>
 </head>
 <body>
@@ -162,6 +181,7 @@
 
 <main id="app"></main>
 <div id="modal"></div>
+<div id="print"></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -175,9 +195,9 @@ const CONFIG = {
   address: 'Primerna ulica 1, 1000 Ljubljana',
   hours: 'pon–pet 9–17, sob 9–12',
 
-  pickupDays: 14,       // stranka mora prevzeti v toliko koledarskih dneh od obvestila »gotovo«
-  reminderWorkDays: 3,  // po opomniku ima še toliko delovnih dni
-  discardWorkDays: 22,  // končno obvestilo na ta delovni dan od obvestila »gotovo«
+  pickupWorkDays: 14,   // stranka ima za prevzem toliko delovnih dni od obvestila »gotovo«
+  lateFeePerDay: 0.5,   // zamudnina v € za vsak dan po roku (če stranka ne sporoči drugače)
+  discardAfterMonths: 1, // po toliko mesecih od obvestila »gotovo« neprevzeta oblačila oddamo v zabojnik
   donation: 'Humana',
 
   workDays: [1, 2, 3, 4, 5], // 0 = nedelja … 6 = sobota
@@ -317,46 +337,61 @@ const maxIso = (a, b) => (a > b ? a : b);
 
 /* ---------- Faze naročila in roki ---------- */
 
-// Kdaj je na vrsti končno obvestilo (na 22. delovni dan, a ne pred iztekom roka po opomniku).
-function finalDue(o) {
-  return maxIso(addWorkDays(o.readyDate, CONFIG.discardWorkDays), addWorkDays(o.lastDeadline, 1));
+function addMonths(s, n) {
+  const d = parse(s);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  return iso(d);
 }
+function prevWorkDay(s) {
+  let x = addDays(s, -1);
+  while (!isWorkDay(x)) x = addDays(x, -1);
+  return x;
+}
+const reminderDue = (o) => prevWorkDay(o.deadline);             // opomnik: delovni dan pred rokom
+const discardDue = (o) => addMonths(o.readyDate, CONFIG.discardAfterMonths);
+const dayWord = (n) => (n === 1 ? 'dan' : n === 2 ? 'dneva' : n < 5 ? 'dnevi' : 'dni');
+// Zamudnina: koledarski dnevi po roku za prevzem (do danes oziroma do izdaje).
+function lateDays(o, t = today()) {
+  if (!o.deadline) return 0;
+  const end = o.handedDate || t;
+  return Math.max(0, daysBetween(o.deadline, end));
+}
+const lateFee = (o, t) => (o.feeWaived ? 0 : lateDays(o, t) * CONFIG.lateFeePerDay);
 
 function stage(o, t = today()) {
   if (o.status === 'sprejeto') return { key: 'sprejeto', label: 'V popravilu' };
   if (o.status === 'izdano') return { key: 'izdano', label: 'Izdano' };
   if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: `Oddano v ${CONFIG.donation}` };
   // status 'gotovo'
-  if (!o.reminderDate) {
-    if (t > o.deadline) return { key: 'opomnik', label: 'Pošlji opomnik', due: true };
-    const left = daysBetween(t, o.deadline);
-    return { key: 'caka', label: left === 0 ? 'Čaka – rok danes' : `Čaka na prevzem · še ${left} ${left === 1 ? 'dan' : left === 2 ? 'dneva' : left < 5 ? 'dnevi' : 'dni'}` };
+  if (t >= discardDue(o)) return { key: 'humana', label: `Odda se v ${CONFIG.donation}`, due: true };
+  if (t > o.deadline) {
+    const n = lateDays(o, t);
+    return { key: 'zamuda', label: `Zamuda ${n} ${dayWord(n)}${o.feeWaived ? ' · brez zamudnine' : ` · ${money(lateFee(o, t))}`}` };
   }
-  if (!o.finalDate) {
-    if (t >= finalDue(o)) return { key: 'koncno', label: 'Pošlji končno obvestilo', due: true };
-    return { key: 'opomnjeno', label: `Opomnjeno · zadnji rok ${fmt(o.lastDeadline)}` };
-  }
-  return { key: 'humana', label: `Odda se v ${CONFIG.donation}`, due: true };
+  if (!o.reminderDate && t >= reminderDue(o)) return { key: 'opomnik', label: 'Pošlji opomnik', due: true };
+  const left = daysBetween(t, o.deadline);
+  return { key: o.reminderDate ? 'opomnjeno' : 'caka', label: left === 0 ? 'Rok za prevzem je danes' : `Čaka na prevzem · še ${left} ${dayWord(left)}` };
 }
 
 /* ---------- Sporočila strankam ---------- */
 
 function message(type, o) {
-  const sig = `${CONFIG.shopName}, ${CONFIG.address}, ${CONFIG.phone}`;
+  const sig = `${CONFIG.shopName}, ${CONFIG.address}, tel. ${CONFIG.phone}`;
+  const fee = money(CONFIG.lateFeePerDay);
   if (type === 'ready') {
-    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so popravljena in čakajo na prevzem. ` +
-      `Rok za prevzem: ${fmt(o.deadline)}. Delovni čas: ${CONFIG.hours}. ${sig}`;
+    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. ` +
+      `Prevzamete jih lahko do ${fmt(o.deadline)}. Po tem roku zaračunamo zamudnino ${fee} na dan, ` +
+      `oblačila, ki niso prevzeta v enem mesecu (do ${fmt(discardDue(o))}), pa oddamo v zabojnik ${CONFIG.donation}. ` +
+      `Delovni čas: ${CONFIG.hours}. ${sig}`;
   }
-  if (type === 'reminder') {
-    const last = o.lastDeadline || addWorkDays(today(), CONFIG.reminderWorkDays);
-    return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
-      `Prosimo, prevzemite jih v ${CONFIG.reminderWorkDays} delovnih dneh, najkasneje do ${fmt(last)}. ` +
-      `Ker blaga ne skladiščimo, neprevzeta oblačila oddamo v zabojnik ${CONFIG.donation}. ${sig}`;
-  }
-  return `Pozdravljeni, ker oblačil (št. ${o.num}) niste prevzeli v določenem času, smatramo, da jih ne potrebujete. ` +
-    `Ker pri nas blaga ne skladiščimo, jih bomo oddali v zabojnik ${CONFIG.donation}. ${sig}`;
+  return `Pozdravljeni, opominjamo vas, da je rok za prevzem vaših oblačil (št. ${o.num}) ${dayLabel(o.deadline).toLowerCase()}. ` +
+    `Od naslednjega dne zaračunamo zamudnino ${fee} na dan. ` +
+    `Če oblačil ne morete prevzeti pravočasno, nas prosim pokličite. ${sig}`;
 }
-const MSG_TITLE = { ready: 'Obvestilo: oblačila so gotova', reminder: 'Opomnik za prevzem', final: 'Končno obvestilo' };
+const MSG_TITLE = { ready: 'Obvestilo: oblačila so gotova', reminder: 'Opomnik za prevzem' };
 
 function smsLink(phone, text) {
   const n = phone.replace(/[^\d+]/g, '');
@@ -518,7 +553,8 @@ function renderIntake(el) {
         <div class="bignum">${esc(o.num)}</div>
         <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · prevzeto ${fmt(o.received)}</p>
         <div class="actions" style="justify-content:center">
-          <button class="btn" id="newIntake">Nov prevzem</button>
+          <button class="btn" data-print="${esc(o.id)}">Natisni listek</button>
+          <button class="btn secondary" id="newIntake">Nov prevzem</button>
           <button class="btn secondary" data-open="${esc(o.id)}">Odpri naročilo</button>
         </div>
       </div>`;
@@ -536,7 +572,7 @@ function renderIntake(el) {
           <input id="iPieces" name="pieces" type="number" min="1" max="99" value="1" inputmode="numeric">
         </div>
       </div>
-      <label for="cSearch">Obstoječa stranka</label>
+      <label for="cSearch">Stranka</label>
       <div id="customerBox"></div>
       <label>Storitve</label>
       ${serviceGroups().map(([g, list]) => `
@@ -874,18 +910,14 @@ let statsDay = today();
 function renderOverview(el) {
   const t = today();
   const repairs = orders.filter((o) => o.sector === 'popravilo');
-  const urgency = ['humana', 'koncno', 'opomnik'];
+  const urgency = ['humana', 'opomnik'];
   const due = repairs.filter((o) => stage(o, t).due)
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
-  const closedDate = (o) => o.handedDate || o.discardedDate || '';
-  const closed = repairs.filter((o) => o.status === 'izdano' || o.status === 'zavrzeno')
-    .sort((a, b) => closedDate(b).localeCompare(closedDate(a))).slice(0, 30);
   el.innerHTML = `
     <h2>Za urediti danes ${due.length ? `<span class="count">${due.length}</span>` : ''}</h2>
     ${due.map((o) => orderCard(o)).join('') || '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
     <h2>Evidenca</h2>
     <div id="stats"></div>
-    <details><summary>Zadnja zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o)).join('')}</details>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
   renderStats();
 }
@@ -930,9 +962,9 @@ function renderStats() {
     </div>
     <p style="margin:0 0 8px;font-weight:600">${esc(dayLabel(day))}</p>
     <div style="display:grid;gap:8px">
-      ${box('Prevzeto', st.received)}
       ${box('V popravilu', st.inRepair)}
       ${box('Gotovo', st.ready)}
+      ${box('Prevzeto', st.received)}
     </div>`;
   $('#statsDay').addEventListener('change', (e) => { if (e.target.value) { statsDay = e.target.value > today() ? today() : e.target.value; renderStats(); } });
 }
@@ -940,11 +972,10 @@ function renderStats() {
 function policyHtml() {
   return `<b>Roki za prevzem</b>
     <ol>
-      <li>Ko so oblačila gotova, stranko obvestimo – rok za prevzem je <b>${CONFIG.pickupDays} dni</b>.</li>
-      <li>Po izteku roka pošljemo <b>opomnik</b>: stranka ima še <b>${CONFIG.reminderWorkDays} delovne dni</b>.</li>
-      <li>Na <b>${CONFIG.discardWorkDays}. delovni dan</b> od obvestila (ne pred iztekom roka po opomniku) pošljemo
-        <b>končno obvestilo</b>, da blago oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
-      <li>Oblačila odnesemo v zabojnik in jih označimo kot oddana.</li>
+      <li>Ko so oblačila gotova, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>.</li>
+      <li>Delovni dan pred iztekom roka pošljemo <b>opomnik</b>.</li>
+      <li>Po roku teče <b>zamudnina ${money(CONFIG.lateFeePerDay)} na dan</b>, razen če se stranka javi in se dogovorimo drugače.</li>
+      <li>Oblačila, ki niso prevzeta v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
     </ol>`;
 }
 
@@ -952,7 +983,7 @@ function policyHtml() {
 
 function orderCard(o, { hideWho = false } = {}) {
   const st = stage(o);
-  const cls = st.key === 'koncno' || st.key === 'humana' ? 'late' : st.due ? 'due' : '';
+  const cls = st.key === 'humana' ? 'late' : st.due || st.key === 'zamuda' ? 'due' : '';
   const dates = [`prevzeto ${fmt(o.received)}`];
   if (o.dueDate && o.status === 'sprejeto') dates.push(`dogovorjeno do ${fmt(o.dueDate)}`);
   if (o.readyDate) dates.push(`gotovo ${fmt(o.readyDate)}`);
@@ -973,17 +1004,17 @@ function orderCard(o, { hideWho = false } = {}) {
 
 function cardActions(o, st) {
   const id = esc(o.id);
+  const issue = (cls = '') => `<button class="btn small ${cls}" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
   switch (st.key) {
     case 'sprejeto': return `<button class="btn small" data-act="ready" data-id="${id}">Označi kot gotovo</button>`;
     case 'caka':
-    case 'opomnjeno': return `<button class="btn small" data-act="issue" data-id="${id}">Izdaj stranki</button>
+    case 'opomnjeno':
+    case 'zamuda': return `${issue()}
       <button class="btn small secondary" data-act="notify" data-type="${o.reminderDate ? 'reminder' : 'ready'}" data-id="${id}">Ponovno obvesti</button>`;
     case 'opomnik': return `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji opomnik</button>
-      <button class="btn small secondary" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
-    case 'koncno': return `<button class="btn small danger" data-act="notify" data-type="final" data-id="${id}">Pošlji končno obvestilo</button>
-      <button class="btn small secondary" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
+      ${issue('secondary')}`;
     case 'humana': return `<button class="btn small danger" data-act="discard" data-id="${id}">Oddano v ${esc(CONFIG.donation)}</button>
-      <button class="btn small secondary" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
+      ${issue('secondary')}`;
     default: return '';
   }
 }
@@ -992,16 +1023,14 @@ function cardActions(o, st) {
 
 async function markReady(id) {
   const t = today();
-  const o = await busy(() => store.update(id, { status: 'gotovo', readyDate: t, deadline: addDays(t, CONFIG.pickupDays) }));
+  const o = await busy(() => store.update(id, { status: 'gotovo', readyDate: t, deadline: addWorkDays(t, CONFIG.pickupWorkDays) }));
   render();
   if (o) openNotify(o, 'ready');
 }
 
 async function markNotified(o, type) {
   const t = today();
-  const patch = type === 'reminder' && !o.reminderDate
-    ? { reminderDate: t, lastDeadline: addWorkDays(t, CONFIG.reminderWorkDays) }
-    : type === 'final' && !o.finalDate ? { finalDate: t }
+  const patch = type === 'reminder' && !o.reminderDate ? { reminderDate: t }
     : type === 'ready' && !o.readyNotified ? { readyNotified: t } : null;
   if (patch) await busy(() => store.update(o.id, patch));
   closeModal();
@@ -1010,10 +1039,8 @@ async function markNotified(o, type) {
 }
 
 function openNotify(o, type) {
-  // Pri opomniku najprej izračunaj zadnji rok, da je v besedilu.
-  const view = type === 'reminder' && !o.reminderDate ? { ...o, lastDeadline: addWorkDays(today(), CONFIG.reminderWorkDays) } : o;
-  const text = message(type, view);
-  const already = { ready: o.readyNotified, reminder: o.reminderDate, final: o.finalDate }[type];
+  const text = message(type, o);
+  const already = { ready: o.readyNotified, reminder: o.reminderDate }[type];
   showModal(MSG_TITLE[type] + ` · ${esc(o.num)}`, `
     <p><b>${esc(o.name)}</b> · ${esc(o.phone)}${o.email ? ` · ${esc(o.email)}` : ''}</p>
     <div class="msg">${esc(text)}</div>
@@ -1032,15 +1059,25 @@ function openNotify(o, type) {
 
 function confirmIssue(o) {
   const st = stage(o);
+  const n = lateDays(o);
+  const fee = lateFee(o);
+  const total = (Number(o.price) || 0) + fee;
   showModal(`Izdaja ${esc(o.num)}`, `
     <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
     <p>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(orderText(o))}</p>
-    ${o.price ? `<p style="font-size:1.2rem">Za plačilo: <b>${esc(money(o.price))}</b></p>` : ''}
+    ${o.price ? `<p style="margin:4px 0">Popravilo: <b>${esc(money(o.price))}</b></p>` : ''}
+    ${n ? `<p style="margin:4px 0">Zamudnina: ${n} ${dayWord(n)} × ${money(CONFIG.lateFeePerDay)} = <b>${money(n * CONFIG.lateFeePerDay)}</b>
+      ${o.feeWaived ? '<span class="pill">ne zaračunamo</span>' : ''}</p>` : ''}
+    ${o.price || fee ? `<p style="font-size:1.2rem;margin:8px 0">Za plačilo: <b>${money(total)}</b></p>` : ''}
+    ${n && !o.feeWaived ? '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="waiveFee" style="width:auto"> Zamudnine ne zaračunamo (dogovor s stranko)</label>' : ''}
     ${o.status === 'sprejeto' ? '<div class="callout">To naročilo še ni označeno kot gotovo.</div>' : ''}
-    ${st.key === 'humana' ? '<div class="callout">Stranka je že prejela končno obvestilo – preveri, da blago še ni oddano.</div>' : ''}
+    ${st.key === 'humana' ? `<div class="callout">Rok za oddajo v ${esc(CONFIG.donation)} je že potekel – preveri, da blago še ni oddano.</div>` : ''}
     <button class="btn block" style="margin-top:14px" id="doIssue">Potrdi izdajo stranki</button>`);
   $('#doIssue').onclick = async () => {
-    const ok = await busy(() => store.update(o.id, { status: 'izdano', handedDate: today() }));
+    const waive = o.feeWaived || $('#waiveFee')?.checked;
+    const ok = await busy(() => store.update(o.id, {
+      status: 'izdano', handedDate: today(), feeWaived: waive ? 'da' : '', lateFee: waive ? '' : String(fee || ''),
+    }));
     closeModal(); render();
     if (ok) toast(`${o.num} izdano`);
   };
@@ -1050,7 +1087,7 @@ function confirmDiscard(o) {
   showModal(`Oddaja v ${esc(CONFIG.donation)} · ${esc(o.num)}`, `
     <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
     <p>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(orderText(o))}</p>
-    <p class="hint">Gotovo ${fmt(o.readyDate)} · rok ${fmt(o.deadline)} · opomnik ${fmt(o.reminderDate)} · končno obvestilo ${fmt(o.finalDate)}</p>
+    <p class="hint">Gotovo ${fmt(o.readyDate)} · rok za prevzem ${fmt(o.deadline)}${o.reminderDate ? ` · opomnik ${fmt(o.reminderDate)}` : ''} · oddaja od ${fmt(discardDue(o))}</p>
     <button class="btn block danger" style="margin-top:14px" id="doDiscard">Blago je oddano v zabojnik ${esc(CONFIG.donation)}</button>`);
   $('#doDiscard').onclick = async () => {
     const ok = await busy(() => store.update(o.id, { status: 'zavrzeno', discardedDate: today() }));
@@ -1065,10 +1102,9 @@ function openDetail(o) {
     ['Prevzeto v poslovalnico', o.received],
     ['Gotovo', o.readyDate],
     ['Stranka obveščena', o.readyNotified],
-    ['Rok za prevzem', o.deadline],
     ['Opomnik poslan', o.reminderDate],
-    ['Zadnji rok po opomniku', o.lastDeadline],
-    ['Končno obvestilo', o.finalDate],
+    ['Rok za prevzem', o.deadline],
+    [`Oddaja v ${CONFIG.donation} od`, o.readyDate ? discardDue(o) : ''],
     ['Izdano stranki', o.handedDate],
     [`Oddano v ${CONFIG.donation}`, o.discardedDate],
   ];
@@ -1086,11 +1122,14 @@ function openDetail(o) {
       ${o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(svcName(x))}`).join('<br>')}</p>` : ''}
       <label>Opis</label><textarea name="description" ${dis}>${esc(o.description)}</textarea>
       <label>Opomba</label><input name="note" value="${esc(o.note)}" ${dis}>
+      ${o.status === 'gotovo' ? `<label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="feeWaived" style="width:auto" ${o.feeWaived ? 'checked' : ''}> Brez zamudnine (stranka se je javila)</label>` : ''}
+      ${o.lateFee ? `<p class="hint">Zaračunana zamudnina: ${money(o.lateFee)}</p>` : ''}
       <p class="error" id="editError" hidden></p>
     </form>
     <ul class="timeline">${steps.map(([l, d]) => `<li class="${d ? 'on' : ''}">${l}${d ? `: <b>${fmt(d)}</b>` : ''}</li>`).join('')}</ul>
     <div class="actions">
       ${editable ? '<button class="btn" id="saveEdit">Shrani spremembe</button>' : ''}
+      <button class="btn secondary" data-print="${esc(o.id)}">Natisni listek</button>
       ${o.status === 'gotovo' && !o.reminderDate ? '<button class="btn secondary" id="backToRepair">Vrni v popravilo</button>' : ''}
       ${o.status === 'izdano' ? '<button class="btn secondary" id="undoIssue">Razveljavi izdajo</button>' : ''}
     </div>`);
@@ -1105,6 +1144,7 @@ function openDetail(o) {
       received: f.received || o.received,
       pieces: Math.max(1, Number(f.pieces) || 1), price: f.price.trim().replace(',', '.'),
       description: f.description.trim(), note: f.note.trim(),
+      ...(o.status === 'gotovo' ? { feeWaived: f.feeWaived ? 'da' : '' } : {}),
     }));
     closeModal(); render();
     if (ok) toast('Shranjeno');
@@ -1117,6 +1157,36 @@ function openDetail(o) {
     await busy(() => store.update(o.id, { status: o.readyDate ? 'gotovo' : 'sprejeto', handedDate: '' }));
     closeModal(); render();
   });
+}
+
+/* ---------- Prevzemni listek ---------- */
+
+function printTicket(o) {
+  const services = (o.services || []).map((x) => `<li>${x.qty > 1 ? `${x.qty} × ` : ''}${esc(svcName(x))}</li>`).join('');
+  $('#print').innerHTML = `
+    <div class="ticket">
+      <div class="t-shop"><b>${esc(CONFIG.shopName)}</b><br>${esc(CONFIG.address)}<br>tel. ${esc(CONFIG.phone)}<br>${esc(CONFIG.hours)}</div>
+      <div class="t-title">Prevzemni listek</div>
+      <div class="t-num">${esc(o.num)}</div>
+      <table>
+        <tr><td>Datum prevzema</td><td>${fmt(o.received)}</td></tr>
+        <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
+        <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
+        <tr><td>Kosov</td><td>${esc(o.pieces)}</td></tr>
+        ${o.dueDate ? `<tr><td>Predvideno gotovo</td><td>${fmt(o.dueDate)}</td></tr>` : ''}
+        ${o.price ? `<tr><td>Cena</td><td>${esc(money(o.price))}</td></tr>` : ''}
+      </table>
+      ${services ? `<ul>${services}</ul>` : ''}
+      ${o.description ? `<p>${esc(o.description)}</p>` : ''}
+      <div class="t-terms">
+        Ko bodo oblačila gotova, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila,
+        nato zaračunamo zamudnino ${money(CONFIG.lateFeePerDay)} na dan. Oblačila, ki niso prevzeta v enem mesecu od obvestila,
+        oddamo v zabojnik ${esc(CONFIG.donation)}. Ob prevzemu prinesite ta listek.
+      </div>
+      <div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>
+      <div class="t-tag"><div class="t-num">${esc(o.num)}</div>${esc(o.name)} · ${esc(o.phone)}<br>${fmt(o.received)} · ${esc(o.pieces)} ${pieces(o.pieces)}</div>
+    </div>`;
+  window.print();
 }
 
 /* ---------- Nastavitve ---------- */
@@ -1261,8 +1331,9 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-day], [data-sort], [data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
   if (!t) return;
+  if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
     const n = Number(t.dataset.day);
     statsDay = n === 0 ? today() : addDays(statsDay, n) > today() ? today() : addDays(statsDay, n);

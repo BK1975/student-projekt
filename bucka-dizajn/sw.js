@@ -1,6 +1,6 @@
 // Preprost service worker: aplikacija se odpre tudi brez povezave.
 // Ob vsaki spremembi datotek povečajte številko različice.
-const CACHE = 'bucka-v10';
+const CACHE = 'bucka-v11';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

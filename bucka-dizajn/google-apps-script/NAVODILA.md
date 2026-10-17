@@ -8,13 +8,11 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
 - Stranke so v listu **Stranke**, seznam storitev (brez cen) pa v listu **Storitve** in velja za vse naprave. Urejate ga v aplikaciji
   (Nastavitve → Storitve).
 - Ko zaposleni v aplikaciji označi naročilo kot **gotovo**, stranka z e-pošto samodejno prejme
-  obvestilo z rokom za prevzem (14 dni).
-- Vsak dan ob 8.00 skripta preveri roke in strankam z e-pošto samodejno pošlje:
-  1. **opomnik** dan po izteku 14-dnevnega roka (prevzem v 3 delovnih dneh),
-  2. **končno obvestilo** na 22. delovni dan od obvestila »gotovo« (in nikoli pred iztekom roka po
-     opomniku), da bo blago oddano v zabojnik **Humana**.
-- Poslovalnica dobi dnevni povzetek po e-pošti: kaj je bilo poslano samodejno in koga je treba obvestiti
-  po SMS ali telefonu (stranke brez e-pošte), ter katera oblačila je treba oddati v zabojnik.
+  obvestilo z rokom za prevzem (14 delovnih dni), zamudnino (0,50 € na dan po roku) in datumom, od
+  katerega neprevzeta oblačila oddamo v zabojnik **Humana** (en mesec od obvestila).
+- Vsak dan ob 8.00 skripta strankam z e-pošto samodejno pošlje **opomnik** delovni dan pred iztekom roka.
+- Poslovalnica dobi dnevni povzetek po e-pošti: kaj je bilo poslano samodejno, komu je treba poslati
+  opomnik po SMS (stranke brez e-pošte) in katera oblačila je treba oddati v zabojnik.
 
 ## Namestitev
 

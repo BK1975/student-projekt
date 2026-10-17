@@ -4,8 +4,8 @@
  * - shranjuje naročila, ki jih zaposleni vnesejo v aplikaciji (list »Naročila«),
  *   tako da vse naprave v poslovalnici vidijo iste podatke
  * - ko je naročilo označeno kot gotovo, stranki z e-pošto samodejno pošlje obvestilo z rokom za prevzem
- * - vsak dan samodejno pošlje opomnik in končno obvestilo (zabojnik Humana) strankam z e-pošto,
- *   poslovalnici pa povzetek, koga je treba obvestiti po SMS/telefonu
+ * - vsak dan samodejno pošlje opomnik (delovni dan pred rokom za prevzem) strankam z e-pošto,
+ *   poslovalnici pa povzetek, koga je treba obvestiti po SMS/telefonu in kaj odnesti v zabojnik
  *
  * Namestitev: glej NAVODILA.md.
  */
@@ -23,9 +23,9 @@ const NASTAVITVE = {
   delovniCas: 'pon–pet 9–17, sob 9–12',
 
   // Enako kot CONFIG v index.html:
-  rokPrevzemaDni: 14,      // koledarski dnevi od obvestila »gotovo«
-  dodatniDelovniDnevi: 3,  // po opomniku ima stranka še toliko delovnih dni
-  koncnoObvestiloPo: 22,   // delovnih dni od obvestila »gotovo« do končnega obvestila
+  rokPrevzemaDelovnihDni: 14, // za prevzem ima stranka toliko delovnih dni od obvestila »gotovo«
+  zamudninaNaDan: 0.5,        // € na dan po roku za prevzem
+  oddajaPoMesecih: 1,         // po toliko mesecih od obvestila »gotovo« neprevzeto oddamo v zabojnik
   zabojnik: 'Humana',
   delovniDnevi: [1, 2, 3, 4, 5], // 0 = nedelja … 6 = sobota
   prazniki: [
@@ -50,6 +50,7 @@ const POLJA = [
   ['handedDate', 'Izdano'], ['discardedDate', 'Oddano v zabojnik'],
   ['createdAt', 'Ustvarjeno'], ['updatedAt', 'Posodobljeno'], ['id', 'ID'],
   ['services', 'Storitve'], // nove stolpce dodajajte samo na konec
+  ['feeWaived', 'Brez zamudnine'], ['lateFee', 'Zamudnina (€)'],
 ];
 const LIST_STORITVE = 'Storitve';
 const LIST_STRANKE = 'Stranke';
@@ -151,7 +152,7 @@ function posodobi(sh, id, patch) {
 
 /* ---------- Dnevni pregled rokov ---------- */
 
-/** Sproži se vsak dan: strankam z e-pošto pošlje opomnike in končna obvestila, poslovalnici povzetek. */
+/** Sproži se vsak dan: strankam z e-pošto pošlje opomnike, poslovalnici povzetek. */
 function dnevniPregled() {
   const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
   const t = danes();
@@ -160,21 +161,15 @@ function dnevniPregled() {
   vsa(sh).forEach((v) => {
     const o = v.o;
     const faza = faza_(o, t);
-    if (faza === 'opomnik' || faza === 'koncno') {
+    if (faza === 'opomnik') {
       if (o.email) {
-        if (faza === 'opomnik') {
-          o.reminderDate = t;
-          o.lastDeadline = dodajDelovneDni(t, NASTAVITVE.dodatniDelovniDnevi);
-          posljiStranki(o.email, `Opomnik: prevzem oblačil (št. ${o.num})`, sporocilo('reminder', o));
-        } else {
-          o.finalDate = t;
-          posljiStranki(o.email, `Neprevzeta oblačila (št. ${o.num})`, sporocilo('final', o));
-        }
+        o.reminderDate = t;
         o.updatedAt = new Date().toISOString();
+        posljiStranki(o.email, `Opomnik: rok za prevzem oblačil (št. ${o.num})`, sporocilo('reminder', o));
         zapisi(sh, v.vrstica, o);
-        poslano.push(`${faza === 'opomnik' ? 'Opomnik' : 'Končno obvestilo'} (e-pošta): ${o.num} – ${o.name}`);
+        poslano.push(`Opomnik (e-pošta): ${o.num} – ${o.name}`);
       } else {
-        rocno.push(`${faza === 'opomnik' ? 'OPOMNIK' : 'KONČNO OBVESTILO'}: ${o.num} – ${o.name}, ${o.phone}`);
+        rocno.push(`POŠLJI OPOMNIK (SMS): ${o.num} – ${o.name}, ${o.phone}`);
       }
     } else if (faza === 'humana') {
       rocno.push(`ODDAJ V ZABOJNIK ${NASTAVITVE.zabojnik.toUpperCase()}: ${o.num} – ${o.name}`);
@@ -191,32 +186,42 @@ function dnevniPregled() {
 
 /** Enako kot stage() v aplikaciji. */
 function faza_(o, t) {
-  if (o.status !== 'gotovo' || !o.deadline) return null;
-  if (!o.reminderDate) return t > o.deadline ? 'opomnik' : null;
-  if (!o.finalDate) {
-    const rok = najkasnejsi(dodajDelovneDni(o.readyDate, NASTAVITVE.koncnoObvestiloPo), dodajDelovneDni(o.lastDeadline, 1));
-    return t >= rok ? 'koncno' : null;
-  }
-  return 'humana';
+  if (o.status !== 'gotovo' || !o.deadline || !o.readyDate) return null;
+  if (t >= oddajaOd(o)) return 'humana';
+  if (!o.reminderDate && t >= prejsnjiDelovniDan(o.deadline) && t <= o.deadline) return 'opomnik';
+  return null;
+}
+
+function oddajaOd(o) {
+  const d = razcleni(o.readyDate);
+  const dan = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + NASTAVITVE.oddajaPoMesecih);
+  d.setDate(Math.min(dan, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  return iso(d);
+}
+
+function prejsnjiDelovniDan(s) {
+  let x = dodajDni(s, -1);
+  while (!jeDelovniDan(x)) x = dodajDni(x, -1);
+  return x;
 }
 
 /* ---------- Sporočila ---------- */
 
 function sporocilo(vrsta, o) {
-  const podpis = `\n\n${NASTAVITVE.imeDelavnice}\n${NASTAVITVE.naslov}\n${NASTAVITVE.telefon}\nDelovni čas: ${NASTAVITVE.delovniCas}`;
+  const podpis = `\n\n${NASTAVITVE.imeDelavnice}\n${NASTAVITVE.naslov}\ntel. ${NASTAVITVE.telefon}\nDelovni čas: ${NASTAVITVE.delovniCas}`;
   const pozdrav = `Pozdravljeni ${o.name},\n\n`;
+  const zamudnina = `${String(NASTAVITVE.zamudninaNaDan.toFixed(2)).replace('.', ',')} €`;
   if (vrsta === 'ready') {
-    return pozdrav + `vaša oblačila (št. ${o.num}) so popravljena in čakajo na prevzem.\n` +
-      `Rok za prevzem: ${fmt(o.deadline)}.\n\n` +
-      `Ker blaga ne skladiščimo, oblačila, ki jih po opomniku ne prevzamete, oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + podpis;
+    return pozdrav + `vaša oblačila (št. ${o.num}) so pripravljena na prevzem.\n` +
+      `Prevzamete jih lahko do ${fmt(o.deadline)}.\n\n` +
+      `Po tem roku zaračunamo zamudnino ${zamudnina} na dan, oblačila, ki niso prevzeta v enem mesecu ` +
+      `(do ${fmt(oddajaOd(o))}), pa oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + podpis;
   }
-  if (vrsta === 'reminder') {
-    return pozdrav + `rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}.\n` +
-      `Prosimo, prevzemite jih v ${NASTAVITVE.dodatniDelovniDnevi} delovnih dneh, najkasneje do ${fmt(o.lastDeadline)}.\n\n` +
-      `Ker blaga ne skladiščimo, neprevzeta oblačila oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + podpis;
-  }
-  return pozdrav + `ker oblačil (št. ${o.num}) niste prevzeli v določenem času, smatramo, da jih ne potrebujete.\n` +
-    `Ker pri nas blaga ne skladiščimo, jih bomo oddali v zabojnik ${NASTAVITVE.zabojnik}.` + podpis;
+  return pozdrav + `opominjamo vas, da je rok za prevzem vaših oblačil (št. ${o.num}) ${fmt(o.deadline)}.\n` +
+    `Od naslednjega dne zaračunamo zamudnino ${zamudnina} na dan.\n\n` +
+    `Če oblačil ne morete prevzeti pravočasno, nas prosim pokličite.` + podpis;
 }
 
 function posljiStranki(email, zadeva, besedilo) {
@@ -317,5 +322,4 @@ function dodajDelovneDni(s, n) {
   while (n > 0) { x = dodajDni(x, 1); if (jeDelovniDan(x)) n--; }
   return x;
 }
-function najkasnejsi(a, b) { return a > b ? a : b; }
 function fmt(s) { if (!s) return ''; const d = razcleni(s); return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`; }

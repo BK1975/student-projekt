@@ -25,14 +25,20 @@ potrebna.
 
 **Roki za prevzem:**
 
-1. Ko je naročilo označeno kot **gotovo**, se stranko obvesti, rok za prevzem je **14 dni**.
-2. Po izteku roka gre **opomnik**: stranka ima še **3 delovne dni**.
-3. Na **22. delovni dan** od obvestila (nikoli pred iztekom roka po opomniku) gre **končno obvestilo**:
-   ker blaga ni prevzela v določenem času, smatramo, da ga ne potrebuje, in ga bomo oddali v zabojnik
-   **Humana**.
-4. Ko je blago oddano, ga zaposleni označi kot »Oddano v Humana«.
+1. Ko je naročilo označeno kot **gotovo**, se stranko obvesti: za prevzem ima **14 delovnih dni**.
+2. **Delovni dan pred iztekom roka** gre **opomnik**.
+3. Po roku teče **zamudnina 0,50 € na dan** (koledarski dnevi), razen če se stranka javi – takrat v
+   podrobnostih naročila ali ob izdaji označite »Brez zamudnine«. Ob izdaji aplikacija izračuna zamudnino
+   in znesek za plačilo.
+4. Oblačila, ki niso prevzeta v **enem mesecu** od obvestila, se oddajo v zabojnik **Humana**; zaposleni
+   jih označi kot »Oddano v Humana«.
 
-Primer: gotovo 2. 11. → rok 16. 11. → opomnik 17. 11. (zadnji rok 20. 11.) → končno obvestilo 2. 12.
+Primer: gotovo 29. 9. → opomnik pet 16. 10. → rok za prevzem pon 19. 10. → zamudnina od 20. 10. →
+oddaja v Humano od 29. 10.
+
+**Prevzemni listek:** po shranjenem prevzemu (ali v podrobnostih naročila) z gumbom **Natisni listek**.
+Zgornji del dobi stranka (podatki, storitve, pogoji prevzema), spodnji odrezek s številko se pripne na
+oblačilo. Listek je oblikovan za tiskalnik računov (80 mm), natisne pa se tudi na A4.
 
 Obvestila se pošiljajo s pripravljenim SMS (en dotik), po e-pošti ali s klicem. Če je povezana Google
 preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
