@@ -52,6 +52,8 @@ const POLJA = [
   ['services', 'Storitve'], // nove stolpce dodajajte samo na konec
 ];
 const LIST_STORITVE = 'Storitve';
+const LIST_STRANKE = 'Stranke';
+const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno']];
 const KLJUCI = POLJA.map((p) => p[0]);
 const STOLPEC = Object.fromEntries(KLJUCI.map((k, i) => [k, i + 1]));
 const ZAKLENJENO = ['id', 'num', 'sector', 'createdAt', 'updatedAt'];
@@ -68,6 +70,10 @@ function nastavi() {
   const storitve = ss.getSheetByName(LIST_STORITVE) || ss.insertSheet(LIST_STORITVE);
   storitve.getRange(1, 1, 1, 2).setValues([['Skupina', 'Storitev']]).setFontWeight('bold').setBackground('#e5eeea');
   storitve.setFrozenRows(1);
+  const stranke = ss.getSheetByName(LIST_STRANKE) || ss.insertSheet(LIST_STRANKE);
+  stranke.getRange(1, 1, 1, POLJA_STRANKE.length).setValues([POLJA_STRANKE.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
+  stranke.setFrozenRows(1);
+  stranke.getRange(2, 1, stranke.getMaxRows() - 1, POLJA_STRANKE.length).setNumberFormat('@');
   ScriptApp.getProjectTriggers().forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dnevniPregled').timeBased().everyDays(1).atHour(NASTAVITVE.uraDnevnegaPregleda)
     .inTimezone(CASOVNI_PAS).create();
@@ -89,7 +95,8 @@ function doPost(e) {
   lock.waitLock(20000);
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
-    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve() });
+    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke() });
+    if (req.action === 'saveCustomer') return json({ ok: true, customer: shraniStranko(req.customer || {}) });
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
     if (req.action === 'create') return json({ ok: true, order: ustvari(sh, req.order || {}) });
     if (req.action === 'update') return json({ ok: true, order: posodobi(sh, req.id, req.patch || {}) });
@@ -241,6 +248,39 @@ function preberiStoritve() {
   return sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues()
     .filter((r) => r[0] && r[1])
     .map((r) => ({ group: String(r[0]), name: String(r[1]) }));
+}
+
+function listStranke() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_STRANKE);
+  if (!sh) throw new Error('Ni lista Stranke – zaženite funkcijo nastavi');
+  return sh;
+}
+
+function preberiStranke() {
+  const sh = listStranke();
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, POLJA_STRANKE.length).getDisplayValues()
+    .map((r) => Object.fromEntries(POLJA_STRANKE.map((p, i) => [p[0], r[i]])))
+    .filter((c) => c.id);
+}
+
+function shraniStranko(vnos) {
+  if (!vnos.name || !vnos.phone) throw new Error('Ime in telefon sta obvezna');
+  const sh = listStranke();
+  const vse = preberiStranke();
+  const tel = (x) => String(x || '').replace(/\D/g, '').replace(/^386/, '0');
+  if (vse.some((c) => tel(c.phone) === tel(vnos.phone) && c.id !== vnos.id)) throw new Error('Stranka s to številko že obstaja');
+  const c = {
+    id: vnos.id || Utilities.getUuid(),
+    name: String(vnos.name), phone: String(vnos.phone), email: String(vnos.email || ''), note: String(vnos.note || ''),
+    createdAt: vnos.createdAt || new Date().toISOString(),
+  };
+  const i = vse.findIndex((x) => x.id === c.id);
+  const vrstica = i >= 0 ? i + 2 : sh.getLastRow() + 1;
+  const obseg = sh.getRange(vrstica, 1, 1, POLJA_STRANKE.length);
+  obseg.setNumberFormat('@');
+  obseg.setValues([POLJA_STRANKE.map((p) => c[p[0]])]);
+  return c;
 }
 
 function shraniStoritve(list) {

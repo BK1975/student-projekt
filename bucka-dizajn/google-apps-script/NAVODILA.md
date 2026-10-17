@@ -5,7 +5,7 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
 ## Kaj dobite
 
 - Vsa naročila so v Google preglednici (list **Naročila**). Vse naprave v poslovalnici vidijo iste podatke.
-- Seznam storitev (brez cen) je v listu **Storitve** in velja za vse naprave. Urejate ga v aplikaciji
+- Stranke so v listu **Stranke**, seznam storitev (brez cen) pa v listu **Storitve** in velja za vse naprave. Urejate ga v aplikaciji
   (Nastavitve → Storitve).
 - Ko zaposleni v aplikaciji označi naročilo kot **gotovo**, stranka z e-pošto samodejno prejme
   obvestilo z rokom za prevzem (14 dni).
@@ -47,7 +47,7 @@ povezovanjem jih po potrebi izvozite (Nastavitve → Izvozi) in vnesite znova.
 - Seznam praznikov vsako leto dopolnite.
 - Po spremembi `Code.gs`: **Uvedi → Upravljaj uvedbe → ✎ → Različica: Nova različica**, da URL ostane enak.
 - Če ste skripto namestili pred dodajanjem seznama storitev, po posodobitvi `Code.gs` še enkrat zaženite
-  **nastavi** (doda list Storitve in stolpec »Storitve«; obstoječi podatki ostanejo).
+  **nastavi** (doda manjkajoče liste Storitve in Stranke ter stolpec »Storitve«; obstoječi podatki ostanejo).
 - Preglednico lahko berete in filtrirate, a podatke urejajte v aplikaciji. Ne spreminjajte vrstnega reda
   stolpcev in ne brišite stolpca **ID**.
 

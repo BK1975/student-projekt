@@ -293,6 +293,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const SETTINGS_KEY = 'bucka-settings';
 const LOCAL_KEY = 'bucka-orders-v2';
 const SERVICES_KEY = 'bucka-services';
+const CUSTOMERS_KEY = 'bucka-customers';
 
 function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; } }
@@ -368,6 +369,7 @@ function smsLink(phone, text) {
 const settings = lsGet(SETTINGS_KEY, { url: '', key: '' });
 let orders = [];
 let serviceList = DEFAULT_SERVICES;
+let customerRecords = []; // shranjene stranke: { id, name, phone, email, note, createdAt }
 
 const store = {
   remote: () => !!settings.url,
@@ -386,9 +388,11 @@ const store = {
       const res = await this.call('list');
       orders = res.orders;
       serviceList = res.services && res.services.length ? res.services : DEFAULT_SERVICES;
+      customerRecords = res.customers || [];
     } else {
       orders = lsGet(LOCAL_KEY, []);
       serviceList = lsGet(SERVICES_KEY, DEFAULT_SERVICES);
+      customerRecords = lsGet(CUSTOMERS_KEY, []);
     }
     orders.forEach((o) => { if (!Array.isArray(o.services)) o.services = []; });
   },
@@ -396,6 +400,17 @@ const store = {
     if (this.remote()) await this.call('saveServices', { services: list });
     else if (!lsSet(SERVICES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
     serviceList = list;
+  },
+  async saveCustomer(c) {
+    if (this.remote()) {
+      c = (await this.call('saveCustomer', { customer: c })).customer;
+    } else {
+      if (!c.id) { c.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()); c.createdAt = new Date().toISOString(); }
+    }
+    const i = customerRecords.findIndex((x) => x.id === c.id);
+    if (i >= 0) customerRecords[i] = c; else customerRecords.push(c);
+    if (!this.remote() && !lsSet(CUSTOMERS_KEY, customerRecords)) throw new Error('Shranjevanje ni uspelo');
+    return c;
   },
   async create(o) {
     if (this.remote()) {
@@ -433,7 +448,7 @@ let route = location.hash || '#/';
 let searchQuery = '';
 let lastCreated = null;
 let customerQuery = '';
-let prefill = null; // stranka, ki naj se vpiše v obrazec za prevzem
+let intakeKey = null; // izbrana stranka pri prevzemu (ključ = telefon)
 
 window.addEventListener('hashchange', () => { route = location.hash || '#/'; render(); window.scrollTo(0, 0); });
 function nav(hash) { location.hash = hash; }
@@ -441,7 +456,7 @@ function nav(hash) { location.hash = hash; }
 function render() {
   $('#mode').textContent = store.remote() ? 'preglednica' : 'ta naprava';
   const app = $('#app');
-  if (route.startsWith('#/popravilo')) return renderRepair(app, route.split('/')[2] || 'prevzem');
+  if (route.startsWith('#/popravilo')) return renderRepair(app, route.split('/')[2] || 'stranke');
   if (route === '#/nastavitve') return renderSettings(app);
   renderHome(app);
 }
@@ -455,7 +470,7 @@ function renderHome(app) {
   app.innerHTML = `
     <h1>Izberi sektor</h1>
     <div class="sectors">
-      <button class="sector" data-nav="#/popravilo/prevzem">
+      <button class="sector" data-nav="#/popravilo/stranke">
         <b>Popravilo oblačil</b>
         <span>Prevzem oblačil v poslovalnico, izdaja popravljenih oblačil in roki za prevzem.</span>
         <div class="stats">
@@ -475,7 +490,7 @@ function renderHome(app) {
 
 function renderRepair(app, tab) {
   const due = orders.filter((o) => o.sector === 'popravilo' && stage(o).due).length;
-  const tabs = [['prevzem', 'Prevzem'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled'], ['stranke', 'Stranke']];
+  const tabs = [['stranke', 'Stranke'], ['prevzem', 'Prevzem'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
   app.innerHTML = `
     <button class="back" data-nav="#/">‹ Sektorji</button>
     <h1>Popravilo oblačil</h1>
@@ -486,8 +501,8 @@ function renderRepair(app, tab) {
   const el = $('#tab');
   if (tab === 'izdaja') renderIssue(el);
   else if (tab === 'pregled') renderOverview(el);
-  else if (tab === 'stranke') renderCustomers(el);
-  else renderIntake(el);
+  else if (tab === 'prevzem') renderIntake(el);
+  else renderCustomers(el);
 }
 
 /* ---- Prevzem v poslovalnico ---- */
@@ -519,16 +534,8 @@ function renderIntake(el) {
           <input id="iPieces" name="pieces" type="number" min="1" max="99" value="1" inputmode="numeric">
         </div>
       </div>
-      <label for="cSearch">Obstoječa stranka <small>(neobvezno)</small></label>
-      <input id="cSearch" type="search" placeholder="Poišči po imenu ali telefonu …" autocomplete="off">
-      <div id="cResults"></div>
-      <label for="iPhone">Telefon</label>
-      <input id="iPhone" name="phone" type="tel" autocomplete="off" inputmode="tel" placeholder="040 123 456">
-      <p class="hint" id="knownCustomer" hidden></p>
-      <label for="iName">Ime in priimek</label>
-      <input id="iName" name="name" autocomplete="off">
-      <label for="iEmail">E-pošta <small>(neobvezno – za samodejna obvestila)</small></label>
-      <input id="iEmail" name="email" type="email" autocomplete="off">
+      <label for="cSearch">Obstoječa stranka</label>
+      <div id="customerBox"></div>
       <label>Storitve</label>
       ${serviceGroups().map(([g, list]) => `
         <details class="svc-group">
@@ -557,57 +564,57 @@ function renderIntake(el) {
   picked = [];
   renderPicked();
 
-  // Iskanje obstoječe stranke.
+  renderCustomerBox();
+}
+
+function renderCustomerBox() {
+  const box = $('#customerBox');
+  const c = intakeKey && customers().find((x) => x.key === intakeKey);
+  if (c) {
+    box.innerHTML = `
+      <div class="callout ok" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span><b>${esc(c.name)}</b> · ${esc(c.phone)}${c.email ? `<br><small>${esc(c.email)}</small>` : ''}<br><small>${c.orders.length}× pri nas</small></span>
+        <button type="button" class="btn small secondary" id="changeCustomer">Zamenjaj</button>
+      </div>`;
+    $('#changeCustomer').onclick = () => { intakeKey = null; renderCustomerBox(); $('#cSearch').focus(); };
+    return;
+  }
+  box.innerHTML = `
+    <input id="cSearch" type="search" placeholder="Poišči po imenu ali telefonu …" autocomplete="off">
+    <div id="cResults"></div>
+    <button type="button" class="btn small secondary" style="margin-top:8px" data-newcustomer="intake">+ Nova stranka</button>`;
   $('#cSearch').addEventListener('input', () => {
-    const list = findCustomers($('#cSearch').value).slice(0, 6);
-    $('#cResults').innerHTML = $('#cSearch').value.trim()
-      ? (list.map((c) => `
-        <button type="button" class="order" style="display:block;width:100%;text-align:left;margin:6px 0 0" data-pick="${esc(c.key)}">
-          <b>${esc(c.name)}</b> · ${esc(c.phone)}<br><small class="hint">${c.orders.length} ${c.orders.length === 1 ? 'naročilo' : c.orders.length === 2 ? 'naročili' : c.orders.length <= 4 ? 'naročila' : 'naročil'} · zadnji obisk ${fmt(c.last)}</small>
-        </button>`).join('') || '<p class="hint">Ni najdenih strank – vpiši novo spodaj.</p>')
+    const q = $('#cSearch').value;
+    const list = findCustomers(q).slice(0, 6);
+    $('#cResults').innerHTML = q.trim()
+      ? (list.map((x) => `
+        <button type="button" class="order" style="display:block;width:100%;text-align:left;margin:6px 0 0" data-pick="${esc(x.key)}">
+          <b>${esc(x.name)}</b> · ${esc(x.phone)}<br><small class="hint">${x.orders.length}× pri nas${x.last ? ` · zadnji obisk ${fmt(x.last)}` : ''}</small>
+        </button>`).join('') || '<p class="hint">Ni najdenih strank – dodaj novo.</p>')
       : '';
   });
-
-  // Znana stranka: po vnosu telefona predlagaj ime in e-pošto.
-  $('#iPhone').addEventListener('input', () => {
-    const p = digits($('#iPhone').value);
-    const known = p.length >= 6 && customers().find((c) => c.key === p);
-    const hint = $('#knownCustomer');
-    hint.hidden = !known || $('#iName').value.trim() === known.name;
-    if (known) {
-      hint.innerHTML = `Znana stranka: <b>${esc(known.name)}</b> <button type="button" class="chip" data-pick="${esc(known.key)}">Uporabi</button>`;
-    }
-  });
-
-  if (prefill) { fillCustomer(prefill); prefill = null; }
 }
 
-function fillCustomer(c) {
-  $('#iPhone').value = c.phone;
-  $('#iName').value = c.name;
-  $('#iEmail').value = c.email || '';
-  $('#cSearch').value = '';
-  $('#knownCustomer').hidden = true;
-  $('#cResults').innerHTML = `<p class="callout ok" style="margin-top:6px">Stranka: <b>${esc(c.name)}</b> · ${esc(c.phone)} · ${c.orders.length}× pri nas</p>`;
-}
-
-/* ---- Stranke (zbrane iz vseh naročil, ključ je telefonska številka) ---- */
+/* ---- Stranke (shranjene stranke in stranke iz starejših naročil; ključ je telefonska številka) ---- */
 
 function customers() {
   const m = new Map();
+  for (const r of customerRecords) {
+    const key = digits(r.phone);
+    if (key) m.set(key, { ...r, key, record: r, orders: [], last: '' });
+  }
   const byDate = [...orders].sort((a, b) => (a.received + (a.createdAt || '')).localeCompare(b.received + (b.createdAt || '')));
   for (const o of byDate) {
     const key = digits(o.phone);
     if (!key) continue;
-    const c = m.get(key) || { key, orders: [] };
-    c.name = o.name;
-    c.phone = o.phone;
-    if (o.email) c.email = o.email;
+    let c = m.get(key);
+    if (!c) { c = { key, orders: [], last: '' }; m.set(key, c); }
+    if (!c.record) { c.name = o.name; c.phone = o.phone; if (o.email) c.email = o.email; }
     c.last = o.received;
     c.orders.push(o);
-    m.set(key, c);
   }
-  return [...m.values()].sort((a, b) => b.last.localeCompare(a.last));
+  const sortKey = (c) => c.last || (c.createdAt || '').slice(0, 10);
+  return [...m.values()].sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
 }
 
 function findCustomers(query) {
@@ -617,9 +624,55 @@ function findCustomers(query) {
   return customers().filter((c) => norm(c.name).includes(q) || (qd.length >= 3 && c.key.includes(qd)) || norm(c.email).includes(q));
 }
 
+// Obrazec za novo stranko ali urejanje obstoječe. Po shranjevanju pokliče done(stranka).
+function openCustomerForm(c, done) {
+  showModal(c ? 'Uredi stranko' : 'Nova stranka', `
+    <form id="custForm" novalidate>
+      <label for="fName">Ime in priimek</label>
+      <input id="fName" name="name" value="${esc(c?.name)}" autocomplete="off">
+      <label for="fPhone">Telefon</label>
+      <input id="fPhone" name="phone" type="tel" inputmode="tel" value="${esc(c?.phone)}" placeholder="040 123 456" autocomplete="off">
+      <label for="fEmail">E-pošta <small>(neobvezno – za samodejna obvestila)</small></label>
+      <input id="fEmail" name="email" type="email" value="${esc(c?.email)}" autocomplete="off">
+      <label for="fNote">Opomba <small>(neobvezno)</small></label>
+      <input id="fNote" name="note" value="${esc(c?.note)}">
+      <p class="error" id="custError" hidden></p>
+      <button class="btn block" style="margin-top:14px" id="saveCustomer">Shrani stranko</button>
+    </form>`);
+  $('#fName').focus();
+  $('#saveCustomer').onclick = async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData($('#custForm')));
+    const err = (m) => { $('#custError').textContent = m; $('#custError').hidden = false; };
+    const next = { name: f.name.trim(), phone: f.phone.trim(), email: f.email.trim(), note: f.note.trim() };
+    if (!next.name) return err('Vpiši ime in priimek.');
+    if (digits(next.phone).length < 6) return err('Vpiši telefonsko številko.');
+    if (next.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) return err('E-poštni naslov ni veljaven.');
+    const key = digits(next.phone);
+    const dup = customers().find((x) => x.key === key && x.key !== c?.key);
+    if (dup) return err(`Stranka s to številko že obstaja: ${dup.name}.`);
+    const saved = await busy(async () => {
+      const rec = await store.saveCustomer({ ...(c?.record || {}), ...next });
+      // Kontaktne podatke posodobi tudi na naročilih te stranke (zanje gredo obvestila).
+      if (c) {
+        for (const o of c.orders) {
+          if (o.name !== next.name || o.phone !== next.phone || (o.email || '') !== next.email) {
+            await store.update(o.id, { name: next.name, phone: next.phone, email: next.email });
+          }
+        }
+      }
+      return rec;
+    });
+    if (!saved) return;
+    closeModal();
+    toast(c ? 'Stranka posodobljena' : 'Stranka dodana');
+    done(customers().find((x) => x.key === key));
+  };
+}
+
 function renderCustomers(el) {
   el.innerHTML = `
-    <div class="search"><input id="cq" type="search" placeholder="Išči stranko po imenu, telefonu ali e-pošti …" value="${esc(customerQuery)}" autocomplete="off"></div>
+    <div class="search" style="display:flex;gap:8px"><input id="cq" type="search" placeholder="Išči stranko po imenu, telefonu ali e-pošti …" value="${esc(customerQuery)}" autocomplete="off"><button class="btn" style="white-space:nowrap;border-radius:999px" data-newcustomer="list">+ Nova</button></div>
     <div id="cList"></div>`;
   const q = $('#cq');
   q.addEventListener('input', () => { customerQuery = q.value; renderCustomerList(); });
@@ -630,7 +683,7 @@ function renderCustomers(el) {
 function renderCustomerList() {
   const all = customers();
   const list = findCustomers(customerQuery);
-  if (!all.length) { $('#cList').innerHTML = '<p class="empty">Ni še shranjenih strank. Stranka se shrani ob prvem prevzemu.</p>'; return; }
+  if (!all.length) { $('#cList').innerHTML = '<p class="empty">Ni še shranjenih strank. Dodaj prvo z gumbom »+ Nova«.</p>'; return; }
   $('#cList').innerHTML = `<p class="hint" style="margin-bottom:10px">${list.length} od ${all.length} strank</p>` +
     (list.slice(0, 100).map((c) => {
       const open = c.orders.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo').length;
@@ -640,10 +693,12 @@ function renderCustomerList() {
             <div><span class="who">${esc(c.name)}</span> · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a>${c.email ? `<br><small class="hint">${esc(c.email)}</small>` : ''}</div>
             ${open ? `<span class="pill caka">Odprto: ${open}</span>` : ''}
           </div>
-          <p class="dates">${c.orders.length}× pri nas · zadnji obisk ${fmt(c.last)}</p>
+          ${c.note ? `<p class="desc">${esc(c.note)}</p>` : ''}
+          <p class="dates">${c.orders.length ? `${c.orders.length}× pri nas · zadnji obisk ${fmt(c.last)}` : 'še brez naročil'}</p>
           <div class="actions">
             <button class="btn small" data-newfor="${esc(c.key)}">Nov prevzem</button>
-            <button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>
+            ${c.orders.length ? `<button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>` : ''}
+            <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
           </div>
         </div>`;
     }).join('') || '<p class="empty">Ni zadetkov.</p>');
@@ -703,12 +758,14 @@ const pieces = (n) => (Number(n) === 1 ? 'kos' : Number(n) === 2 ? 'kosa' : Numb
 async function saveIntake() {
   const f = Object.fromEntries(new FormData($('#intakeForm')));
   const err = (m) => { $('#formError').textContent = m; $('#formError').hidden = false; };
+  const c = intakeKey && customers().find((x) => x.key === intakeKey);
+  if (!c) return err('Izberi stranko ali dodaj novo.');
   const o = {
     sector: 'popravilo',
     received: f.received || today(),
-    name: f.name.trim(),
-    phone: f.phone.trim(),
-    email: f.email.trim(),
+    name: c.name,
+    phone: c.phone,
+    email: c.email || '',
     pieces: Math.max(1, Number(f.pieces) || 1),
     services: picked.map(({ group, name, qty }) => ({ group, name, qty })),
     description: f.description.trim(),
@@ -717,14 +774,11 @@ async function saveIntake() {
     note: f.note.trim(),
     status: 'sprejeto',
   };
-  if (!o.name) return err('Vpiši ime in priimek.');
-  if (digits(o.phone).length < 6) return err('Vpiši telefonsko številko.');
-  if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return err('E-poštni naslov ni veljaven.');
   if (!o.description && !o.services.length) return err('Izberi storitev ali opiši, kaj je treba narediti.');
   if (o.price && isNaN(Number(o.price))) return err('Cena mora biti število.');
   if (o.received > today()) return err('Datum prevzema ne more biti v prihodnosti.');
   const saved = await busy(() => store.create(o));
-  if (saved) { lastCreated = saved; render(); }
+  if (saved) { lastCreated = saved; intakeKey = null; render(); }
 }
 
 /* ---- Izdaja stranki ---- */
@@ -944,11 +998,8 @@ function openDetail(o) {
   const dis = editable ? '' : 'disabled';
   showModal(`Naročilo ${esc(o.num)} <span class="pill ${st.key}">${esc(st.label)}</span>`, `
     <form id="editForm" novalidate>
-      <div class="two">
-        <div><label>Ime in priimek</label><input name="name" value="${esc(o.name)}" ${dis}></div>
-        <div><label>Telefon</label><input name="phone" type="tel" value="${esc(o.phone)}" ${dis}></div>
-      </div>
-      <label>E-pošta</label><input name="email" type="email" value="${esc(o.email)}" ${dis}>
+      <p style="margin:0"><b>${esc(o.name)}</b> · ${esc(o.phone)}${o.email ? ` · ${esc(o.email)}` : ''}
+        <button type="button" style="border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;font-size:.82rem" data-editcustomer="${esc(digits(o.phone))}">uredi stranko</button></p>
       <div class="three">
         <div><label>Datum prevzema</label><input name="received" type="date" value="${esc(o.received)}" ${dis}></div>
         <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
@@ -969,13 +1020,11 @@ function openDetail(o) {
     const f = Object.fromEntries(new FormData($('#editForm')));
     const e = $('#editError');
     const fail = (m) => { e.textContent = m; e.hidden = false; };
-    if (!f.name.trim() || digits(f.phone).length < 6) return fail('Ime in telefon sta obvezna.');
     if (!f.description.trim() && !o.services.length) return fail('Opis je obvezen.');
-    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) return fail('E-poštni naslov ni veljaven.');
     if (f.received > today()) return fail('Datum prevzema ne more biti v prihodnosti.');
     if (f.price.trim() && isNaN(Number(f.price.trim().replace(',', '.')))) return fail('Cena mora biti število.');
     const ok = await busy(() => store.update(o.id, {
-      name: f.name.trim(), phone: f.phone.trim(), email: f.email.trim(), received: f.received || o.received,
+      received: f.received || o.received,
       pieces: Math.max(1, Number(f.pieces) || 1), price: f.price.trim().replace(',', '.'),
       description: f.description.trim(), note: f.note.trim(),
     }));
@@ -1134,7 +1183,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.nav) {
     e.preventDefault();
@@ -1156,11 +1205,23 @@ document.addEventListener('click', (e) => {
     return renderPicked();
   }
   if (t.id === 'newIntake') { lastCreated = null; return render(); }
-  if (t.dataset.pick) { const c = customers().find((x) => x.key === t.dataset.pick); if (c) fillCustomer(c); return; }
+  if (t.dataset.pick) { intakeKey = t.dataset.pick; return renderCustomerBox(); }
   if (t.dataset.newfor) {
-    prefill = customers().find((x) => x.key === t.dataset.newfor) || null;
+    intakeKey = t.dataset.newfor;
     lastCreated = null;
     return nav('#/popravilo/prevzem');
+  }
+  if (t.dataset.newcustomer) {
+    const fromIntake = t.dataset.newcustomer === 'intake';
+    return openCustomerForm(null, (c) => {
+      if (fromIntake) { intakeKey = c.key; renderCustomerBox(); }
+      else { customerQuery = ''; render(); }
+    });
+  }
+  if (t.dataset.editcustomer) {
+    const c = customers().find((x) => x.key === t.dataset.editcustomer);
+    if (c) openCustomerForm(c, () => render());
+    return;
   }
   if (t.dataset.ordersfor) {
     const c = customers().find((x) => x.key === t.dataset.ordersfor);

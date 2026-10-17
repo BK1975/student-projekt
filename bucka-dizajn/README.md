@@ -8,16 +8,15 @@ potrebna.
 
 ### Popravilo oblačil (narejeno)
 
-- **Prevzem** – oblačila stranke se sprejmejo v poslovalnico: datum prevzema, ime in priimek, telefon,
-  neobvezna e-pošta, število kosov, opis (s hitrimi gumbi za pogosta popravila), neobvezna cena in
-  dogovorjeni rok. Vsak prevzem dobi številko za listek (`P-0001`, `P-0002` …). Pri znani telefonski
-  številki aplikacija predlaga ime stranke.
+- **Stranke** (prvi zavihek) – vse stranke poslovalnice: ime in priimek, telefon, neobvezna e-pošta in
+  opomba. Nova stranka se doda z gumbom **+ Nova**, obstoječo lahko uredite (podatki se posodobijo tudi
+  na njenih naročilih). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumba
+  **Nov prevzem** in **Naročila**. Stranka se prepozna po telefonski številki.
+- **Prevzem** – oblačila stranke se sprejmejo v poslovalnico: izbira obstoječe stranke (ali **+ Nova
+  stranka**), datum prevzema, število kosov, storitve (po skupinah iz cenika, brez cen), opis, neobvezna
+  cena in dogovorjeni rok. Vsak prevzem dobi številko za listek (`P-0001`, `P-0002` …).
 - **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki. Brez iskanja so
   prikazana vsa gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
-- **Stranke** – vse stranke, ki so že bile pri vas (shranijo se ob prvem prevzemu, ključ je telefonska
-  številka). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumb **Nov prevzem**
-  (podatki stranke se vpišejo sami) in **Naročila**. Obstoječo stranko lahko poiščete tudi na vrhu obrazca
-  za prevzem.
 - **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), oblačila v popravilu,
   oblačila, ki čakajo na prevzem, in zadnja zaključena naročila.
 
