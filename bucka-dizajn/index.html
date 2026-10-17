@@ -65,8 +65,8 @@
   .sector span { color: var(--muted); font-size: .92rem; }
   .sector .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
-  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
-  .tabs button { border: 0; background: none; padding: 9px 4px; border-radius: 9px; font-weight: 600; color: var(--brand); position: relative; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+  .tabs button { border: 0; background: none; padding: 9px 2px; font-size: .92rem; border-radius: 9px; font-weight: 600; color: var(--brand); position: relative; }
   .tabs button[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .72rem; margin-left: 4px; }
 
@@ -432,6 +432,8 @@ const money = (v) => new Intl.NumberFormat('sl-SI', { style: 'currency', currenc
 let route = location.hash || '#/';
 let searchQuery = '';
 let lastCreated = null;
+let customerQuery = '';
+let prefill = null; // stranka, ki naj se vpiše v obrazec za prevzem
 
 window.addEventListener('hashchange', () => { route = location.hash || '#/'; render(); window.scrollTo(0, 0); });
 function nav(hash) { location.hash = hash; }
@@ -473,7 +475,7 @@ function renderHome(app) {
 
 function renderRepair(app, tab) {
   const due = orders.filter((o) => o.sector === 'popravilo' && stage(o).due).length;
-  const tabs = [['prevzem', 'Prevzem'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
+  const tabs = [['prevzem', 'Prevzem'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled'], ['stranke', 'Stranke']];
   app.innerHTML = `
     <button class="back" data-nav="#/">‹ Sektorji</button>
     <h1>Popravilo oblačil</h1>
@@ -484,6 +486,7 @@ function renderRepair(app, tab) {
   const el = $('#tab');
   if (tab === 'izdaja') renderIssue(el);
   else if (tab === 'pregled') renderOverview(el);
+  else if (tab === 'stranke') renderCustomers(el);
   else renderIntake(el);
 }
 
@@ -516,6 +519,9 @@ function renderIntake(el) {
           <input id="iPieces" name="pieces" type="number" min="1" max="99" value="1" inputmode="numeric">
         </div>
       </div>
+      <label for="cSearch">Obstoječa stranka <small>(neobvezno)</small></label>
+      <input id="cSearch" type="search" placeholder="Poišči po imenu ali telefonu …" autocomplete="off">
+      <div id="cResults"></div>
       <label for="iPhone">Telefon</label>
       <input id="iPhone" name="phone" type="tel" autocomplete="off" inputmode="tel" placeholder="040 123 456">
       <p class="hint" id="knownCustomer" hidden></p>
@@ -551,21 +557,96 @@ function renderIntake(el) {
   picked = [];
   renderPicked();
 
+  // Iskanje obstoječe stranke.
+  $('#cSearch').addEventListener('input', () => {
+    const list = findCustomers($('#cSearch').value).slice(0, 6);
+    $('#cResults').innerHTML = $('#cSearch').value.trim()
+      ? (list.map((c) => `
+        <button type="button" class="order" style="display:block;width:100%;text-align:left;margin:6px 0 0" data-pick="${esc(c.key)}">
+          <b>${esc(c.name)}</b> · ${esc(c.phone)}<br><small class="hint">${c.orders.length} ${c.orders.length === 1 ? 'naročilo' : c.orders.length === 2 ? 'naročili' : c.orders.length <= 4 ? 'naročila' : 'naročil'} · zadnji obisk ${fmt(c.last)}</small>
+        </button>`).join('') || '<p class="hint">Ni najdenih strank – vpiši novo spodaj.</p>')
+      : '';
+  });
+
   // Znana stranka: po vnosu telefona predlagaj ime in e-pošto.
   $('#iPhone').addEventListener('input', () => {
     const p = digits($('#iPhone').value);
-    const known = p.length >= 6 && [...orders].reverse().find((o) => digits(o.phone) === p);
+    const known = p.length >= 6 && customers().find((c) => c.key === p);
     const hint = $('#knownCustomer');
-    hint.hidden = !known;
+    hint.hidden = !known || $('#iName').value.trim() === known.name;
     if (known) {
-      hint.innerHTML = `Znana stranka: <b>${esc(known.name)}</b> <button type="button" class="chip" id="useKnown">Uporabi</button>`;
-      $('#useKnown').onclick = () => {
-        $('#iName').value = known.name;
-        if (known.email) $('#iEmail').value = known.email;
-        hint.hidden = true;
-      };
+      hint.innerHTML = `Znana stranka: <b>${esc(known.name)}</b> <button type="button" class="chip" data-pick="${esc(known.key)}">Uporabi</button>`;
     }
   });
+
+  if (prefill) { fillCustomer(prefill); prefill = null; }
+}
+
+function fillCustomer(c) {
+  $('#iPhone').value = c.phone;
+  $('#iName').value = c.name;
+  $('#iEmail').value = c.email || '';
+  $('#cSearch').value = '';
+  $('#knownCustomer').hidden = true;
+  $('#cResults').innerHTML = `<p class="callout ok" style="margin-top:6px">Stranka: <b>${esc(c.name)}</b> · ${esc(c.phone)} · ${c.orders.length}× pri nas</p>`;
+}
+
+/* ---- Stranke (zbrane iz vseh naročil, ključ je telefonska številka) ---- */
+
+function customers() {
+  const m = new Map();
+  const byDate = [...orders].sort((a, b) => (a.received + (a.createdAt || '')).localeCompare(b.received + (b.createdAt || '')));
+  for (const o of byDate) {
+    const key = digits(o.phone);
+    if (!key) continue;
+    const c = m.get(key) || { key, orders: [] };
+    c.name = o.name;
+    c.phone = o.phone;
+    if (o.email) c.email = o.email;
+    c.last = o.received;
+    c.orders.push(o);
+    m.set(key, c);
+  }
+  return [...m.values()].sort((a, b) => b.last.localeCompare(a.last));
+}
+
+function findCustomers(query) {
+  const q = norm(query.trim());
+  const qd = digits(query);
+  if (!q) return customers();
+  return customers().filter((c) => norm(c.name).includes(q) || (qd.length >= 3 && c.key.includes(qd)) || norm(c.email).includes(q));
+}
+
+function renderCustomers(el) {
+  el.innerHTML = `
+    <div class="search"><input id="cq" type="search" placeholder="Išči stranko po imenu, telefonu ali e-pošti …" value="${esc(customerQuery)}" autocomplete="off"></div>
+    <div id="cList"></div>`;
+  const q = $('#cq');
+  q.addEventListener('input', () => { customerQuery = q.value; renderCustomerList(); });
+  renderCustomerList();
+  if (!matchMedia('(pointer: coarse)').matches) q.focus();
+}
+
+function renderCustomerList() {
+  const all = customers();
+  const list = findCustomers(customerQuery);
+  if (!all.length) { $('#cList').innerHTML = '<p class="empty">Ni še shranjenih strank. Stranka se shrani ob prvem prevzemu.</p>'; return; }
+  $('#cList').innerHTML = `<p class="hint" style="margin-bottom:10px">${list.length} od ${all.length} strank</p>` +
+    (list.slice(0, 100).map((c) => {
+      const open = c.orders.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo').length;
+      return `
+        <div class="order">
+          <div class="top">
+            <div><span class="who">${esc(c.name)}</span> · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a>${c.email ? `<br><small class="hint">${esc(c.email)}</small>` : ''}</div>
+            ${open ? `<span class="pill caka">Odprto: ${open}</span>` : ''}
+          </div>
+          <p class="dates">${c.orders.length}× pri nas · zadnji obisk ${fmt(c.last)}</p>
+          <div class="actions">
+            <button class="btn small" data-newfor="${esc(c.key)}">Nov prevzem</button>
+            <button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>
+          </div>
+        </div>`;
+    }).join('') || '<p class="empty">Ni zadetkov.</p>');
 }
 
 /* ---- Seznam storitev (brez cen – cene so v blagajni) ---- */
@@ -1053,7 +1134,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-nav], [data-open], [data-act], [data-svc], [data-qty], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-nav], [data-open], [data-act], [data-svc], [data-qty], [data-pick], [data-newfor], [data-ordersfor], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.nav) {
     e.preventDefault();
@@ -1075,6 +1156,17 @@ document.addEventListener('click', (e) => {
     return renderPicked();
   }
   if (t.id === 'newIntake') { lastCreated = null; return render(); }
+  if (t.dataset.pick) { const c = customers().find((x) => x.key === t.dataset.pick); if (c) fillCustomer(c); return; }
+  if (t.dataset.newfor) {
+    prefill = customers().find((x) => x.key === t.dataset.newfor) || null;
+    lastCreated = null;
+    return nav('#/popravilo/prevzem');
+  }
+  if (t.dataset.ordersfor) {
+    const c = customers().find((x) => x.key === t.dataset.ordersfor);
+    searchQuery = c ? c.phone : '';
+    return nav('#/popravilo/izdaja');
+  }
   if (t.id === 'saveIntake') { e.preventDefault(); return saveIntake(); }
   const o = orders.find((x) => x.id === (t.dataset.open || t.dataset.id));
   if (!o) return;

@@ -14,6 +14,10 @@ potrebna.
   številki aplikacija predlaga ime stranke.
 - **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki. Brez iskanja so
   prikazana vsa gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
+- **Stranke** – vse stranke, ki so že bile pri vas (shranijo se ob prvem prevzemu, ključ je telefonska
+  številka). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumb **Nov prevzem**
+  (podatki stranke se vpišejo sami) in **Naročila**. Obstoječo stranko lahko poiščete tudi na vrhu obrazca
+  za prevzem.
 - **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), oblačila v popravilu,
   oblačila, ki čakajo na prevzem, in zadnja zaključena naročila.
 
