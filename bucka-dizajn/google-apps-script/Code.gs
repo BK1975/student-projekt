@@ -106,6 +106,7 @@ function doPost(e) {
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
     if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti() });
+    if (req.action === 'importAll') return json(Object.assign({ ok: true }, uvoziVse(sh, req)));
     if (req.action === 'saveAbsences') { shraniOdsotnosti(req.absences || []); return json({ ok: true }); }
     if (req.action === 'saveCustomer') return json({ ok: true, customer: shraniStranko(req.customer || {}) });
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
@@ -159,6 +160,42 @@ function posodobi(sh, id, patch) {
   }
   zapisi(sh, v.vrstica, o);
   return o;
+}
+
+/* ---------- Prenos podatkov z naprave (pred povezavo s preglednico) ---------- */
+
+function uvoziVse(sh, data) {
+  const tel = (x) => String(x || '').replace(/\D/g, '').replace(/^386/, '0');
+  // Stranke: brez podvajanja (po ID ali telefonu).
+  let stStrank = 0;
+  const stranke = preberiStranke();
+  (data.customers || []).forEach((c) => {
+    if (!c.name || !c.phone || stranke.some((x) => x.id === c.id || tel(x.phone) === tel(c.phone))) return;
+    stranke.push(shraniStranko(Object.assign({}, c, { id: c.id || '' })));
+    stStrank++;
+  });
+  // Naročila: brez podvajanja po ID; zasedena številka dobi novo.
+  let stNarocil = 0;
+  const obstojeca = vsa(sh).map((v) => v.o);
+  const ids = new Set(obstojeca.map((o) => o.id));
+  const stevilke = new Set(obstojeca.map((o) => o.num));
+  let zadnja = obstojeca.filter((o) => String(o.num).startsWith('P-')).reduce((m, o) => Math.max(m, Number(String(o.num).slice(2)) || 0), 0);
+  (data.orders || []).forEach((vnos) => {
+    if (!vnos.id || ids.has(vnos.id)) return;
+    const o = {};
+    KLJUCI.forEach((k) => { o[k] = vnos[k] == null ? '' : vnos[k]; });
+    JSON_POLJA.forEach((k) => { o[k] = Array.isArray(vnos[k]) ? vnos[k] : []; });
+    if (!o.num || stevilke.has(o.num)) o.num = 'P-' + String(++zadnja).padStart(4, '0');
+    else zadnja = Math.max(zadnja, Number(String(o.num).slice(2)) || 0);
+    o.updatedAt = new Date().toISOString();
+    const r = sh.getLastRow() + 1;
+    zapisi(sh, r, o);
+    ids.add(o.id); stevilke.add(o.num); stNarocil++;
+  });
+  if (Array.isArray(data.absences) && data.absences.length) {
+    shraniOdsotnosti([...new Set(odsotnosti().concat(data.absences))]);
+  }
+  return { orders: stNarocil, customers: stStrank };
 }
 
 /* ---------- Dnevni pregled rokov ---------- */

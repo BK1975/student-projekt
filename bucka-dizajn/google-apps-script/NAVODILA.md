@@ -41,11 +41,14 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
    - Kdo ima dostop: **Kdorkoli**
 
    Kliknite **Uvedi** in kopirajte **URL spletne aplikacije** (konča se z `/exec`).
-7. Na vsaki napravi v poslovalnici odprite aplikacijo → **Nastavitve**, vpišite URL in ključ ter kliknite
-   **Shrani in poveži**.
+7. Na eni napravi odprite aplikacijo → **Nastavitve**, vpišite URL in ključ ter kliknite **Shrani in
+   poveži**. Če so na napravi že podatki, jih aplikacija ponudi prenesti v preglednico.
+8. Druge naprave povežete v Nastavitvah z gumbom **Pošlji povezavo** / **Kopiraj povezavo** (pod
+   »Poveži drugo napravo«). Povezavo odprite na drugi napravi – na iPhonu po možnosti v aplikaciji na
+   domačem zaslonu – in potrdite **Poveži**. Povezava vsebuje ključ, zato jo pošljite samo zaposlenim.
 
-Če ste aplikacijo že uporabljali brez preglednice, so tista naročila ostala na napravi. Pred
-povezovanjem jih po potrebi izvozite (Nastavitve → Izvozi) in vnesite znova.
+Če ste aplikacijo že uporabljali brez preglednice, podatke s te naprave prenesete ob povezavi ali kasneje
+v Nastavitvah (»Podatki s te naprave« → Prenesi v preglednico).
 
 ## Spremembe kasneje
 

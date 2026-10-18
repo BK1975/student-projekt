@@ -9,7 +9,8 @@
 <meta name="theme-color" content="#2f5d50">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bucka P&amp;C">
 <style>
@@ -50,6 +51,19 @@
   .mode { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.2); margin-left: 6px; }
 
   main { max-width: 900px; margin: 0 auto; padding: 16px 16px 40px; }
+  @media (min-width: 900px) {
+    main { max-width: 1180px; padding: 20px 24px 48px; }
+    .cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+    .cols > * > h2:first-child { margin-top: 0; }
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+    .cards .order { margin: 0; }
+    .tabs button { font-size: .95rem; padding: 10px 4px; }
+  }
+  @media (min-width: 1300px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .update-bar { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50;
+    background: var(--brand); color: #fff; border-radius: 14px; padding: 10px 12px 10px 16px; display: flex; gap: 12px; align-items: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
+  .update-bar button { border: 0; border-radius: 10px; padding: 8px 12px; background: #fff; color: var(--brand); font-weight: 700; }
   h1 { font-size: 1.35rem; margin: 4px 0 14px; }
   h2 { font-size: 1.05rem; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
   .back { border: 0; background: none; color: var(--brand); padding: 0; font-weight: 600; margin-bottom: 8px; }
@@ -555,6 +569,7 @@ function render() {
   const app = $('#app');
   if (route.startsWith('#/popravilo')) return renderRepair(app, route.split('/')[2] || 'stranke');
   if (route === '#/nastavitve') return renderSettings(app);
+  if (route.startsWith('#/povezi/')) return renderConnectLink(app);
   renderHome(app);
 }
 
@@ -565,6 +580,9 @@ function renderHome(app) {
   const n = (pred) => repairs.filter(pred).length;
   const due = n((o) => stage(o).due);
   app.innerHTML = `
+    ${store.remote() ? '' : `<div class="callout" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <span><b>Podatki so shranjeni samo na tej napravi.</b> Druge naprave jih ne vidijo. Za skupno rabo povežite Google preglednico.</span>
+      <button class="btn small" data-nav="#/nastavitve">Poveži</button></div>`}
     <h1>Izberi sektor</h1>
     <div class="sectors">
       <button class="sector" data-nav="#/popravilo/stranke">
@@ -657,7 +675,8 @@ function renderIntake(el) {
       <p class="error" id="formError" hidden></p>
       <button class="btn block" style="margin-top:14px" id="saveIntake">Shrani prevzem</button>
     </form>
-    ${recentIntakes()}`;
+    `;
+  el.innerHTML = `<div class="cols"><div>${el.innerHTML}</div><div>${recentIntakes()}</div></div>`;
 
   intakeItems = [];
   renderItems();
@@ -793,7 +812,7 @@ function renderCustomerList() {
   const all = customers();
   const list = findCustomers(customerQuery);
   if (!all.length) { $('#cList').innerHTML = '<p class="empty">Ni še shranjenih strank. Dodaj prvo z gumbom »+ Nova«.</p>'; return; }
-  $('#cList').innerHTML = `<p class="hint" style="margin-bottom:10px">${list.length} od ${all.length} strank</p>` +
+  $('#cList').innerHTML = `<p class="hint" style="margin-bottom:10px">${list.length} od ${all.length} strank</p><div class="cards">` +
     (list.slice(0, 100).map((c) => {
       const open = c.orders.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo').length;
       return `
@@ -810,7 +829,7 @@ function renderCustomerList() {
             <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
           </div>
         </div>`;
-    }).join('') || '<p class="empty">Ni zadetkov.</p>');
+    }).join('') + '</div>' + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>'));
 }
 
 /* ---- Seznam storitev (brez cen – cene so v blagajni) ---- */
@@ -993,7 +1012,7 @@ function renderResults() {
 function renderInRepair(el) {
   const list = orders.filter((o) => o.sector === 'popravilo' && o.status === 'sprejeto').sort(byDate((o) => o.received));
   el.innerHTML = `${sortSwitch()}
-    ${list.map((o) => orderCard(o)).join('') || '<p class="empty">Ni oblačil v popravilu.</p>'}`;
+    <div class="cards">${list.map((o) => orderCard(o)).join('')}</div>${list.length ? '' : '<p class="empty">Ni oblačil v popravilu.</p>'}`;
 }
 
 let statsDay = today();
@@ -1006,11 +1025,11 @@ function renderOverview(el) {
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
   el.innerHTML = `
     <h2>Za urediti danes ${due.length ? `<span class="count">${due.length}</span>` : ''}</h2>
-    ${due.map((o) => orderCard(o)).join('') || '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
-    <h2>Evidenca</h2>
-    <div id="stats"></div>
-    <h2>Koledar odsotnosti</h2>
-    <div id="absences" class="card"></div>
+    <div class="cards">${due.map((o) => orderCard(o)).join('')}</div>${due.length ? '' : '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
+    <div class="cols">
+      <div><h2>Evidenca</h2><div id="stats"></div></div>
+      <div><h2>Koledar odsotnosti</h2><div id="absences" class="card"></div></div>
+    </div>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
   renderStats();
   renderAbsences();
@@ -1347,7 +1366,7 @@ function renderSettings(app) {
       <b>Shranjevanje podatkov</b>
       ${store.remote()
         ? '<div class="callout ok" style="margin-top:8px">Povezano z Google preglednico. Vse naprave v poslovalnici vidijo iste podatke, stranke z e-pošto prejemajo obvestila samodejno.</div>'
-        : `<div class="callout" style="margin-top:8px">Podatki so shranjeni <b>samo na tej napravi</b> (${orders.length} naročil). Za skupno rabo na več napravah in samodejna e-poštna obvestila povežite Google preglednico (navodila: <code>google-apps-script/NAVODILA.md</code>).</div>`}
+        : `<div class="callout" style="margin-top:8px">Podatki so shranjeni <b>samo na tej napravi</b> (${nOrders(orders.length)}, ${nCustomers(customerRecords.length)}). Druge naprave jih ne vidijo – tudi na iPhonu sta Safari in aplikacija na domačem zaslonu ločena. Za skupno rabo in samodejna e-poštna obvestila povežite Google preglednico (navodila: <code>google-apps-script/NAVODILA.md</code>).</div>`}
       <form id="settingsForm" novalidate>
         <label for="sUrl">URL Google Apps Script <small>(konča se z /exec)</small></label>
         <input id="sUrl" name="url" value="${esc(settings.url)}" placeholder="https://script.google.com/macros/s/…/exec">
@@ -1360,10 +1379,25 @@ function renderSettings(app) {
         </div>
       </form>
     </div>
-    ${store.remote() ? '' : `
+    ${store.remote() ? `
+    <div class="card" style="margin-top:14px">
+      <b>Poveži drugo napravo</b>
+      <p class="hint">Pošljite povezavo na drugo napravo (ali jo odprite v aplikaciji na domačem zaslonu). Ko jo odprete, se naprava poveže sama.
+        Povezava vsebuje ključ za dostop – pošljite jo samo zaposlenim.</p>
+      <div class="actions">
+        ${navigator.share ? '<button class="btn" id="shareLink">Pošlji povezavo</button>' : ''}
+        <button class="btn secondary" id="copyLink">Kopiraj povezavo</button>
+      </div>
+    </div>
+    ${lsGet(LOCAL_KEY, []).length || lsGet(CUSTOMERS_KEY, []).length ? `
+    <div class="card" style="margin-top:14px">
+      <b>Podatki s te naprave</b>
+      <p class="hint">Na tej napravi so še podatki iz časa pred povezavo (${nOrders(lsGet(LOCAL_KEY, []).length)}, ${nCustomers(lsGet(CUSTOMERS_KEY, []).length)}).</p>
+      <div class="actions"><button class="btn secondary" id="importLocal">Prenesi v preglednico</button></div>
+    </div>` : ''}` : `
     <div class="card" style="margin-top:14px">
       <b>Varnostna kopija</b>
-      <p class="hint">Shranite kopijo podatkov s te naprave ali jo naložite na drugo napravo.</p>
+      <p class="hint">Shranite kopijo podatkov s te naprave (naročila, stranke, odsotnosti) ali jo naložite na drugo napravo.</p>
       <div class="actions">
         <button class="btn secondary" id="exportData">Izvozi (JSON)</button>
         <label class="btn secondary" style="margin:0">Uvozi<input type="file" id="importData" accept="application/json" hidden></label>
@@ -1405,19 +1439,11 @@ function renderSettings(app) {
     const url = f.url.trim();
     const err = $('#setError');
     if (url && !/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { err.textContent = 'URL mora biti naslov Google Apps Script.'; err.hidden = false; return; }
-    const prev = { ...settings };
-    Object.assign(settings, { url, key: f.key.trim() });
-    try {
-      await busy(() => store.load(), true);
-      lsSet(SETTINGS_KEY, settings);
-      toast(url ? 'Povezano' : 'Shranjeno');
-      nav('#/');
-    } catch (ex) {
-      Object.assign(settings, prev);
-      err.textContent = 'Povezava ni uspela: ' + ex.message;
-      err.hidden = false;
-    }
+    connectTo(url, f.key.trim(), err);
   };
+  $('#copyLink')?.addEventListener('click', () => navigator.clipboard?.writeText(connectLink()).then(() => toast('Povezava kopirana'), () => toast('Kopiranje ni uspelo')));
+  $('#shareLink')?.addEventListener('click', () => navigator.share({ title: 'Bucka Pick&Collect – povezava naprave', url: connectLink() }).catch(() => {}));
+  $('#importLocal')?.addEventListener('click', () => offerImport({ orders: lsGet(LOCAL_KEY, []), customers: lsGet(CUSTOMERS_KEY, []), absences: lsGet(ABSENCES_KEY, []) }));
   $('#disconnect')?.addEventListener('click', async (e) => {
     e.preventDefault();
     Object.assign(settings, { url: '', key: '' });
@@ -1426,22 +1452,101 @@ function renderSettings(app) {
     render();
   });
   $('#exportData')?.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(orders, null, 2)], { type: 'application/json' });
+    const backup = { app: 'bucka-pick-collect', orders, customers: customerRecords, absences, services: serviceList };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `bucka-narocila-${today()}.json` });
     a.click();
     URL.revokeObjectURL(a.href);
   });
   $('#importData')?.addEventListener('change', async (e) => {
     try {
-      const data = JSON.parse(await e.target.files[0].text());
-      if (!Array.isArray(data) || data.some((o) => !o.id || !o.num)) throw new Error();
-      if (!confirm(`Uvozim ${data.length} naročil? Obstoječa naročila na tej napravi (${orders.length}) bodo zamenjana.`)) return;
-      orders = data;
+      const raw = JSON.parse(await e.target.files[0].text());
+      const data = Array.isArray(raw) ? { orders: raw } : raw; // starejše kopije so vsebovale samo naročila
+      if (!Array.isArray(data.orders) || data.orders.some((o) => !o.id || !o.num)) throw new Error();
+      if (!confirm(`Uvozim ${data.orders.length} naročil${data.customers ? ` in ${data.customers.length} strank` : ''}? Obstoječi podatki na tej napravi bodo zamenjani.`)) return;
+      orders = data.orders;
       store.saveLocal();
+      if (Array.isArray(data.customers)) { customerRecords = data.customers; lsSet(CUSTOMERS_KEY, customerRecords); }
+      if (Array.isArray(data.absences)) { absences = data.absences; lsSet(ABSENCES_KEY, absences); }
+      if (Array.isArray(data.services) && data.services.length) { serviceList = data.services; lsSet(SERVICES_KEY, serviceList); }
+      await store.load();
       toast('Uvoženo');
       render();
     } catch { toast('Datoteka ni veljavna'); }
   });
+}
+
+/* ---------- Povezava naprav ---------- */
+
+// Slovenska množina: 1 naročilo, 2 naročili, 3 naročila, 5 naročil.
+function plural(n, one, two, few, many) {
+  const m = Math.abs(n) % 100;
+  return `${n} ${m === 1 ? one : m === 2 ? two : m === 3 || m === 4 ? few : many}`;
+}
+const nOrders = (n) => plural(n, 'naročilo', 'naročili', 'naročila', 'naročil');
+const nCustomers = (n) => plural(n, 'stranka', 'stranki', 'stranke', 'strank');
+const nDays = (n) => plural(n, 'dan', 'dneva', 'dnevi', 'dni');
+
+// Povezava z nastavitvami preglednice – odpre se na drugi napravi in jo poveže z enim dotikom.
+function connectLink() {
+  const data = btoa(unescape(encodeURIComponent(JSON.stringify({ u: settings.url, k: settings.key }))));
+  return `${location.href.split('#')[0]}#/povezi/${encodeURIComponent(data)}`;
+}
+
+function renderConnectLink(app) {
+  let cfg = null;
+  try { cfg = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(route.slice('#/povezi/'.length)))))); } catch { /* neveljavna povezava */ }
+  if (!cfg || !/^https:\/\/script\.google(usercontent)?\.com\//.test(cfg.u || '')) {
+    app.innerHTML = '<div class="card"><b>Povezava ni veljavna.</b><p class="hint">Ustvarite novo v Nastavitvah na napravi, ki je že povezana.</p><button class="btn" data-nav="#/">Na začetek</button></div>';
+    return;
+  }
+  app.innerHTML = `
+    <h1>Poveži to napravo</h1>
+    <div class="card">
+      <p>Ta naprava se bo povezala z Google preglednico poslovalnice. Nato bo videla iste stranke in naročila kot druge naprave.</p>
+      ${orders.length || customerRecords.length ? `<div class="callout">Na tej napravi so že podatki (${nOrders(orders.length)}, ${nCustomers(customerRecords.length)}). Po povezavi jih lahko prenesete v preglednico.</div>` : ''}
+      <p class="error" id="linkError" hidden></p>
+      <div class="actions"><button class="btn" id="doConnect">Poveži</button><button class="btn secondary" data-nav="#/">Prekliči</button></div>
+    </div>`;
+  $('#doConnect').onclick = () => connectTo(cfg.u, cfg.k, $('#linkError'));
+}
+
+// Poveže napravo s preglednico; če so na napravi lokalni podatki, ponudi prenos.
+async function connectTo(url, key, errEl) {
+  const local = { orders: lsGet(LOCAL_KEY, []), customers: lsGet(CUSTOMERS_KEY, []), absences: lsGet(ABSENCES_KEY, []) };
+  const prev = { ...settings };
+  Object.assign(settings, { url, key });
+  try {
+    await busy(() => store.load(), true);
+  } catch (ex) {
+    Object.assign(settings, prev);
+    errEl.textContent = 'Povezava ni uspela: ' + ex.message;
+    errEl.hidden = false;
+    return;
+  }
+  lsSet(SETTINGS_KEY, settings);
+  history.replaceState(null, '', location.pathname + location.search + '#/');
+  route = '#/';
+  render();
+  toast(url ? 'Povezano' : 'Shranjeno');
+  if (url && (local.orders.length || local.customers.length)) offerImport(local);
+}
+
+function offerImport(local) {
+  showModal('Prenos podatkov s te naprave', `
+    <p>Na tej napravi so podatki: <b>${nOrders(local.orders.length)}</b>, <b>${nCustomers(local.customers.length)}</b>${local.absences.length ? ` in ${nDays(local.absences.length)} odsotnosti` : ''}.
+      Jih prenesem v preglednico, da jih vidijo vse naprave?</p>
+    <p class="hint">Naročila in stranke, ki so v preglednici že zapisani, se ne podvojijo. Če je številka naročila že zasedena, dobi novo številko.</p>
+    <div class="actions"><button class="btn" id="doImport">Prenesi v preglednico</button><button class="btn secondary" id="skipImport">Ne zdaj</button></div>`);
+  $('#skipImport').onclick = closeModal;
+  $('#doImport').onclick = async () => {
+    const res = await busy(() => store.call('importAll', local));
+    if (!res) return;
+    await busy(() => store.load());
+    closeModal();
+    render();
+    toast(`Preneseno: ${nOrders(res.orders)}, ${nCustomers(res.customers)}`);
+  };
 }
 
 /* ---------- Pomožno: modal, toast, nalaganje ---------- */
@@ -1561,7 +1666,20 @@ document.addEventListener('visibilitychange', async () => {
 })();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Ko se naloži nova različica aplikacije, ponudi osvežitev.
+  let hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return; }
+    if ($('.update-bar')) return;
+    const bar = document.createElement('div');
+    bar.className = 'update-bar';
+    bar.innerHTML = '<span>Na voljo je nova različica aplikacije.</span><button type="button">Osveži</button>';
+    bar.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(bar);
+  });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
 }
 </script>
 </body>

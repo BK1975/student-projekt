@@ -57,12 +57,29 @@ preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
 
 ### Izdelava po naročilu (sledi)
 
-## Shranjevanje podatkov
+## Shranjevanje podatkov in več naprav
 
-- **Brez nastavitev** so podatki shranjeni samo v brskalniku naprave, na kateri vnašate (primerno za
-  preizkus). V Nastavitvah lahko naredite varnostno kopijo (izvoz/uvoz JSON).
-- **Z Google preglednico** (priporočeno) vse naprave v poslovalnici vidijo iste podatke, strankam z
-  e-pošto pa se obvestila pošiljajo samodejno. Navodila: [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md).
+- **Brez Google preglednice** so podatki shranjeni samo v brskalniku naprave, na kateri vnašate. Druge
+  naprave jih ne vidijo – na iPhonu sta celo Safari in aplikacija na domačem zaslonu ločena. Aplikacija na
+  to opozori na začetnem zaslonu. V Nastavitvah lahko naredite varnostno kopijo (naročila, stranke,
+  odsotnosti in storitve v eni datoteki JSON).
+- **Z Google preglednico** (priporočeno) vse naprave vidijo iste stranke in naročila, strankam z e-pošto
+  pa se obvestila pošiljajo samodejno. Navodila: [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md).
+  - Ob prvi povezavi aplikacija ponudi **prenos podatkov s te naprave** v preglednico (brez podvajanja;
+    zasedena številka naročila dobi novo številko).
+  - **Druge naprave povežete z enim dotikom:** Nastavitve → *Poveži drugo napravo* → pošljite povezavo
+    (SMS, e-pošta, WhatsApp) in jo odprite na drugi napravi ali v aplikaciji na domačem zaslonu.
+    Povezava vsebuje ključ za dostop, zato jo pošljite samo zaposlenim.
+
+## Namestitev na napravo
+
+- **iPhone/iPad (Safari):** Deli → *Dodaj na začetni zaslon*.
+- **Android (Chrome):** meni ⋮ → *Namesti aplikacijo* (ali *Dodaj na začetni zaslon*).
+- **Računalnik (Chrome/Edge):** ikona za namestitev v naslovni vrstici.
+
+Aplikacija ima ikone za vse naprave, deluje tudi brez povezave (zadnje naložene podatke) in se na
+tablici ter računalniku prikaže v dveh stolpcih. Ko objavite novo različico, se na napravah prikaže
+obvestilo **»Na voljo je nova različica – Osveži«**.
 
 ## Urejanje
 
