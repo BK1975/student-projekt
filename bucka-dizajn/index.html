@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -193,7 +193,7 @@
   }
   .logo-mark { width: 40px; height: 40px; border-radius: 12px; background: var(--grad); display: grid; place-items: center;
     box-shadow: 0 4px 12px rgba(214, 84, 160, .35); flex: none; }
-  .logo-mark svg { width: 30px; height: 30px; }
+  .logo-mark img { width: 34px; height: 34px; }
   .logo b { font-size: 1.15rem; font-weight: 700; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .logo small { color: var(--muted); opacity: 1; font-weight: 500; }
   .mode { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
@@ -270,22 +270,10 @@
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="sewing" viewBox="0 0 512 512">
-    <g fill="#fff">
-      <rect x="112" y="150" width="270" height="74" rx="34"/>
-      <rect x="318" y="150" width="74" height="214" rx="28"/>
-      <rect x="96" y="346" width="330" height="56" rx="22"/>
-      <rect x="146" y="214" width="34" height="76" rx="10"/>
-    </g>
-    <path d="M163 290v42" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
-    <circle cx="398" cy="192" r="30" fill="none" stroke="#fff" stroke-width="16"/>
-  </symbol>
-</svg>
 
 <header>
   <a class="logo" href="#/">
-    <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 512 512"><use href="#sewing"/></svg></span>
+    <span class="logo-mark" aria-hidden="true"><img src="logo-stroj.png" alt=""></span>
     <span><b>Bucka Dizajn</b><small>Pick&amp;Collect<span class="mode" id="mode"></span></small></span>
   </a>
   <button class="iconbtn" data-nav="#/nastavitve" aria-label="Nastavitve">Nastavitve</button>
