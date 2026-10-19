@@ -1,8 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#2f5d50"/>
-  <path d="M256 150c-8-34 10-58 38-66" fill="none" stroke="#7d8f69" stroke-width="22" stroke-linecap="round"/>
-  <ellipse cx="190" cy="300" rx="92" ry="130" fill="#e08a3c"/>
-  <ellipse cx="322" cy="300" rx="92" ry="130" fill="#e08a3c"/>
-  <ellipse cx="256" cy="300" rx="84" ry="138" fill="#f09a4a"/>
-  <text x="256" y="345" text-anchor="middle" font-family="system-ui, sans-serif" font-size="120" font-weight="800" fill="#fff">B</text>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0609e"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <g fill="#fff">
+    <rect x="112" y="150" width="270" height="74" rx="34"/>
+    <rect x="318" y="150" width="74" height="214" rx="28"/>
+    <rect x="96" y="346" width="330" height="56" rx="22"/>
+    <rect x="146" y="214" width="34" height="76" rx="10"/>
+  </g>
+  <path d="M163 290v42" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="398" cy="192" r="30" fill="none" stroke="#fff" stroke-width="16"/>
 </svg>

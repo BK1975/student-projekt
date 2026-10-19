@@ -6,33 +6,42 @@
 <title>Bucka Dizajn Pick&amp;Collect</title>
 <meta name="description" content="Interno orodje poslovalnice Bucka Dizajn za prevzem in izdajo oblačil.">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#2f5d50">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bucka P&amp;C">
 <style>
+  /* Barve in slog po spletni strani buckadizajn.com */
   :root {
-    --bg: #faf7f2;
+    --bg: #fff7fb;
     --card: #ffffff;
-    --text: #1f2a26;
-    --muted: #66706c;
-    --line: #e6e1d8;
-    --brand: #2f5d50;
-    --brand-dark: #23463c;
-    --brand-soft: #e5eeea;
-    --accent: #e08a3c;
+    --text: #263043;
+    --muted: #6b6f80;
+    --line: #f1dfe9;
+    --brand: #c2479b;       /* rožnato-vijolična za besedilo in obrobe */
+    --brand-dark: #9d3a84;
+    --brand-soft: #fdeaf4;
+    --pink: #f0609e;
+    --purple: #8b5cf6;
+    --grad: linear-gradient(90deg, var(--pink), var(--purple));
+    --accent: #8b5cf6;
     --warn-bg: #fff4e8;
-    --warn-line: #f2cfa6;
-    --danger: #b3362b;
-    --danger-bg: #fbeceb;
-    --radius: 14px;
+    --warn-line: #f6d2a8;
+    --danger: #d63c5e;
+    --danger-bg: #fdecf0;
+    --radius: 18px;
+    --shadow: 0 6px 22px rgba(214, 84, 160, .10);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45; }
+  body { font-family: Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45;
+    background-image: radial-gradient(1200px 500px at 50% -120px, #fde3ee 0%, rgba(253, 227, 238, 0) 70%); background-repeat: no-repeat; }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   a { color: var(--brand); }
@@ -175,6 +184,68 @@
   .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 40; font-size: .92rem; max-width: calc(100% - 32px); }
   .loading { opacity: .6; pointer-events: none; }
   #print { display: none; }
+
+  /* ---------- Slog Bucka Dizajn ---------- */
+  header {
+    background: rgba(255, 255, 255, .92); color: var(--text);
+    -webkit-backdrop-filter: saturate(160%) blur(10px); backdrop-filter: saturate(160%) blur(10px);
+    border-bottom: 1px solid var(--line); box-shadow: 0 2px 14px rgba(214, 84, 160, .08);
+  }
+  .logo-mark { width: 40px; height: 40px; border-radius: 12px; background: var(--grad); display: grid; place-items: center;
+    box-shadow: 0 4px 12px rgba(214, 84, 160, .35); flex: none; }
+  .logo-mark svg { width: 30px; height: 30px; }
+  .logo b { font-size: 1.15rem; font-weight: 700; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .logo small { color: var(--muted); opacity: 1; font-weight: 500; }
+  .mode { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .iconbtn { background: #fff; color: var(--text); border: 1.5px solid var(--pink); border-radius: 999px; padding: 7px 14px; font-weight: 600; }
+  h1, h2 { font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+  h1 { font-size: 1.55rem; }
+  .back { color: var(--brand); }
+
+  .btn { background: var(--grad); border-radius: 999px; padding: 10px 18px; box-shadow: 0 6px 16px rgba(214, 84, 160, .28); font-weight: 600; transition: transform .1s, box-shadow .15s; }
+  .btn:hover { background: var(--grad); box-shadow: 0 8px 22px rgba(214, 84, 160, .38); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { background: #d9cfd6; box-shadow: none; }
+  .btn.secondary { background: #fff; color: var(--brand); border: 1.5px solid #f3b6d4; box-shadow: none; }
+  .btn.secondary:hover { border-color: var(--pink); background: var(--brand-soft); }
+  .btn.warn { background: linear-gradient(90deg, #f59e42, #f0609e); }
+  .btn.danger { background: linear-gradient(90deg, #f0607a, #d63c5e); }
+  .btn.small { padding: 6px 12px; }
+  .btn.block { padding: 13px; }
+
+  .tabs { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px; box-shadow: var(--shadow); }
+  .tabs button { border-radius: 999px; color: var(--text); font-weight: 600; }
+  .tabs button[aria-selected="true"] { background: var(--grad); color: #fff; box-shadow: 0 4px 12px rgba(214, 84, 160, .3); }
+  .tabs button[aria-selected="true"] .count { background: #fff !important; color: var(--brand); }
+  .count { background: var(--grad); }
+
+  .card, .order, .sector { border-color: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .sector:not(:disabled):hover { border-color: var(--pink); box-shadow: 0 10px 28px rgba(214, 84, 160, .18); }
+  .sector b { font-size: 1.25rem; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .order .num, .done .bignum { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .done .bignum { font-weight: 800; }
+  input, select, textarea { border-color: var(--line); border-radius: 12px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(240, 96, 158, .15); }
+  .search input { border: 1.5px solid #f3b6d4; }
+  .chip { border-color: #f1d3e3; }
+  .chip:hover { border-color: var(--pink); color: var(--brand); }
+  .chip.on, .chip.on:hover { background: var(--grad); border-color: transparent; color: #fff; }
+  .stat-box summary { margin: 0; }
+  @media (max-width: 640px) {
+    .tabs { border-radius: 16px; }
+    .tabs button { border-radius: 12px; }
+  }
+  .callout.ok { background: var(--brand-soft); border-color: #f3c5dd; }
+  .pill { background: var(--brand-soft); color: var(--brand); }
+  .pill.sprejeto { background: #efe9fe; color: #6d4bd8; }
+  .pill.caka, .pill.opomnjeno { background: var(--brand-soft); color: var(--brand); }
+  .modal { background: var(--bg); border-radius: 22px 22px 0 0; }
+  @media (min-width: 640px) { .modal { border-radius: 22px; } }
+  .cal button.absent { background: var(--grad); border-color: transparent; }
+  .cal .today { outline-color: var(--pink); }
+  .update-bar { background: var(--grad); }
+  .update-bar button { color: var(--brand); }
+  .toast { background: var(--text); }
   /* Prevzemni listek za termo tiskalnik (papir 56 mm, potisk ~48 mm) */
   .ticket { width: 48mm; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #000; font-size: 8.5pt; line-height: 1.3; }
   .ticket .t-shop { font-size: 7.5pt; text-align: center; }
@@ -199,10 +270,22 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sewing" viewBox="0 0 512 512">
+    <g fill="#fff">
+      <rect x="112" y="150" width="270" height="74" rx="34"/>
+      <rect x="318" y="150" width="74" height="214" rx="28"/>
+      <rect x="96" y="346" width="330" height="56" rx="22"/>
+      <rect x="146" y="214" width="34" height="76" rx="10"/>
+    </g>
+    <path d="M163 290v42" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="398" cy="192" r="30" fill="none" stroke="#fff" stroke-width="16"/>
+  </symbol>
+</svg>
 
 <header>
   <a class="logo" href="#/">
-    <img src="icon.svg" alt="">
+    <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 512 512"><use href="#sewing"/></svg></span>
     <span><b>Bucka Dizajn</b><small>Pick&amp;Collect<span class="mode" id="mode"></span></small></span>
   </a>
   <button class="iconbtn" data-nav="#/nastavitve" aria-label="Nastavitve">Nastavitve</button>
@@ -1064,7 +1147,7 @@ function renderAbsences() {
       <button class="btn small secondary" data-cal="1" aria-label="Naslednji mesec">›</button>
     </div>
     <div class="cal">${['pon', 'tor', 'sre', 'čet', 'pet', 'sob', 'ned'].map((d) => `<span class="h">${d}</span>`).join('')}${cells.join('')}</div>
-    <p class="hint" style="margin-top:8px">Klikni delovni dan, da ga označiš kot odsotnost (rdeče). Dnevi odsotnosti se ne štejejo v rok za prevzem in ne v zamudnino. Sivi dnevi so zaprti.</p>
+    <p class="hint" style="margin-top:8px">Klikni delovni dan, da ga označiš kot odsotnost (obarva se rožnato). Dnevi odsotnosti se ne štejejo v rok za prevzem in ne v zamudnino. Sivi dnevi so zaprti.</p>
     ${inMonth.length ? `<p class="hint">Odsotnost ta mesec: ${inMonth.map((a) => fmt(a)).join(', ')}</p>` : ''}`;
 }
 
