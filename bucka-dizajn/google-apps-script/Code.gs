@@ -155,7 +155,7 @@ function posodobi(sh, id, patch) {
 
   // Pravkar gotovo: stranki z e-pošto pošlji obvestilo.
   if (o.status === 'gotovo' && prej !== 'gotovo' && o.email && !o.readyNotified) {
-    posljiStranki(o.email, 'Vaša oblačila so pripravljena na prevzem', sporocilo('ready', o));
+    posljiStranki(o.email, o.sector === 'narocilo' ? 'Vaše naročilo je pripravljeno na prevzem' : 'Vaša oblačila so pripravljena na prevzem', sporocilo('ready', o));
     o.readyNotified = danes();
   }
   zapisi(sh, v.vrstica, o);
@@ -179,14 +179,20 @@ function uvoziVse(sh, data) {
   const obstojeca = vsa(sh).map((v) => v.o);
   const ids = new Set(obstojeca.map((o) => o.id));
   const stevilke = new Set(obstojeca.map((o) => o.num));
-  let zadnja = obstojeca.filter((o) => String(o.num).startsWith('P-')).reduce((m, o) => Math.max(m, Number(String(o.num).slice(2)) || 0), 0);
+  const zadnja = {};
+  const naslednja = (pred) => {
+    if (zadnja[pred] === undefined) zadnja[pred] = obstojeca.filter((o) => String(o.num).startsWith(pred)).reduce((m, o) => Math.max(m, Number(String(o.num).slice(2)) || 0), 0);
+    let num;
+    do { num = pred + String(++zadnja[pred]).padStart(4, '0'); } while (stevilke.has(num));
+    return num;
+  };
   (data.orders || []).forEach((vnos) => {
     if (!vnos.id || ids.has(vnos.id)) return;
     const o = {};
     KLJUCI.forEach((k) => { o[k] = vnos[k] == null ? '' : vnos[k]; });
     JSON_POLJA.forEach((k) => { o[k] = Array.isArray(vnos[k]) ? vnos[k] : []; });
-    if (!o.num || stevilke.has(o.num)) o.num = 'P-' + String(++zadnja).padStart(4, '0');
-    else zadnja = Math.max(zadnja, Number(String(o.num).slice(2)) || 0);
+    const pred = o.sector === 'narocilo' ? 'N-' : 'P-';
+    if (!o.num || stevilke.has(o.num)) o.num = naslednja(pred);
     o.updatedAt = new Date().toISOString();
     const r = sh.getLastRow() + 1;
     zapisi(sh, r, o);
@@ -284,24 +290,28 @@ function sporocilo(vrsta, o, t) {
   const konec = `\n\nDelovni čas: ${NASTAVITVE.delovniCas}.\n${NASTAVITVE.imeDelavnice}, ${NASTAVITVE.naslov}, tel. ${NASTAVITVE.telefon}`;
   const evri = (x) => `${x.toFixed(2).replace('.', ',')} €`;
   const zamudnina = `${evri(NASTAVITVE.zamudninaNaDan)} za vsak delovni dan`;
+  // Enako kot message() v aplikaciji: popravila (oblačila) ali naročila (naročilo).
+  const W = o.sector === 'narocilo'
+    ? { your: `vaše naročilo (št. ${o.num})`, yours: `vašega naročila (št. ${o.num})`, isReady: 'je pripravljeno', them: 'ga', waits: 'še vedno čaka', left: 'Izdelke, ki niso prevzeti', leftLow: 'izdelke, ki niso prevzeti' }
+    : { your: `vaša oblačila (št. ${o.num})`, yours: `vaših oblačil (št. ${o.num})`, isReady: 'so pripravljena', them: 'jih', waits: 'še vedno čakajo', left: 'Oblačila, ki niso prevzeta', leftLow: 'oblačila, ki niso prevzeta' };
   if (vrsta === 'ready') {
-    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
-      `Po tem roku zaračunamo zamudnino ${zamudnina}, oblačila, ki niso prevzeta v enem mesecu ` +
+    return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
+      `Po tem roku zaračunamo zamudnino ${zamudnina}, ${W.leftLow} v enem mesecu ` +
       `(do ${fmt(oddajaOd(o))}), pa oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
   }
   if (vrsta === 'reminder') {
     const kdaj = dodajDni(t || danes(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : fmt(o.deadline);
-    return `Pozdravljeni, opominjamo vas, da je ${kdaj} zadnji dan za prevzem vaših oblačil (št. ${o.num}) brez zamudnine. ` +
+    return `Pozdravljeni, opominjamo vas, da je ${kdaj} zadnji dan za prevzem ${W.yours} brez zamudnine. ` +
       `Po tem roku zaračunamo zamudnino ${zamudnina}.` + konec;
   }
   if (vrsta === 'late') {
-    return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
+    return `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}. ` +
       `Od ${fmt(odprtOdDne(dodajDni(o.deadline, 1)))} zaračunavamo zamudnino ${zamudnina}. ` +
-      `Oblačila, ki niso prevzeta do ${fmt(oddajaOd(o))}, oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
+      `${W.left} do ${fmt(oddajaOd(o))}, oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
   }
   const dni = dniZamude(o, t || danes());
-  return `Pozdravljeni, vaša oblačila (št. ${o.num}) še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(oddajaOd(o))}, ` +
-    `jih bomo oddali v zabojnik ${NASTAVITVE.zabojnik}.` +
+  return `Pozdravljeni, ${W.your} ${W.waits} na prevzem. Če ${W.them} ne prevzamete do ${fmt(oddajaOd(o))}, ` +
+    `${W.them} bomo oddali v zabojnik ${NASTAVITVE.zabojnik}.` +
     (dni && !o.feeWaived ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${zamudnina}; ` +
       `do danes znaša ${evri(dni * NASTAVITVE.zamudninaNaDan)}.` : '') + konec;
 }

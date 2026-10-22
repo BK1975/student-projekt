@@ -394,18 +394,18 @@ const DEFAULT_SERVICES = [
   // Manjša popravila
   { group: 'Manjša popravila', name: 'Krpanje, obšivanje lukenj' },
   { group: 'Manjša popravila', name: 'Režijska ura' },
-  // Šivanje po meri
-  { group: 'Šivanje po meri', name: 'Izdelava hlač' },
-  { group: 'Šivanje po meri', name: 'Hlače na elastiko' },
-  { group: 'Šivanje po meri', name: 'Izdelava hlač z žepi' },
-  { group: 'Šivanje po meri', name: 'Šivanje klasičnega krila' },
-  { group: 'Šivanje po meri', name: 'Šivanje krila z žepi' },
-  { group: 'Šivanje po meri', name: 'Šivanje ženske jakne s podlogo' },
-  { group: 'Šivanje po meri', name: 'Šivanje ženske jakne' },
-  { group: 'Šivanje po meri', name: 'Šivanje podložene obleke' },
-  { group: 'Šivanje po meri', name: 'Šivanje obleke jersey' },
-  { group: 'Šivanje po meri', name: 'Šivanje maje' },
-  { group: 'Šivanje po meri', name: 'Izdelava bluze, srajce' },
+  // Izdelava po naročilu (izdelki za sektor »Izdelava po naročilu«)
+  { group: 'Izdelava po naročilu', name: 'Izdelava hlač' },
+  { group: 'Izdelava po naročilu', name: 'Hlače na elastiko' },
+  { group: 'Izdelava po naročilu', name: 'Izdelava hlač z žepi' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje klasičnega krila' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje krila z žepi' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje ženske jakne s podlogo' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje ženske jakne' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje podložene obleke' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje obleke jersey' },
+  { group: 'Izdelava po naročilu', name: 'Šivanje maje' },
+  { group: 'Izdelava po naročilu', name: 'Izdelava bluze, srajce' },
 ];
 
 /* ================================================================ */
@@ -505,27 +505,32 @@ function stage(o, t = today()) {
 function message(type, o) {
   const fee = `${money(CONFIG.lateFeePerDay)} za vsak delovni dan`;
   const end = `\n\nDelovni čas: ${CONFIG.hours}.\n${CONFIG.shopName}, ${CONFIG.address}, tel. ${CONFIG.phone}`;
+  const nar = o.sector === 'narocilo';
+  // Besede za popravila (oblačila, množina) ali naročila (naročilo, ednina).
+  const W = nar
+    ? { your: `vaše naročilo (št. ${o.num})`, yours: `vašega naročila (št. ${o.num})`, isReady: 'je pripravljeno', them: 'ga', waits: 'še vedno čaka', left: 'Izdelke, ki niso prevzeti', leftLow: 'izdelke, ki niso prevzeti' }
+    : { your: `vaša oblačila (št. ${o.num})`, yours: `vaših oblačil (št. ${o.num})`, isReady: 'so pripravljena', them: 'jih', waits: 'še vedno čakajo', left: 'Oblačila, ki niso prevzeta', leftLow: 'oblačila, ki niso prevzeta' };
   if (type === 'ready') {
-    return `Pozdravljeni, vaša oblačila (št. ${o.num}) so pripravljena na prevzem. Prevzamete jih lahko do ${fmt(o.deadline)}. ` +
-      `Po tem roku zaračunamo zamudnino ${fee}, oblačila, ki niso prevzeta v enem mesecu ` +
+    return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
+      `Po tem roku zaračunamo zamudnino ${fee}, ${W.leftLow} v enem mesecu ` +
       `(do ${fmt(discardDue(o))}), pa oddamo v zabojnik ${CONFIG.donation}.` + end;
   }
   if (type === 'reminder') {
     const when = addDays(today(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : dayLabel(o.deadline).toLowerCase();
-    return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem vaših oblačil (št. ${o.num}) brez zamudnine. ` +
+    return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem ${W.yours} brez zamudnine. ` +
       `Po tem roku zaračunamo zamudnino ${fee}.` + end;
   }
   if (type === 'late') {
-    return `Pozdravljeni, rok za prevzem vaših oblačil (št. ${o.num}) je potekel ${fmt(o.deadline)}. ` +
+    return `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}. ` +
       `Od ${fmt(lateNoticeDue(o))} zaračunavamo zamudnino ${fee}. ` +
-      `Oblačila, ki niso prevzeta do ${fmt(discardDue(o))}, oddamo v zabojnik ${CONFIG.donation}.` + end;
+      `${W.left} do ${fmt(discardDue(o))}, oddamo v zabojnik ${CONFIG.donation}.` + end;
   }
   const late = lateDays(o) > 0 && !o.feeWaived;
-  return `Pozdravljeni, vaša oblačila (št. ${o.num}) še vedno čakajo na prevzem. Če jih ne prevzamete do ${fmt(discardDue(o))}, ` +
-    `jih bomo oddali v zabojnik ${CONFIG.donation}.` +
+  return `Pozdravljeni, ${W.your} ${W.waits} na prevzem. Če ${W.them} ne prevzamete do ${fmt(discardDue(o))}, ` +
+    `${W.them} bomo oddali v zabojnik ${CONFIG.donation}.` +
     (late ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${fee}; do danes znaša ${money(lateFee(o))}.` : '') + end;
 }
-const MSG_TITLE = { ready: 'Obvestilo: oblačila so gotova', reminder: 'Opomnik za prevzem', late: 'Obvestilo o zamudnini', warning: `Opozorilo pred oddajo v ${CONFIG.donation}` };
+const MSG_TITLE = { ready: 'Obvestilo: pripravljeno na prevzem', reminder: 'Opomnik za prevzem', late: 'Obvestilo o zamudnini', warning: `Opozorilo pred oddajo v ${CONFIG.donation}` };
 const MSG_FIELD = { ready: 'readyNotified', reminder: 'reminderDate', late: 'lateNoticeDate', warning: 'warnDate' };
 
 function smsLink(phone, text) {
@@ -601,7 +606,9 @@ const store = {
       return saved;
     }
     o.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-    o.num = 'P-' + pad4(orders.reduce((m, x) => Math.max(m, Number(x.num.slice(2)) || 0), 0) + 1);
+    const prefix = sec(o).prefix;
+    o.num = prefix + pad4(orders.filter((x) => String(x.num).startsWith(prefix))
+      .reduce((m, x) => Math.max(m, Number(x.num.slice(prefix.length)) || 0), 0) + 1);
     o.createdAt = new Date().toISOString();
     orders.push(o);
     this.saveLocal();
@@ -635,10 +642,30 @@ let intakeKey = null; // izbrana stranka pri prevzemu (ključ = telefon)
 window.addEventListener('hashchange', () => { route = location.hash || '#/'; render(); window.scrollTo(0, 0); });
 function nav(hash) { location.hash = hash; }
 
+// Sektorja uporabljata iste zavihke; razlikujejo se besedila, številke naročil in izbira kosov.
+const SECTORS = {
+  popravilo: {
+    title: 'Popravilo oblačil', prefix: 'P-', intakeTab: 'Prevzem', workTab: 'V popravilu',
+    dateLabel: 'Datum prevzema', dueLabel: 'Dogovorjeno do', save: 'Shrani prevzem', newBtn: 'Nov prevzem',
+    done: 'Oblačila prevzeta. Številka za listek:', recent: 'Zadnji prevzemi', empty: 'Ni oblačil v popravilu.',
+    back: 'Vrni v popravilo', ticket: 'Prevzemni listek',
+  },
+  narocilo: {
+    title: 'Izdelava po naročilu', prefix: 'N-', intakeTab: 'Naročilo', workTab: 'V izdelavi',
+    dateLabel: 'Datum naročila', dueLabel: 'Datum izdaje', save: 'Shrani naročilo', newBtn: 'Novo naročilo',
+    done: 'Naročilo zabeleženo. Številka naročila:', recent: 'Zadnja naročila', empty: 'Ni naročil v izdelavi.',
+    back: 'Vrni v izdelavo', ticket: 'Naročilo',
+  },
+};
+let SECTOR = 'popravilo';
+const sec = (o) => SECTORS[o && o.sector] || SECTORS.popravilo;
+const inSector = (o) => (o.sector || 'popravilo') === SECTOR;
+
 function render() {
   $('#mode').textContent = store.remote() ? 'preglednica' : 'ta naprava';
   const app = $('#app');
-  if (route.startsWith('#/popravilo')) return renderRepair(app, route.split('/')[2] || 'stranke');
+  const m = route.match(/^#\/(popravilo|narocilo)(?:\/(\w+))?/);
+  if (m) { SECTOR = m[1]; return renderRepair(app, m[2] || 'stranke'); }
   if (route === '#/nastavitve') return renderSettings(app);
   if (route.startsWith('#/povezi/')) return renderConnectLink(app);
   renderHome(app);
@@ -647,9 +674,16 @@ function render() {
 /* ---------- Domov ---------- */
 
 function renderHome(app) {
-  const repairs = orders.filter((o) => o.sector === 'popravilo');
-  const n = (pred) => repairs.filter(pred).length;
-  const due = n((o) => stage(o).due);
+  const stats = (sector, work) => {
+    const list = orders.filter((o) => (o.sector || 'popravilo') === sector);
+    const n = (pred) => list.filter(pred).length;
+    const due = n((o) => stage(o).due);
+    return `<div class="stats">
+      <span class="pill sprejeto">${work}: ${n((o) => o.status === 'sprejeto')}</span>
+      <span class="pill caka">Čaka na prevzem: ${n((o) => o.status === 'gotovo')}</span>
+      ${due ? `<span class="pill opomnik">Za urediti danes: ${due}</span>` : ''}
+    </div>`;
+  };
   app.innerHTML = `
     ${store.remote() ? '' : `<div class="callout" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
       <span><b>Podatki so shranjeni samo na tej napravi.</b> Druge naprave jih ne vidijo. Za skupno rabo povežite Google preglednico.</span>
@@ -659,15 +693,12 @@ function renderHome(app) {
       <button class="sector" data-nav="#/popravilo/stranke">
         <b>Popravilo oblačil</b>
         <span>Prevzem oblačil v poslovalnico, izdaja popravljenih oblačil in roki za prevzem.</span>
-        <div class="stats">
-          <span class="pill sprejeto">V popravilu: ${n((o) => o.status === 'sprejeto')}</span>
-          <span class="pill caka">Čaka na prevzem: ${n((o) => o.status === 'gotovo')}</span>
-          ${due ? `<span class="pill opomnik">Za urediti danes: ${due}</span>` : ''}
-        </div>
+        ${stats('popravilo', 'V popravilu')}
       </button>
-      <button class="sector" disabled>
+      <button class="sector" data-nav="#/narocilo/stranke">
         <b>Izdelava po naročilu</b>
-        <span>Kmalu.</span>
+        <span>Naročila izdelkov po meri – od naročila do izdaje stranki.</span>
+        ${stats('narocilo', 'V izdelavi')}
       </button>
     </div>`;
 }
@@ -675,14 +706,15 @@ function renderHome(app) {
 /* ---------- Sektor: popravilo oblačil ---------- */
 
 function renderRepair(app, tab) {
-  const due = orders.filter((o) => o.sector === 'popravilo' && stage(o).due).length;
-  const inRepair = orders.filter((o) => o.sector === 'popravilo' && o.status === 'sprejeto').length;
-  const tabs = [['stranke', 'Stranke'], ['prevzem', 'Prevzem'], ['popravilo', 'V popravilu'], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
+  const S = SECTORS[SECTOR];
+  const due = orders.filter((o) => inSector(o) && stage(o).due).length;
+  const inRepair = orders.filter((o) => inSector(o) && o.status === 'sprejeto').length;
+  const tabs = [['stranke', 'Stranke'], ['prevzem', S.intakeTab], ['popravilo', S.workTab], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
   app.innerHTML = `
     <button class="back" data-nav="#/">‹ Sektorji</button>
-    <h1>Popravilo oblačil</h1>
+    <h1>${S.title}</h1>
     <div class="tabs" role="tablist">
-      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/popravilo/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}${id === 'popravilo' && inRepair ? `<span class="count" style="background:var(--brand)">${inRepair}</span>` : ''}</button>`).join('')}
+      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/${SECTOR}/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}${id === 'popravilo' && inRepair ? `<span class="count" style="background:var(--brand)">${inRepair}</span>` : ''}</button>`).join('')}
     </div>
     <div id="tab"></div>`;
   const el = $('#tab');
@@ -697,10 +729,10 @@ function renderRepair(app, tab) {
 
 // Zadnji prevzemi – za ponoven natis listka.
 function recentIntakes() {
-  const list = orders.filter((o) => o.sector === 'popravilo')
+  const list = orders.filter((o) => inSector(o))
     .sort((a, b) => (b.createdAt || b.received).localeCompare(a.createdAt || a.received)).slice(0, 10);
   if (!list.length) return '';
-  return `<h2>Zadnji prevzemi</h2>
+  return `<h2>${SECTORS[SECTOR].recent}</h2>
     <div class="card" style="padding:4px 14px">
       ${list.map((o) => `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
@@ -715,12 +747,12 @@ function renderIntake(el) {
     const o = lastCreated;
     el.innerHTML = `
       <div class="card done">
-        <p>Oblačila prevzeta. Številka za listek:</p>
+        <p>${SECTORS[SECTOR].done}</p>
         <div class="bignum">${esc(o.num)}</div>
-        <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · prevzeto ${fmt(o.received)}</p>
+        <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · ${o.sector === 'narocilo' ? 'naročeno' : 'prevzeto'} ${fmt(o.received)}${o.sector === 'narocilo' && o.dueDate ? ` · izdaja ${fmt(o.dueDate)}` : ''}</p>
         <div class="actions" style="justify-content:center">
           <button class="btn" data-print="${esc(o.id)}">Natisni listek</button>
-          <button class="btn secondary" id="newIntake">Nov prevzem</button>
+          <button class="btn secondary" id="newIntake">${SECTORS[SECTOR].newBtn}</button>
           <button class="btn secondary" data-open="${esc(o.id)}">Odpri naročilo</button>
         </div>
       </div>`;
@@ -730,11 +762,11 @@ function renderIntake(el) {
     <form class="card" id="intakeForm" novalidate>
       <div class="two">
         <div>
-          <label for="iDate">Datum prevzema</label>
+          <label for="iDate">${SECTORS[SECTOR].dateLabel}</label>
           <input id="iDate" name="received" type="date" value="${today()}" max="${today()}">
         </div>
         <div>
-          <label for="iDue">Dogovorjeno do <small>(neobvezno)</small></label>
+          <label for="iDue">${SECTORS[SECTOR].dueLabel} <small>(neobvezno)</small></label>
           <input id="iDue" name="dueDate" type="date" min="${today()}">
         </div>
       </div>
@@ -744,7 +776,7 @@ function renderIntake(el) {
       <div id="itemsBox"></div>
       <button type="button" class="btn block secondary" style="margin-top:8px" data-additem>+ DODAJ NOV KOS</button>
       <p class="error" id="formError" hidden></p>
-      <button class="btn block" style="margin-top:14px" id="saveIntake">Shrani prevzem</button>
+      <button class="btn block" style="margin-top:14px" id="saveIntake">${SECTORS[SECTOR].save}</button>
     </form>
     `;
   el.innerHTML = `<div class="cols"><div>${el.innerHTML}</div><div>${recentIntakes()}</div></div>`;
@@ -753,6 +785,7 @@ function renderIntake(el) {
   renderItems();
   const box = $('#itemsBox');
   box.addEventListener('change', (e) => {
+    if (e.target.dataset.product !== undefined) { intakeItems[Number(e.target.dataset.product)].garment = e.target.value; return; }
     if (e.target.dataset.garment === undefined) return;
     const it = intakeItems[Number(e.target.dataset.garment)];
     it.garment = e.target.value;
@@ -772,7 +805,7 @@ function renderCustomerBox() {
   if (c) {
     box.innerHTML = `
       <div class="callout ok" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <span><b>${esc(c.name)}</b> · ${esc(c.phone)}${c.email ? `<br><small>${esc(c.email)}</small>` : ''}<br><small>${c.orders.length}× pri nas</small></span>
+        <span><b>${esc(c.name)}</b><br>Kontaktna številka: <b>${esc(c.phone)}</b>${c.email ? `<br><small>${esc(c.email)}</small>` : ''}<br><small>${c.orders.length}× pri nas</small></span>
         <button type="button" class="btn small secondary" id="changeCustomer">Zamenjaj</button>
       </div>`;
     $('#changeCustomer').onclick = () => { intakeKey = null; renderCustomerBox(); $('#cSearch').focus(); };
@@ -895,7 +928,7 @@ function renderCustomerList() {
           ${c.note ? `<p class="desc">${esc(c.note)}</p>` : ''}
           <p class="dates">${c.orders.length ? `${c.orders.length}× pri nas · zadnji obisk ${fmt(c.last)}` : 'še brez naročil'}</p>
           <div class="actions">
-            <button class="btn small" data-newfor="${esc(c.key)}">Nov prevzem</button>
+            <button class="btn small" data-newfor="${esc(c.key)}">${SECTORS[SECTOR].newBtn}</button>
             ${c.orders.length ? `<button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>` : ''}
             <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
           </div>
@@ -908,13 +941,18 @@ function renderCustomerList() {
 // Kosi pri prevzemu: { garment, services: [ime storitve], note }
 let intakeItems = [];
 const EXTRA_GROUP = 'Manjša popravila'; // storitve te skupine so na voljo pri vsakem kosu
+const CUSTOM_GROUPS = ['Izdelava po naročilu', 'Šivanje po meri']; // izdelki sektorja »Izdelava po naročilu«
+function customProducts() {
+  const list = serviceList.filter((x) => CUSTOM_GROUPS.includes(x.group)).map((x) => x.name);
+  return list.length ? list : DEFAULT_SERVICES.filter((x) => CUSTOM_GROUPS.includes(x.group)).map((x) => x.name);
+}
 
 function serviceGroups() {
   const m = new Map();
   serviceList.forEach((x) => { if (!m.has(x.group)) m.set(x.group, []); m.get(x.group).push(x); });
   return [...m];
 }
-const garmentTypes = () => serviceGroups().map(([g]) => g).filter((g) => g !== EXTRA_GROUP);
+const garmentTypes = () => serviceGroups().map(([g]) => g).filter((g) => g !== EXTRA_GROUP && !CUSTOM_GROUPS.includes(g));
 function servicesFor(garment) {
   const own = serviceList.filter((x) => x.group === garment).map((x) => x.name);
   const extra = serviceList.filter((x) => x.group === EXTRA_GROUP && x.group !== garment).map((x) => x.name);
@@ -930,6 +968,21 @@ const orderText = (o) => (o.items && o.items.length
 function renderItems() {
   const box = $('#itemsBox');
   if (!box) return;
+  if (SECTOR === 'narocilo') {
+    box.innerHTML = intakeItems.map((it, i) => `
+      <div class="card" style="margin-top:8px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b>Kos ${i + 1}</b>
+          <button type="button" class="close" style="font-size:1.3rem" data-removeitem="${i}" aria-label="Odstrani kos">×</button>
+        </div>
+        <select data-product="${i}" aria-label="Izdelek" style="margin-top:6px">
+          <option value="">– izberi izdelek –</option>
+          ${customProducts().map((n) => `<option ${n === it.garment ? 'selected' : ''}>${esc(n)}</option>`).join('')}
+        </select>
+        <input data-itemnote="${i}" value="${esc(it.note)}" placeholder="Opomba (mere, material, barva …)" style="margin-top:8px">
+      </div>`).join('') || '<p class="hint">Dodaj vsaj en kos.</p>';
+    return;
+  }
   box.innerHTML = intakeItems.map((it, i) => `
     <div class="card" style="margin-top:8px;padding:10px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -977,11 +1030,12 @@ async function saveIntake() {
   const c = intakeKey && customers().find((x) => x.key === intakeKey);
   if (!c) return err('Izberi stranko ali dodaj novo.');
   if (!intakeItems.length) return err('Dodaj vsaj en kos.');
-  const bad = intakeItems.findIndex((it) => !it.garment || (!it.services.length && !it.note.trim()));
-  if (bad >= 0) return err(`Pri kosu ${bad + 1} izberi vrsto in vsaj eno storitev (ali vpiši opombo).`);
+  const custom = SECTOR === 'narocilo';
+  const bad = intakeItems.findIndex((it) => !it.garment || (!custom && !it.services.length && !it.note.trim()));
+  if (bad >= 0) return err(custom ? `Pri kosu ${bad + 1} izberi izdelek.` : `Pri kosu ${bad + 1} izberi vrsto in vsaj eno storitev (ali vpiši opombo).`);
   const items = intakeItems.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note.trim() }));
   const o = {
-    sector: 'popravilo',
+    sector: SECTOR,
     received: f.received || today(),
     name: c.name,
     phone: c.phone,
@@ -995,7 +1049,8 @@ async function saveIntake() {
     note: '',
     status: 'sprejeto',
   };
-  if (o.received > today()) return err('Datum prevzema ne more biti v prihodnosti.');
+  if (o.received > today()) return err(`${SECTORS[SECTOR].dateLabel} ne more biti v prihodnosti.`);
+  if (o.dueDate && o.dueDate < o.received) return err(`${SECTORS[SECTOR].dueLabel} ne more biti pred datumom naročila.`);
   const saved = await busy(() => store.create(o));
   if (saved) { lastCreated = saved; intakeKey = null; render(); }
 }
@@ -1036,7 +1091,7 @@ function renderResults() {
   const el = $('#results');
   const q = norm(searchQuery.trim());
   const qd = digits(searchQuery);
-  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const repairs = orders.filter((o) => inSector(o));
   let list;
   if (!q) {
     list = repairs.filter((o) => o.status === 'gotovo');
@@ -1081,16 +1136,16 @@ function renderResults() {
 /* ---- V popravilu ---- */
 
 function renderInRepair(el) {
-  const list = orders.filter((o) => o.sector === 'popravilo' && o.status === 'sprejeto').sort(byDate((o) => o.received));
+  const list = orders.filter((o) => inSector(o) && o.status === 'sprejeto').sort(byDate((o) => o.received));
   el.innerHTML = `${sortSwitch()}
-    <div class="cards">${list.map((o) => orderCard(o)).join('')}</div>${list.length ? '' : '<p class="empty">Ni oblačil v popravilu.</p>'}`;
+    <div class="cards">${list.map((o) => orderCard(o)).join('')}</div>${list.length ? '' : `<p class="empty">${SECTORS[SECTOR].empty}</p>`}`;
 }
 
 let statsDay = today();
 
 function renderOverview(el) {
   const t = today();
-  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const repairs = orders.filter((o) => inSector(o));
   const urgency = ['humana', 'opozorilo', 'zamudnina', 'opomnik'];
   const due = repairs.filter((o) => stage(o, t).due)
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
@@ -1141,7 +1196,7 @@ function renderAbsences() {
 
 // Evidenca za en dan: stranke, katerih oblačila so bila ta dan prevzeta, v popravilu ali gotova.
 function dayStats(day) {
-  const repairs = orders.filter((o) => o.sector === 'popravilo');
+  const repairs = orders.filter((o) => inSector(o));
   const gone = (o) => (o.handedDate && o.handedDate <= day) || (o.discardedDate && o.discardedDate <= day);
   return {
     received: repairs.filter((o) => o.received === day),
@@ -1202,8 +1257,9 @@ function policyHtml() {
 function orderCard(o, { hideWho = false } = {}) {
   const st = stage(o);
   const cls = st.key === 'humana' || st.key === 'opozorilo' ? 'late' : st.due || st.key === 'zamuda' ? 'due' : '';
-  const dates = [`prevzeto ${fmt(o.received)}`];
-  if (o.dueDate && o.status === 'sprejeto') dates.push(`dogovorjeno do ${fmt(o.dueDate)}`);
+  const nar = o.sector === 'narocilo';
+  const dates = [`${nar ? 'naročeno' : 'prevzeto'} ${fmt(o.received)}`];
+  if (o.dueDate && o.status === 'sprejeto') dates.push(`${nar ? 'izdaja' : 'dogovorjeno do'} ${fmt(o.dueDate)}`);
   if (o.readyDate) dates.push(`gotovo ${fmt(o.readyDate)}`);
   if (o.deadline && o.status === 'gotovo') dates.push(`rok za prevzem ${fmt(o.deadline)}`);
   if (o.handedDate) dates.push(`izdano ${fmt(o.handedDate)}`);
@@ -1323,7 +1379,8 @@ function confirmDiscard(o) {
 function openDetail(o) {
   const st = stage(o);
   const steps = [
-    ['Prevzeto v poslovalnico', o.received],
+    [o.sector === 'narocilo' ? 'Naročeno' : 'Prevzeto v poslovalnico', o.received],
+    ...(o.sector === 'narocilo' && o.dueDate ? [['Dogovorjen datum izdaje', o.dueDate]] : []),
     ['Gotovo', o.readyDate],
     ['Stranka obveščena', o.readyNotified],
     ['Opomnik poslan', o.reminderDate],
@@ -1341,7 +1398,7 @@ function openDetail(o) {
       <p style="margin:0"><b>${esc(o.name)}</b> · ${esc(o.phone)}${o.email ? ` · ${esc(o.email)}` : ''}
         <button type="button" style="border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;font-size:.82rem" data-editcustomer="${esc(digits(o.phone))}">uredi stranko</button></p>
       <div class="three">
-        <div><label>Datum prevzema</label><input name="received" type="date" value="${esc(o.received)}" ${dis}></div>
+        <div><label>${sec(o).dateLabel}</label><input name="received" type="date" value="${esc(o.received)}" ${dis}></div>
         <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
         <div><label>Cena (€)</label><input name="price" inputmode="decimal" value="${esc(o.price)}" ${dis}></div>
       </div>
@@ -1356,7 +1413,7 @@ function openDetail(o) {
     <ul class="timeline">${steps.map(([l, d]) => `<li class="${d ? 'on' : ''}">${l}${d ? `: <b>${fmt(d)}</b>` : ''}</li>`).join('')}</ul>
     <div class="actions">
       ${editable ? '<button class="btn" id="saveEdit">Shrani spremembe</button>' : ''}
-      ${o.status === 'gotovo' && !o.reminderDate ? '<button class="btn secondary" id="backToRepair">Vrni v popravilo</button>' : ''}
+      ${o.status === 'gotovo' && !o.reminderDate ? `<button class="btn secondary" id="backToRepair">${sec(o).back}</button>` : ''}
       ${o.status === 'izdano' ? '<button class="btn secondary" id="undoIssue">Razveljavi izdajo</button>' : ''}
     </div>`);
   $('#saveEdit')?.addEventListener('click', async () => {
@@ -1364,7 +1421,7 @@ function openDetail(o) {
     const e = $('#editError');
     const fail = (m) => { e.textContent = m; e.hidden = false; };
     if (!f.description.trim() && !o.services.length && !o.items.length) return fail('Opis je obvezen.');
-    if (f.received > today()) return fail('Datum prevzema ne more biti v prihodnosti.');
+    if (f.received > today()) return fail(`${sec(o).dateLabel} ne more biti v prihodnosti.`);
     if (f.price.trim() && isNaN(Number(f.price.trim().replace(',', '.')))) return fail('Cena mora biti število.');
     const ok = await busy(() => store.update(o.id, {
       received: f.received || o.received,
@@ -1397,17 +1454,18 @@ function printTicket(o) {
         <b>${esc(CONFIG.shopName)}</b><br>${esc(CONFIG.address)}<br>tel. ${esc(CONFIG.phone)}
         <div style="margin-top:1.5mm"><b style="font-size:7.5pt">Delovni čas</b><br>${hours}</div>
       </div>
-      <div class="t-title">Prevzemni listek</div>
+      <div class="t-title">${sec(o).ticket}</div>
       <div class="t-num">${esc(o.num)}</div>
       <table>
         <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
         <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
-        <tr><td>Datum prevzema</td><td>${fmt(o.received)}</td></tr>
+        <tr><td>${sec(o).dateLabel}</td><td>${fmt(o.received)}</td></tr>
+        ${o.sector === 'narocilo' && o.dueDate ? `<tr><td>Datum izdaje</td><td>${fmt(o.dueDate)}</td></tr>` : ''}
         <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
       </table>
       <div class="t-terms">
         <b>Pogoji prevzema</b><br>
-        Ko bodo oblačila gotova, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila.
+        ${o.sector === 'narocilo' ? 'Ko bo naročilo gotovo' : 'Ko bodo oblačila gotova'}, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila.
         Po tem roku zaračunamo zamudnino ${money(CONFIG.lateFeePerDay)} za vsak delovni dan.
         Oblačila, ki niso prevzeta v enem mesecu od obvestila, oddamo v zabojnik ${esc(CONFIG.donation)}.
         Ob prevzemu prinesite ta listek.
@@ -1418,7 +1476,8 @@ function printTicket(o) {
         <table>
           <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
           <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
-          <tr><td>Datum prevzema</td><td>${fmt(o.received)}</td></tr>
+          <tr><td>${sec(o).dateLabel}</td><td>${fmt(o.received)}</td></tr>
+          ${o.sector === 'narocilo' && o.dueDate ? `<tr><td>Datum izdaje</td><td>${fmt(o.dueDate)}</td></tr>` : ''}
           <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
         </table>
         <ol>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
@@ -1690,7 +1749,7 @@ document.addEventListener('click', (e) => {
   if (t.dataset.newfor) {
     intakeKey = t.dataset.newfor;
     lastCreated = null;
-    return nav('#/popravilo/prevzem');
+    return nav(`#/${SECTOR}/prevzem`);
   }
   if (t.dataset.newcustomer) {
     const fromIntake = t.dataset.newcustomer === 'intake';
@@ -1707,7 +1766,7 @@ document.addEventListener('click', (e) => {
   if (t.dataset.ordersfor) {
     const c = customers().find((x) => x.key === t.dataset.ordersfor);
     searchQuery = c ? c.phone : '';
-    return nav('#/popravilo/izdaja');
+    return nav(`#/${SECTOR}/izdaja`);
   }
   if (t.id === 'saveIntake') { e.preventDefault(); return saveIntake(); }
   const o = orders.find((x) => x.id === (t.dataset.open || t.dataset.id));

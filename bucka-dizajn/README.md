@@ -55,7 +55,19 @@ prevzema in vsi kosi s storitvami in opombami.
 Obvestila se pošiljajo s pripravljenim SMS (en dotik), po e-pošti ali s klicem. Če je povezana Google
 preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
 
-### Izdelava po naročilu (sledi)
+### Izdelava po naročilu (narejeno)
+
+Enaki zavihki kot pri popravilih (Stranke, **Naročilo**, **V izdelavi**, Izdaja, Pregled); stranke so skupne
+obema sektorjema, naročila pa ločena in imajo svoje številke (`N-0001`, `N-0002` …).
+
+- **Naročilo** – izbira stranke (ali **+ Nova stranka**) s kontaktno številko, **datum naročila**,
+  **datum izdaje** (vpiše se ročno, neobvezno) in kosi: z gumbom **+ DODAJ NOV KOS** izberete izdelek s
+  seznama (izdelava hlač, hlače na elastiko, izdelava hlač z žepi, šivanje klasičnega krila, šivanje krila
+  z žepi, šivanje ženske jakne s podlogo, šivanje ženske jakne, šivanje podložene obleke, šivanje obleke
+  jersey, šivanje maje, izdelava bluze/srajce) in vpišete opombo (mere, material, barva).
+- Listek, obvestila strankam (»vaše naročilo je pripravljeno …«), roki za prevzem, zamudnina in evidenca
+  delujejo enako kot pri popravilih.
+- Seznam izdelkov urejate v Nastavitve → Storitve (skupina `Izdelava po naročilu`).
 
 ## Shranjevanje podatkov in več naprav
 
