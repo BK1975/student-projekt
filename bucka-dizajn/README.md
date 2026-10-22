@@ -60,6 +60,11 @@ preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
 Enaki zavihki kot pri popravilih (Stranke, **Naročilo**, **V izdelavi**, Izdaja, Pregled); stranke so skupne
 obema sektorjema, naročila pa ločena in imajo svoje številke (`N-0001`, `N-0002` …).
 
+- **Mere** – mere stranke v cm: prsni obseg, pasni obseg, kolčni obseg, dolžina modela, rama + dolžina
+  rokava, širina rokava, hrbtna dolžina, hrbtna širina ter poljubne **dodatne mere** (+ Dodaj mero), datum
+  merjenja in opomba. Mere so shranjene pri stranki; po vnosu nove stranke v tem sektorju se vnos mer odpre
+  sam, kasneje pa jih uredite v zavihku Mere ali z gumbom **Mere** pri stranki. Pri naročilu se mere
+  prikažejo ob izbrani stranki, shranijo z naročilom in natisnejo na odrezku listka za poslovalnico.
 - **Naročilo** – izbira stranke (ali **+ Nova stranka**) s kontaktno številko, **datum naročila**,
   **datum izdaje** (vpiše se ročno, neobvezno) in kosi: z gumbom **+ DODAJ NOV KOS** izberete izdelek s
   seznama (izdelava hlač, hlače na elastiko, izdelava hlač z žepi, šivanje klasičnega krila, šivanje krila

@@ -54,13 +54,14 @@ const POLJA = [
   ['services', 'Storitve'], // nove stolpce dodajajte samo na konec
   ['feeWaived', 'Brez zamudnine'], ['lateFee', 'Zamudnina (€)'],
   ['lateNoticeDate', 'Obvestilo o zamudnini'], ['warnDate', 'Opozorilo pred oddajo'],
-  ['items', 'Kosi'],
+  ['items', 'Kosi'], ['measures', 'Mere ob naročilu'],
 ];
 const LIST_STORITVE = 'Storitve';
 const LIST_STRANKE = 'Stranke';
 const LIST_ODSOTNOSTI = 'Odsotnosti';
 const JSON_POLJA = ['services', 'items'];
-const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno']];
+const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno'],
+  ['measures', 'Mere']]; // mere so shranjene kot JSON; nove stolpce dodajajte samo na konec
 const KLJUCI = POLJA.map((p) => p[0]);
 const STOLPEC = Object.fromEntries(KLJUCI.map((k, i) => [k, i + 1]));
 const ZAKLENJENO = ['id', 'num', 'sector', 'createdAt', 'updatedAt'];
@@ -357,7 +358,12 @@ function preberiStranke() {
   const sh = listStranke();
   if (sh.getLastRow() < 2) return [];
   return sh.getRange(2, 1, sh.getLastRow() - 1, POLJA_STRANKE.length).getDisplayValues()
-    .map((r) => Object.fromEntries(POLJA_STRANKE.map((p, i) => [p[0], r[i]])))
+    .map((r) => {
+      const c = Object.fromEntries(POLJA_STRANKE.map((p, i) => [p[0], r[i]]));
+      try { c.measures = c.measures ? JSON.parse(c.measures) : null; } catch (e) { c.measures = null; }
+      if (!c.measures) delete c.measures;
+      return c;
+    })
     .filter((c) => c.id);
 }
 
@@ -372,11 +378,12 @@ function shraniStranko(vnos) {
     name: String(vnos.name), phone: String(vnos.phone), email: String(vnos.email || ''), note: String(vnos.note || ''),
     createdAt: vnos.createdAt || new Date().toISOString(),
   };
+  if (vnos.measures) c.measures = vnos.measures;
   const i = vse.findIndex((x) => x.id === c.id);
   const vrstica = i >= 0 ? i + 2 : sh.getLastRow() + 1;
   const obseg = sh.getRange(vrstica, 1, 1, POLJA_STRANKE.length);
   obseg.setNumberFormat('@');
-  obseg.setValues([POLJA_STRANKE.map((p) => c[p[0]])]);
+  obseg.setValues([POLJA_STRANKE.map((p) => (p[0] === 'measures' ? (c.measures ? JSON.stringify(c.measures) : '') : c[p[0]]))]);
   return c;
 }
 

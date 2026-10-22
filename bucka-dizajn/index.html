@@ -88,7 +88,7 @@
   .sector span { color: var(--muted); font-size: .92rem; }
   .sector .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
-  .tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+  .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; background: var(--brand-soft); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
   .tabs button { border: 0; background: none; padding: 8px 2px; font-size: .84rem; line-height: 1.15; border-radius: 9px; font-weight: 600; color: var(--brand); position: relative; }
   .tabs button[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: .72rem; margin-left: 4px; }
@@ -638,6 +638,7 @@ let searchQuery = '';
 let lastCreated = null;
 let customerQuery = '';
 let intakeKey = null; // izbrana stranka pri prevzemu (ključ = telefon)
+let measureKey = null; // izbrana stranka v zavihku Mere
 
 window.addEventListener('hashchange', () => { route = location.hash || '#/'; render(); window.scrollTo(0, 0); });
 function nav(hash) { location.hash = hash; }
@@ -709,7 +710,8 @@ function renderRepair(app, tab) {
   const S = SECTORS[SECTOR];
   const due = orders.filter((o) => inSector(o) && stage(o).due).length;
   const inRepair = orders.filter((o) => inSector(o) && o.status === 'sprejeto').length;
-  const tabs = [['stranke', 'Stranke'], ['prevzem', S.intakeTab], ['popravilo', S.workTab], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
+  const tabs = [['stranke', 'Stranke'], ...(SECTOR === 'narocilo' ? [['mere', 'Mere']] : []),
+    ['prevzem', S.intakeTab], ['popravilo', S.workTab], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
   app.innerHTML = `
     <button class="back" data-nav="#/">‹ Sektorji</button>
     <h1>${S.title}</h1>
@@ -722,6 +724,7 @@ function renderRepair(app, tab) {
   else if (tab === 'pregled') renderOverview(el);
   else if (tab === 'prevzem') renderIntake(el);
   else if (tab === 'popravilo') renderInRepair(el);
+  else if (tab === 'mere' && SECTOR === 'narocilo') renderMeasures(el);
   else renderCustomers(el);
 }
 
@@ -805,7 +808,9 @@ function renderCustomerBox() {
   if (c) {
     box.innerHTML = `
       <div class="callout ok" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <span><b>${esc(c.name)}</b><br>Kontaktna številka: <b>${esc(c.phone)}</b>${c.email ? `<br><small>${esc(c.email)}</small>` : ''}<br><small>${c.orders.length}× pri nas</small></span>
+        <span><b>${esc(c.name)}</b><br>Kontaktna številka: <b>${esc(c.phone)}</b>${c.email ? `<br><small>${esc(c.email)}</small>` : ''}<br><small>${c.orders.length}× pri nas</small>
+          ${SECTOR === 'narocilo' ? `<br><small>${measureList(c).length ? `Mere: ${esc(measuresText(c))}` : 'Mere še niso vpisane.'}</small>
+            <br><button type="button" class="open" style="border:0;background:none;padding:0;color:var(--brand);font-weight:600;text-decoration:underline" data-measure="${esc(c.key)}">${measureList(c).length ? 'Uredi mere' : 'Vpiši mere'}</button>` : ''}</span>
         <button type="button" class="btn small secondary" id="changeCustomer">Zamenjaj</button>
       </div>`;
     $('#changeCustomer').onclick = () => { intakeKey = null; renderCustomerBox(); $('#cSearch').focus(); };
@@ -930,10 +935,133 @@ function renderCustomerList() {
           <div class="actions">
             <button class="btn small" data-newfor="${esc(c.key)}">${SECTORS[SECTOR].newBtn}</button>
             ${c.orders.length ? `<button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>` : ''}
+            ${SECTOR === 'narocilo' ? `<button class="btn small secondary" data-measure="${esc(c.key)}">Mere${measureList(c).length ? ` (${measureList(c).length})` : ''}</button>` : ''}
             <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
           </div>
         </div>`;
     }).join('') + '</div>' + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>'));
+}
+
+/* ---- Mere (sektor Izdelava po naročilu) – shranjene pri stranki ---- */
+
+const MEASURES = [
+  ['prsni', 'Prsni obseg'], ['pasni', 'Pasni obseg'], ['kolcni', 'Kolčni obseg'], ['dolzina', 'Dolžina modela'],
+  ['ramaRokav', 'Rama + dolžina rokava'], ['sirinaRokava', 'Širina rokava'],
+  ['hrbtnaDolzina', 'Hrbtna dolžina'], ['hrbtnaSirina', 'Hrbtna širina'],
+];
+let extraRows = []; // dodatne mere v obrazcu: { name, value }
+
+const cm = (v) => `${String(v).replace('.', ',')} cm`;
+// Seznam vpisanih mer stranke: [[ime, vrednost], …]
+function measureList(c) {
+  const m = c && c.measures;
+  if (!m) return [];
+  return [
+    ...MEASURES.filter(([k]) => m.values && m.values[k] !== undefined && m.values[k] !== '').map(([k, label]) => [label, m.values[k]]),
+    ...(m.extra || []).filter((x) => x.name && x.value !== '').map((x) => [x.name, x.value]),
+  ];
+}
+const measuresText = (c) => measureList(c).map(([n, v]) => `${n} ${cm(v)}`).join(', ');
+
+function renderMeasures(el) {
+  const c = measureKey && customers().find((x) => x.key === measureKey);
+  if (!c) {
+    el.innerHTML = `
+      <div class="search" style="display:flex;gap:8px"><input id="mq" type="search" placeholder="Izberi stranko – ime ali telefon …" value="${esc(customerQuery)}" autocomplete="off"><button class="btn" style="white-space:nowrap;border-radius:999px" data-newcustomer="measures">+ Nova</button></div>
+      <div id="mList"></div>`;
+    const draw = () => {
+      const list = findCustomers(customerQuery).slice(0, 100);
+      $('#mList').innerHTML = `<div class="cards">${list.map((x) => `
+        <button class="order" style="display:block;width:100%;text-align:left" data-measure="${esc(x.key)}">
+          <div class="top"><span class="who">${esc(x.name)}</span>${measureList(x).length ? `<span class="pill caka">Mere: ${measureList(x).length}</span>` : '<span class="pill">Ni mer</span>'}</div>
+          <p class="dates">${esc(x.phone)}${x.measures && x.measures.date ? ` · izmerjeno ${fmt(x.measures.date)}` : ''}</p>
+        </button>`).join('')}</div>${list.length ? '' : '<p class="empty">Ni strank. Dodaj novo z gumbom »+ Nova«.</p>'}`;
+    };
+    $('#mq').addEventListener('input', (e) => { customerQuery = e.target.value; draw(); });
+    draw();
+    return;
+  }
+  const m = c.measures || {};
+  extraRows = (m.extra || []).map((x) => ({ ...x }));
+  el.innerHTML = `
+    <div class="callout ok" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px">
+      <span><b>${esc(c.name)}</b><br>Kontaktna številka: <b>${esc(c.phone)}</b>${m.date ? `<br><small>Zadnje merjenje: ${fmt(m.date)}</small>` : ''}</span>
+      <button type="button" class="btn small secondary" id="changeMeasure">Zamenjaj</button>
+    </div>
+    <form class="card" id="measureForm" novalidate>
+      <div class="two">
+        ${MEASURES.map(([k, label]) => `
+          <div>
+            <label for="m_${k}">${label}</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input id="m_${k}" name="${k}" inputmode="decimal" value="${esc(m.values && m.values[k] !== undefined ? String(m.values[k]).replace('.', ',') : '')}" placeholder="0">
+              <span class="hint" style="margin:0">cm</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      <label>Dodatne mere</label>
+      <div id="extraBox"></div>
+      <button type="button" class="btn small secondary" style="margin-top:8px" data-addextra>+ Dodaj mero</button>
+      <div class="two">
+        <div>
+          <label for="mDate">Datum merjenja</label>
+          <input id="mDate" name="date" type="date" value="${esc(m.date || today())}" max="${today()}">
+        </div>
+      </div>
+      <label for="mNote">Opomba <small>(neobvezno)</small></label>
+      <input id="mNote" name="note" value="${esc(m.note)}" placeholder="npr. visoka postava, ohlapen kroj">
+      <p class="error" id="mError" hidden></p>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn" id="saveMeasures">Shrani mere</button>
+        <button type="button" class="btn secondary" data-newfor="${esc(c.key)}">Novo naročilo</button>
+      </div>
+    </form>`;
+  renderExtra();
+  $('#changeMeasure').onclick = () => { measureKey = null; render(); };
+  $('#extraBox').addEventListener('input', (e) => {
+    const i = e.target.dataset.extra;
+    if (i !== undefined) extraRows[Number(i)][e.target.dataset.f] = e.target.value;
+  });
+  $('#saveMeasures').onclick = (e) => { e.preventDefault(); saveMeasures(c); };
+}
+
+function renderExtra() {
+  $('#extraBox').innerHTML = extraRows.map((x, i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+      <input data-extra="${i}" data-f="name" value="${esc(x.name)}" placeholder="Ime mere (npr. obseg vratu)" style="flex:2">
+      <input data-extra="${i}" data-f="value" value="${esc(String(x.value ?? '').replace('.', ','))}" inputmode="decimal" placeholder="0" style="flex:1;min-width:60px">
+      <span class="hint" style="margin:0">cm</span>
+      <button type="button" class="close" style="font-size:1.3rem" data-removeextra="${i}" aria-label="Odstrani mero">×</button>
+    </div>`).join('') || '<p class="hint">Ni dodatnih mer.</p>';
+}
+
+async function saveMeasures(c) {
+  const f = Object.fromEntries(new FormData($('#measureForm')));
+  const err = (msg) => { $('#mError').textContent = msg; $('#mError').hidden = false; };
+  const num = (v) => {
+    const t = String(v || '').trim().replace(',', '.');
+    if (!t) return '';
+    const n = Number(t);
+    return Number.isFinite(n) && n > 0 && n < 400 ? n : NaN;
+  };
+  const values = {};
+  for (const [k, label] of MEASURES) {
+    const n = num(f[k]);
+    if (Number.isNaN(n)) return err(`${label}: vpiši število v cm (npr. 92 ali 92,5).`);
+    if (n !== '') values[k] = n;
+  }
+  const extra = [];
+  for (const x of extraRows) {
+    if (!x.name.trim() && !String(x.value).trim()) continue;
+    const n = num(x.value);
+    if (!x.name.trim()) return err('Pri dodatni meri vpiši ime.');
+    if (n === '' || Number.isNaN(n)) return err(`${x.name}: vpiši število v cm.`);
+    extra.push({ name: x.name.trim(), value: n });
+  }
+  if (f.date > today()) return err('Datum merjenja ne more biti v prihodnosti.');
+  const measures = { values, extra, date: f.date || today(), note: (f.note || '').trim() };
+  const ok = await busy(() => store.saveCustomer({ ...(c.record || { name: c.name, phone: c.phone, email: c.email || '' }), measures }).then(() => true));
+  if (ok) { toast('Mere shranjene'); render(); }
 }
 
 /* ---- Seznam storitev (brez cen – cene so v blagajni) ---- */
@@ -1036,6 +1164,7 @@ async function saveIntake() {
   const items = intakeItems.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note.trim() }));
   const o = {
     sector: SECTOR,
+    measures: SECTOR === 'narocilo' ? measuresText(c) : '',
     received: f.received || today(),
     name: c.name,
     phone: c.phone,
@@ -1402,6 +1531,7 @@ function openDetail(o) {
         <div><label>Kosov</label><input name="pieces" type="number" min="1" value="${esc(o.pieces)}" ${dis}></div>
         <div><label>Cena (€)</label><input name="price" inputmode="decimal" value="${esc(o.price)}" ${dis}></div>
       </div>
+      ${o.measures ? `<label>Mere ob naročilu</label><p style="margin:0">${esc(o.measures)}</p>` : ''}
       ${o.items.length ? `<label>Kosi</label><ol style="margin:0;padding-left:20px">${o.items.map((it) => `<li>${esc(itemText(it))}</li>`).join('')}</ol>`
         : o.services.length ? `<label>Storitve</label><p style="margin:0">${o.services.map((x) => `${x.qty > 1 ? x.qty + ' × ' : ''}${esc(svcName(x))}`).join('<br>')}</p>` : ''}
       <label>Opis</label><textarea name="description" ${dis}>${esc(o.description)}</textarea>
@@ -1481,6 +1611,7 @@ function printTicket(o) {
           <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
         </table>
         <ol>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
+        ${o.measures ? `<p style="font-size:7.5pt"><b>Mere:</b> ${esc(o.measures)}</p>` : ''}
       </div>
     </div>`;
   window.print();
@@ -1714,7 +1845,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-measure], [data-addextra], [data-removeextra], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
@@ -1751,10 +1882,15 @@ document.addEventListener('click', (e) => {
     lastCreated = null;
     return nav(`#/${SECTOR}/prevzem`);
   }
+  if (t.dataset.measure) { closeModal(); measureKey = t.dataset.measure; customerQuery = ''; return location.hash === '#/narocilo/mere' ? render() : nav('#/narocilo/mere'); }
+  if ('addextra' in t.dataset) { extraRows.push({ name: '', value: '' }); renderExtra(); $(`[data-extra="${extraRows.length - 1}"]`)?.focus(); return; }
+  if (t.dataset.removeextra) { extraRows.splice(Number(t.dataset.removeextra), 1); return renderExtra(); }
   if (t.dataset.newcustomer) {
-    const fromIntake = t.dataset.newcustomer === 'intake';
+    const from = t.dataset.newcustomer;
     return openCustomerForm(null, (c) => {
-      if (fromIntake) { intakeKey = c.key; renderCustomerBox(); }
+      if (from === 'intake') { intakeKey = c.key; renderCustomerBox(); }
+      // V sektorju Izdelava po naročilu po vnosu nove stranke takoj odpri vnos mer.
+      else if (SECTOR === 'narocilo' && route.startsWith('#/narocilo')) { measureKey = c.key; customerQuery = ''; location.hash === '#/narocilo/mere' ? render() : nav('#/narocilo/mere'); }
       else { customerQuery = ''; render(); }
     });
   }
