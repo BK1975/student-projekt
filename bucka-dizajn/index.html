@@ -484,7 +484,7 @@ function refreshDeadlines() {
 const lateFee = (o, t) => (o.feeWaived ? 0 : lateDays(o, t) * CONFIG.lateFeePerDay);
 
 function stage(o, t = today()) {
-  if (o.status === 'sprejeto') return { key: 'sprejeto', label: 'V popravilu' };
+  if (o.status === 'sprejeto') return { key: 'sprejeto', label: sec(o).workTab };
   if (o.status === 'izdano') return { key: 'izdano', label: 'Izdano' };
   if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: `Oddano v ${CONFIG.donation}` };
   // status 'gotovo'
@@ -1114,7 +1114,7 @@ function renderResults() {
   const groupDate = (g) => g.map((o) => o.received).sort()[sortNewest ? g.length - 1 : 0];
   const sorted = [...groups.values()].sort(byDate(groupDate));
   let lastHead = '';
-  el.innerHTML = (q ? '' : '<p class="hint" style="margin-bottom:10px">Gotova oblačila, ki čakajo na izdajo, razvrščena po datumu prevzema. Za iskanje vpiši ime ali telefon.</p>') +
+  el.innerHTML = (q ? '' : `<p class="hint" style="margin-bottom:10px">${SECTOR === 'narocilo' ? 'Gotova naročila, ki čakajo na izdajo, razvrščena po datumu naročila' : 'Gotova oblačila, ki čakajo na izdajo, razvrščena po datumu prevzema'}. Za iskanje vpiši ime ali telefon.</p>`) +
     sorted.map((g) => {
       g.sort(byDate((o) => o.received));
       const open = g.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
@@ -1234,7 +1234,7 @@ function renderStats() {
     </div>
     <p style="margin:0 0 8px;font-weight:600">${esc(dayLabel(day))}</p>
     <div style="display:grid;gap:8px">
-      ${box('V popravilu', st.inRepair)}
+      ${box(SECTORS[SECTOR].workTab, st.inRepair)}
       ${box('Gotovo', st.ready)}
       ${box('Prevzeto', st.received)}
     </div>`;
@@ -1244,11 +1244,11 @@ function renderStats() {
 function policyHtml() {
   return `<b>Roki za prevzem</b>
     <ol>
-      <li>Ko so oblačila gotova, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
+      <li>Ko ${SECTOR === 'narocilo' ? 'je naročilo gotovo' : 'so oblačila gotova'}, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
       <li>Delovni dan pred iztekom roka pošljemo <b>opomnik</b>.</li>
       <li>Dan po roku pošljemo <b>obvestilo o zamudnini</b> – ${money(CONFIG.lateFeePerDay)} za vsak delovni dan (brez dni odsotnosti), razen če se stranka javi in se dogovorimo drugače.</li>
       <li>Zadnji delovni dan pred oddajo pošljemo <b>opozorilo</b> z datumom oddaje v zabojnik (če je isti dan na vrsti tudi obvestilo o zamudnini, gre eno sporočilo).</li>
-      <li>Oblačila, ki niso prevzeta v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
+      <li>${SECTOR === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
     </ol>`;
 }
 
@@ -1467,7 +1467,7 @@ function printTicket(o) {
         <b>Pogoji prevzema</b><br>
         ${o.sector === 'narocilo' ? 'Ko bo naročilo gotovo' : 'Ko bodo oblačila gotova'}, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila.
         Po tem roku zaračunamo zamudnino ${money(CONFIG.lateFeePerDay)} za vsak delovni dan.
-        Oblačila, ki niso prevzeta v enem mesecu od obvestila, oddamo v zabojnik ${esc(CONFIG.donation)}.
+        ${o.sector === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v enem mesecu od obvestila, oddamo v zabojnik ${esc(CONFIG.donation)}.
         Ob prevzemu prinesite ta listek.
       </div>
       <div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>
