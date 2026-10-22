@@ -1977,6 +1977,46 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
+/* ---------- Klici in SMS ---------- */
+
+// Povezave tel: in sms: zanesljivo odpre: na telefonu tudi, ko je aplikacija prikazana v okvirju (iframe),
+// na napravi brez telefona pa pokaže številko (in besedilo SMS) za ročni klic oziroma kopiranje.
+const canDial = () => matchMedia('(pointer: coarse)').matches && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+function contactFallback(href) {
+  const isSms = href.startsWith('sms:');
+  const [target, query = ''] = href.replace(/^(tel|sms):/, '').split(/[?&]body=/);
+  const raw = decodeURIComponent(target);
+  const number = /^0\d{8}$/.test(raw) ? raw.replace(/^(\d{3})(\d{3})(\d{3})$/, '$1 $2 $3') : raw;
+  const body = isSms ? decodeURIComponent(query) : '';
+  showModal(isSms ? 'Pošlji SMS' : 'Pokliči stranko', `
+    <p class="hint">Ta naprava ne more neposredno ${isSms ? 'poslati SMS-a' : 'klicati'}. Uporabite telefon poslovalnice:</p>
+    <p style="font-size:1.8rem;font-weight:800;letter-spacing:.03em;text-align:center;margin:10px 0">${esc(number)}</p>
+    ${isSms ? `<div class="msg">${esc(body)}</div>` : ''}
+    <div class="actions" style="justify-content:center">
+      <button class="btn" id="copyNumber">Kopiraj številko</button>
+      ${isSms ? '<button class="btn secondary" id="copyBody">Kopiraj besedilo</button>' : ''}
+      <a class="btn secondary" href="${esc(href)}" data-raw="1">Odpri v aplikaciji</a>
+    </div>`);
+  $('#copyNumber').onclick = () => navigator.clipboard?.writeText(raw).then(() => toast('Številka kopirana'));
+  $('#copyBody')?.addEventListener('click', () => navigator.clipboard?.writeText(body).then(() => toast('Besedilo kopirano')));
+}
+
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="tel:"], a[href^="sms:"]');
+  if (!a || a.dataset.raw) return;
+  const href = a.getAttribute('href');
+  if (!canDial()) { e.preventDefault(); contactFallback(href); return; }
+  if (window.self !== window.top) {
+    // V okvirju (npr. predogled) brskalnik povezave ne odpre sam – odpremo jo izrecno.
+    e.preventDefault();
+    let w = null;
+    try { w = window.open(href, '_top'); } catch { /* ni dovoljeno */ }
+    if (!w) { try { w = window.open(href, '_blank'); } catch { /* ni dovoljeno */ } }
+    if (!w) contactFallback(href);
+  }
+}, true);
+
 // Ob vrnitvi v aplikacijo osveži podatke iz preglednice (druge naprave, samodejna obvestila).
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && store.remote() && !$('#modal').innerHTML && !document.querySelector('#intakeForm')) {
