@@ -1981,7 +1981,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
 
 // Povezave tel: in sms: zanesljivo odpre: na telefonu tudi, ko je aplikacija prikazana v okvirju (iframe),
 // na napravi brez telefona pa pokaže številko (in besedilo SMS) za ročni klic oziroma kopiranje.
-const canDial = () => matchMedia('(pointer: coarse)').matches && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+// Klicati znajo telefoni (iPhone, Android) in Mac (FaceTime in Sporočila prek povezanega iPhona).
+const canDial = () => /Android|iPhone|iPad|iPod|Mobile|Macintosh|Mac OS X/i.test(navigator.userAgent);
 
 function contactFallback(href) {
   const isSms = href.startsWith('sms:');

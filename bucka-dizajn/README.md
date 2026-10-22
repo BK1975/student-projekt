@@ -82,6 +82,12 @@ Naprava v poslovalnici naj omogoča klice in SMS. Pri vsakem naročilu so vedno 
 zamudnina, opozorilo) ali prostim besedilom, ki ga lahko urejate; prikaže tudi število znakov in SMS-ov.
 Gumb odpre aplikacijo za sporočila na napravi z vpisano številko in besedilom.
 
+Podprte naprave: **iPhone** in **Android** (npr. Samsung) kličeta in pošiljata SMS neposredno; **Mac** kliče
+prek FaceTima in pošilja SMS prek Sporočil s povezanim iPhonom. Za to morata biti Mac in iPhone prijavljena
+z istim Apple ID-jem, na iPhonu pa vklopljeno: *Nastavitve → Telefon → Klici na drugih napravah → Mac* in
+*Nastavitve → Sporočila → Posredovanje besedilnih sporočil → Mac*. Na drugih računalnikih se pokaže okno s
+številko in besedilom za kopiranje.
+
 ## Shranjevanje podatkov in več naprav
 
 - **Brez Google preglednice** so podatki shranjeni samo v brskalniku naprave, na kateri vnašate. Druge
