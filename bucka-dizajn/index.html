@@ -935,6 +935,8 @@ function renderCustomerList() {
           <div class="actions">
             <button class="btn small" data-newfor="${esc(c.key)}">${SECTORS[SECTOR].newBtn}</button>
             ${c.orders.length ? `<button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>` : ''}
+            <a class="btn small secondary" href="${esc(telHref(c.phone))}">Kliči</a>
+            <button class="btn small secondary" data-smscust="${esc(c.key)}">Pošlji SMS</button>
             ${SECTOR === 'narocilo' ? `<button class="btn small secondary" data-measure="${esc(c.key)}">Mere${measureList(c).length ? ` (${measureList(c).length})` : ''}</button>` : ''}
             <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
           </div>
@@ -1405,25 +1407,81 @@ function orderCard(o, { hideWho = false } = {}) {
     </div>`;
 }
 
+// Zadnje obvestilo, ki ga je stranka prejela (za »Ponovno obvesti«).
+const lastNotice = (o) => (o.warnDate ? 'warning' : o.lateNoticeDate ? 'late' : o.reminderDate ? 'reminder' : 'ready');
+const telHref = (phone) => `tel:${String(phone || '').replace(/[^\d+]/g, '')}`;
+
 function cardActions(o, st) {
   const id = esc(o.id);
   const issue = (cls = '') => `<button class="btn small ${cls}" data-act="issue" data-id="${id}">Izdaj stranki</button>`;
+  const renotify = `<button class="btn small secondary" data-act="notify" data-type="${lastNotice(o)}" data-id="${id}">Ponovno obvesti</button>`;
+  let main;
   switch (st.key) {
-    case 'sprejeto': return `<button class="btn small" data-act="ready" data-id="${id}">Označi kot gotovo</button>`;
+    case 'sprejeto': main = `<button class="btn small" data-act="ready" data-id="${id}">Označi kot gotovo</button>`; break;
     case 'caka':
     case 'opomnjeno':
-    case 'zamuda': return `${issue()}
-      <button class="btn small secondary" data-act="notify" data-type="${o.warnDate ? 'warning' : o.lateNoticeDate ? 'late' : o.reminderDate ? 'reminder' : 'ready'}" data-id="${id}">Ponovno obvesti</button>`;
-    case 'opomnik': return `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji opomnik</button>
-      ${issue('secondary')}`;
-    case 'zamudnina': return `<button class="btn small warn" data-act="notify" data-type="late" data-id="${id}">Obvesti o zamudnini</button>
-      ${issue('secondary')}`;
-    case 'opozorilo': return `<button class="btn small danger" data-act="notify" data-type="warning" data-id="${id}">Pošlji opozorilo</button>
-      ${issue('secondary')}`;
-    case 'humana': return `<button class="btn small danger" data-act="discard" data-id="${id}">Oddano v ${esc(CONFIG.donation)}</button>
-      ${issue('secondary')}`;
-    default: return '';
+    case 'zamuda': main = `${issue()} ${renotify}`; break;
+    case 'opomnik': main = `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji opomnik</button> ${issue('secondary')} ${renotify}`; break;
+    case 'zamudnina': main = `<button class="btn small warn" data-act="notify" data-type="late" data-id="${id}">Obvesti o zamudnini</button> ${issue('secondary')} ${renotify}`; break;
+    case 'opozorilo': main = `<button class="btn small danger" data-act="notify" data-type="warning" data-id="${id}">Pošlji opozorilo</button> ${issue('secondary')} ${renotify}`; break;
+    case 'humana': main = `<button class="btn small danger" data-act="discard" data-id="${id}">Oddano v ${esc(CONFIG.donation)}</button> ${issue('secondary')} ${renotify}`; break;
+    default: main = '';
   }
+  // Stik s stranko je vedno na voljo (naprava v poslovalnici omogoča klice in SMS).
+  return `${main}
+    <a class="btn small secondary" href="${esc(telHref(o.phone))}">Kliči</a>
+    <button class="btn small secondary" data-sms="${id}">Pošlji SMS</button>`;
+}
+
+/* ---------- SMS po želji ---------- */
+
+// Število SMS-ov: s šumniki (č, š, ž) je SMS dolg 70 znakov (67 pri več delih), sicer 160 (153).
+function smsCount(text) {
+  const unicode = /[^\x00-\x7F€£¥èéùìòÇØøÅåÄäÖöÑñÜüß]/.test(text);
+  const one = unicode ? 70 : 160, part = unicode ? 67 : 153;
+  return text.length <= one ? 1 : Math.ceil(text.length / part);
+}
+
+// Okno za SMS: o = naročilo (ali null), c = stranka { name, phone }.
+function openSms(o, c) {
+  const who = o || c;
+  const free = `Pozdravljeni,\n\n\n${CONFIG.shopName}, tel. ${CONFIG.phone}`;
+  const templates = [];
+  if (o && o.status === 'gotovo') {
+    templates.push(['ready', 'Pripravljeno']);
+    templates.push(['reminder', 'Opomnik']);
+    if (lateDays(o) > 0 || today() > o.deadline) templates.push(['late', 'Zamudnina']);
+    templates.push(['warning', `Opozorilo (${CONFIG.donation})`]);
+  }
+  templates.push(['free', 'Prosto besedilo']);
+  const textFor = (t) => (t === 'free' ? free : message(t, o));
+  const first = o && o.status === 'gotovo' ? lastNotice(o) : 'free';
+  showModal(`Pošlji SMS${o ? ` · ${esc(o.num)}` : ''}`, `
+    <p><b>${esc(who.name)}</b> · <a href="${esc(telHref(who.phone))}">${esc(who.phone)}</a></p>
+    <div class="chips" style="margin-bottom:8px">${templates.map(([k, l]) => `<button type="button" class="chip ${k === first ? 'on' : ''}" data-tpl="${k}">${esc(l)}</button>`).join('')}</div>
+    <textarea id="smsText" rows="8" style="font-size:.92rem">${esc(textFor(first))}</textarea>
+    <p class="hint" id="smsInfo"></p>
+    <div class="actions">
+      <a class="btn" id="smsSend" href="#">Pošlji SMS</a>
+      <a class="btn secondary" href="${esc(telHref(who.phone))}">Kliči</a>
+      <button class="btn secondary" id="smsCopy">Kopiraj</button>
+    </div>
+    <p class="hint">Gumb odpre aplikacijo za sporočila na tej napravi z vpisano številko in besedilom – sporočilo pošljete tam.</p>`);
+  const area = $('#smsText');
+  const update = () => {
+    const t = area.value;
+    $('#smsSend').href = smsLink(who.phone, t);
+    const n = smsCount(t);
+    $('#smsInfo').textContent = `${t.length} znakov · ${n} ${n === 1 ? 'SMS' : n === 2 ? 'SMS-a' : 'SMS-i'}`;
+  };
+  area.addEventListener('input', update);
+  $('#modal').querySelectorAll('[data-tpl]').forEach((b) => b.addEventListener('click', () => {
+    $('#modal').querySelectorAll('[data-tpl]').forEach((x) => x.classList.toggle('on', x === b));
+    area.value = textFor(b.dataset.tpl);
+    update();
+  }));
+  $('#smsCopy').onclick = () => navigator.clipboard?.writeText(area.value).then(() => toast('Kopirano'));
+  update();
 }
 
 /* ---------- Dejanja ---------- */
@@ -1457,7 +1515,7 @@ function openNotify(o, type) {
     <div class="actions">
       <a class="btn" href="${esc(smsLink(o.phone, text))}">Pošlji SMS</a>
       ${o.email ? `<a class="btn secondary" href="mailto:${esc(o.email)}?subject=${encodeURIComponent(MSG_TITLE[type] + ' – ' + CONFIG.shopName)}&body=${encodeURIComponent(text)}">E-pošta</a>` : ''}
-      <a class="btn secondary" href="tel:${esc(o.phone.replace(/[^\d+]/g, ''))}">Pokliči</a>
+      <a class="btn secondary" href="${esc(telHref(o.phone))}">Kliči</a>
       <button class="btn secondary" id="copyMsg">Kopiraj</button>
     </div>
     <button class="btn block ${already ? 'secondary' : ''}" style="margin-top:14px" id="confirmNotify">${already ? 'Zapri' : 'Stranka je obveščena – zabeleži'}</button>
@@ -1845,7 +1903,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-measure], [data-addextra], [data-removeextra], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
@@ -1882,6 +1940,8 @@ document.addEventListener('click', (e) => {
     lastCreated = null;
     return nav(`#/${SECTOR}/prevzem`);
   }
+  if (t.dataset.sms) { const o = orders.find((x) => x.id === t.dataset.sms); if (o) openSms(o, null); return; }
+  if (t.dataset.smscust) { const c = customers().find((x) => x.key === t.dataset.smscust); if (c) openSms(null, c); return; }
   if (t.dataset.measure) { closeModal(); measureKey = t.dataset.measure; customerQuery = ''; return location.hash === '#/narocilo/mere' ? render() : nav('#/narocilo/mere'); }
   if ('addextra' in t.dataset) { extraRows.push({ name: '', value: '' }); renderExtra(); $(`[data-extra="${extraRows.length - 1}"]`)?.focus(); return; }
   if (t.dataset.removeextra) { extraRows.splice(Number(t.dataset.removeextra), 1); return renderExtra(); }

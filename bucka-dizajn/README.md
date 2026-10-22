@@ -74,6 +74,14 @@ obema sektorjema, naročila pa ločena in imajo svoje številke (`N-0001`, `N-00
   delujejo enako kot pri popravilih.
 - Seznam izdelkov urejate v Nastavitve → Storitve (skupina `Izdelava po naročilu`).
 
+## Stik s strankami (oba sektorja)
+
+Naprava v poslovalnici naj omogoča klice in SMS. Pri vsakem naročilu so vedno na voljo gumbi **Kliči**,
+**Pošlji SMS** in – ko je naročilo gotovo – **Ponovno obvesti** (zadnje poslano obvestilo); pri vsaki stranki
+**Kliči** in **Pošlji SMS**. »Pošlji SMS« odpre okno s pripravljenimi besedili (pripravljeno, opomnik,
+zamudnina, opozorilo) ali prostim besedilom, ki ga lahko urejate; prikaže tudi število znakov in SMS-ov.
+Gumb odpre aplikacijo za sporočila na napravi z vpisano številko in besedilom.
+
 ## Shranjevanje podatkov in več naprav
 
 - **Brez Google preglednice** so podatki shranjeni samo v brskalniku naprave, na kateri vnašate. Druge
