@@ -1857,13 +1857,22 @@ async function connectTo(url, key, errEl) {
   const local = { orders: lsGet(LOCAL_KEY, []), customers: lsGet(CUSTOMERS_KEY, []), absences: lsGet(ABSENCES_KEY, []) };
   const prev = { ...settings };
   Object.assign(settings, { url, key });
+  // Če povezavo blokirajo varnostna pravila strani (CSP gostovanja), to povemo naravnost.
+  const blocked = [];
+  const onCsp = (e) => blocked.push(e.violatedDirective + ' ' + String(e.blockedURI).split('?')[0]);
+  document.addEventListener('securitypolicyviolation', onCsp);
   try {
     await busy(() => store.load(), true);
   } catch (ex) {
     Object.assign(settings, prev);
-    errEl.textContent = 'Povezava ni uspela: ' + (url ? await connectHint(url, ex) : ex.message);
+    const hint = url ? await connectHint(url, ex) : ex.message;
+    errEl.textContent = 'Povezava ni uspela: ' + (blocked.length
+      ? `brskalnik je povezavo blokiral zaradi varnostnih pravil strani (${blocked[0]}). To nastavi gostovanje (Netlify), ne skripta.`
+      : hint);
     errEl.hidden = false;
     return;
+  } finally {
+    document.removeEventListener('securitypolicyviolation', onCsp);
   }
   lsSet(SETTINGS_KEY, settings);
   history.replaceState(null, '', location.pathname + location.search + '#/');
