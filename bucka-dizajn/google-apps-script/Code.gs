@@ -94,8 +94,12 @@ function nastavi() {
 
 // Aplikacija pošilja manjše zahteve kot GET (?p=…), večje kot POST – oboje obdela obdelaj_.
 function doGet(e) {
-  if (e && e.parameter && e.parameter.p) return obdelaj_(e.parameter.p);
-  return json({ ok: true, app: 'Bucka Dizajn Pick&Collect', verzija: 2 });
+  const prm = (e && e.parameter) || {};
+  const out = prm.p ? obdelaj_(prm.p) : json({ ok: true, app: 'Bucka Dizajn Pick&Collect', verzija: 3 });
+  if (!/^[\w$]+$/.test(prm.cb || '')) return out;
+  // Rezervna pot za brskalnike, ki zavrnejo fetch: odgovor kot <script> (JSONP).
+  return ContentService.createTextOutput(prm.cb + '(' + out.getContent() + ')')
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
 function doPost(e) {

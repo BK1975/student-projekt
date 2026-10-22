@@ -1,6 +1,6 @@
 // Preprost service worker: aplikacija se odpre tudi brez povezave.
 // Ob vsaki spremembi datotek povečajte številko različice.
-const CACHE = 'bucka-v27';
+const CACHE = 'bucka-v28';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'favicon-64.png', 'logo-stroj.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
@@ -16,7 +16,8 @@ self.addEventListener('activate', (e) => {
 
 // Najprej omrežje (da so cene in izdelki vedno sveži), ob napaki predpomnilnik.
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
+  // Zahteve na druge strežnike (Google Apps Script) gredo mimo predpomnilnika.
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {
