@@ -92,13 +92,19 @@ function nastavi() {
 
 /* ---------- API za aplikacijo ---------- */
 
-function doGet() {
-  return json({ ok: true, app: 'Bucka Dizajn Pick&Collect' });
+// Aplikacija pošilja manjše zahteve kot GET (?p=…), večje kot POST – oboje obdela obdelaj_.
+function doGet(e) {
+  if (e && e.parameter && e.parameter.p) return obdelaj_(e.parameter.p);
+  return json({ ok: true, app: 'Bucka Dizajn Pick&Collect', verzija: 2 });
 }
 
 function doPost(e) {
+  return obdelaj_(e && e.postData ? e.postData.contents : '');
+}
+
+function obdelaj_(besedilo) {
   let req;
-  try { req = JSON.parse(e.postData.contents); } catch (err) { return json({ ok: false, error: 'Neveljavna zahteva' }); }
+  try { req = JSON.parse(besedilo); } catch (err) { return json({ ok: false, error: 'Neveljavna zahteva' }); }
   if (NASTAVITVE.kljuc === 'SPREMENI-ME') return json({ ok: false, error: 'V Code.gs najprej nastavite svoj ključ.' });
   if (req.key !== NASTAVITVE.kljuc) return json({ ok: false, error: 'Napačen ključ za dostop' });
 

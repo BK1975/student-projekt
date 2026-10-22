@@ -549,12 +549,15 @@ let customerRecords = []; // shranjene stranke: { id, name, phone, email, note, 
 const store = {
   remote: () => !!settings.url,
   async call(action, payload = {}) {
-    const res = await fetch(settings.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ key: settings.key, action, ...payload }),
-    });
-    const json = await res.json();
+    // Manjše zahteve gredo kot GET (zanesljivejše pri Google Apps Script), večje kot POST.
+    const body = JSON.stringify({ key: settings.key, action, ...payload });
+    const getUrl = settings.url + (settings.url.includes('?') ? '&' : '?') + 'p=' + encodeURIComponent(body);
+    const res = getUrl.length <= 6000
+      ? await fetch(getUrl)
+      : await fetch(settings.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch (e) { throw new Error('Skripta ni vrnila podatkov – v Apps Script uvedite novo različico (Deploy → Manage deployments → New version, dostop Anyone).'); }
     if (!json.ok) throw new Error(json.error || 'Napaka strežnika');
     return json;
   },
@@ -1839,7 +1842,7 @@ async function connectTo(url, key, errEl) {
     await busy(() => store.load(), true);
   } catch (ex) {
     Object.assign(settings, prev);
-    errEl.textContent = 'Povezava ni uspela: ' + ex.message;
+    errEl.textContent = 'Povezava ni uspela: ' + (url ? await connectHint(url, ex) : ex.message);
     errEl.hidden = false;
     return;
   }
@@ -1849,6 +1852,18 @@ async function connectTo(url, key, errEl) {
   render();
   toast(url ? 'Povezano' : 'Shranjeno');
   if (url && (local.orders.length || local.customers.length)) offerImport(local);
+}
+
+// Ob napaki preveri, ali je skripta sploh dosegljiva in ali je objavljena nova različica kode.
+async function connectHint(url, ex) {
+  if (!/load failed|failed to fetch|networkerror/i.test(ex.message)) return ex.message;
+  try {
+    const info = await (await fetch(url)).json();
+    if (info.ok && !info.verzija) return 'v Apps Script je objavljena stara različica kode. Prilepite novo kodo Code.gs, shranite in izberite Deploy → Manage deployments → ✎ → Version: New version → Deploy.';
+    return ex.message;
+  } catch (e) {
+    return 'skripta ni dosegljiva. V Apps Script preverite Deploy → Manage deployments: Execute as »Me«, Who has access »Anyone«, in da naslov konča z /exec.';
+  }
 }
 
 function offerImport(local) {
