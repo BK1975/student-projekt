@@ -5,7 +5,7 @@ Brezplačno, potrebujete le Google račun (Gmail). Postopek traja približno 10 
 ## Kaj dobite
 
 - Vsa naročila so v Google preglednici (list **Naročila**). Vse naprave v poslovalnici vidijo iste podatke.
-- Stranke so v listu **Stranke**, seznam storitev (brez cen) pa v listu **Storitve** in velja za vse naprave. Urejate ga v aplikaciji
+- Stranke so v listu **Stranke** (prvi stolpec **Naročila** samodejno navaja številke naročil stranke, npr. `P-0001, N-0002`; **Ustvarjeno** je zapisano kot `d.m.yyyy hh:mm AM/PM`; stolpec ID je skrit, ker ga potrebuje samo aplikacija), seznam storitev (brez cen) pa v listu **Storitve** in velja za vse naprave. Urejate ga v aplikaciji
   (Nastavitve → Storitve).
 - Ko zaposleni v aplikaciji označi naročilo kot **gotovo**, stranka z e-pošto samodejno prejme
   obvestilo z rokom za prevzem (14 delovnih dni), zamudnino (0,50 € za vsak delovni dan po roku) in datumom, od

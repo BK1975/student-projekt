@@ -61,7 +61,11 @@ const LIST_STRANKE = 'Stranke';
 const LIST_ODSOTNOSTI = 'Odsotnosti';
 const JSON_POLJA = ['services', 'items'];
 const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno'],
-  ['measures', 'Mere']]; // mere so shranjene kot JSON; nove stolpce dodajajte samo na konec
+  ['measures', 'Mere']]; // mere so shranjene kot JSON
+// Na listu Stranke se stolpci iščejo po naslovu, zato jih lahko premikate. Stolpec »Naročila« (številke
+// naročil stranke) izpolni skripta sama; »Ustvarjeno« je zapisan kot datum in čas.
+const STOLPEC_NAROCILA = 'Naročila';
+const FORMAT_CASA = 'd.m.yyyy hh:mm AM/PM';
 const KLJUCI = POLJA.map((p) => p[0]);
 const STOLPEC = Object.fromEntries(KLJUCI.map((k, i) => [k, i + 1]));
 const ZAKLENJENO = ['id', 'num', 'sector', 'createdAt', 'updatedAt'];
@@ -81,10 +85,14 @@ function nastavi() {
   const ods = ss.getSheetByName(LIST_ODSOTNOSTI) || ss.insertSheet(LIST_ODSOTNOSTI);
   ods.getRange(1, 1).setValue('Datum odsotnosti').setFontWeight('bold').setBackground('#e5eeea');
   ods.getRange(2, 1, ods.getMaxRows() - 1, 1).setNumberFormat('@');
-  const stranke = ss.getSheetByName(LIST_STRANKE) || ss.insertSheet(LIST_STRANKE);
-  stranke.getRange(1, 1, 1, POLJA_STRANKE.length).setValues([POLJA_STRANKE.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
-  stranke.setFrozenRows(1);
-  stranke.getRange(2, 1, stranke.getMaxRows() - 1, POLJA_STRANKE.length).setNumberFormat('@');
+  if (!ss.getSheetByName(LIST_STRANKE)) {
+    const stranke = ss.insertSheet(LIST_STRANKE);
+    stranke.getRange(1, 1, 1, POLJA_STRANKE.length).setValues([POLJA_STRANKE.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
+    stranke.setFrozenRows(1);
+    stranke.getRange(2, 1, stranke.getMaxRows() - 1, POLJA_STRANKE.length).setNumberFormat('@');
+  }
+  pripraviStranke_(ss.getSheetByName(LIST_STRANKE));
+  osveziNarocilaStrank_();
   ScriptApp.getProjectTriggers().forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dnevniPregled').timeBased().everyDays(1).atHour(NASTAVITVE.uraDnevnegaPregleda)
     .inTimezone(CASOVNI_PAS).create();
@@ -117,13 +125,16 @@ function obdelaj_(besedilo) {
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
     if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti() });
-    if (req.action === 'importAll') return json(Object.assign({ ok: true }, uvoziVse(sh, req)));
     if (req.action === 'saveAbsences') { shraniOdsotnosti(req.absences || []); return json({ ok: true }); }
-    if (req.action === 'saveCustomer') return json({ ok: true, customer: shraniStranko(req.customer || {}) });
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
-    if (req.action === 'create') return json({ ok: true, order: ustvari(sh, req.order || {}) });
-    if (req.action === 'update') return json({ ok: true, order: posodobi(sh, req.id, req.patch || {}) });
-    return json({ ok: false, error: 'Neznano dejanje' });
+    let odgovor;
+    if (req.action === 'importAll') odgovor = Object.assign({ ok: true }, uvoziVse(sh, req));
+    else if (req.action === 'saveCustomer') odgovor = { ok: true, customer: shraniStranko(req.customer || {}) };
+    else if (req.action === 'create') odgovor = { ok: true, order: ustvari(sh, req.order || {}) };
+    else if (req.action === 'update') odgovor = { ok: true, order: posodobi(sh, req.id, req.patch || {}) };
+    else return json({ ok: false, error: 'Neznano dejanje' });
+    osveziNarocilaStrank_(); // številke naročil pri strankah
+    return json(odgovor);
   } catch (err) {
     return json({ ok: false, error: err.message || String(err) });
   } finally {
@@ -176,7 +187,7 @@ function posodobi(sh, id, patch) {
 /* ---------- Prenos podatkov z naprave (pred povezavo s preglednico) ---------- */
 
 function uvoziVse(sh, data) {
-  const tel = (x) => String(x || '').replace(/\D/g, '').replace(/^386/, '0');
+  const tel = telefon_;
   // Stranke: brez podvajanja (po ID ali telefonu).
   let stStrank = 0;
   const stranke = preberiStranke();
@@ -361,15 +372,63 @@ function preberiStoritve() {
 function listStranke() {
   const sh = SpreadsheetApp.getActive().getSheetByName(LIST_STRANKE);
   if (!sh) throw new Error('Ni lista Stranke – zaženite funkcijo nastavi');
+  pripraviStranke_(sh);
   return sh;
+}
+
+const telefon_ = (x) => String(x || '').replace(/\D/g, '').replace(/^386/, '0');
+
+/** Naslovi stolpcev lista Stranke → številka stolpca (od 1). */
+function glavaStrank_(sh) {
+  const glava = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+  const stolpec = {};
+  POLJA_STRANKE.forEach(([k, naslov]) => { const i = glava.indexOf(naslov); if (i >= 0) stolpec[k] = i + 1; });
+  const n = glava.indexOf(STOLPEC_NAROCILA);
+  if (n >= 0) stolpec.orders = n + 1;
+  return stolpec;
+}
+
+/** Enkratna posodobitev lista Stranke: stolpec »Naročila« na začetku, skrit ID, datum »Ustvarjeno«. */
+function pripraviStranke_(sh) {
+  let stolpec = glavaStrank_(sh);
+  if (stolpec.orders && POLJA_STRANKE.every(([k]) => stolpec[k])) return;
+  if (!stolpec.orders) {
+    sh.insertColumnBefore(1);
+    sh.getRange(1, 1).setValue(STOLPEC_NAROCILA).setFontWeight('bold').setBackground('#e5eeea');
+    sh.getRange(2, 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
+  }
+  POLJA_STRANKE.forEach(([k, naslov]) => {
+    if (glavaStrank_(sh)[k]) return;
+    const c = sh.getLastColumn() + 1;
+    sh.getRange(1, c).setValue(naslov).setFontWeight('bold').setBackground('#e5eeea');
+    sh.getRange(2, c, sh.getMaxRows() - 1, 1).setNumberFormat('@');
+  });
+  stolpec = glavaStrank_(sh);
+  sh.hideColumns(stolpec.id); // ID potrebuje samo aplikacija
+  SpreadsheetApp.getActive().setSpreadsheetTimeZone(CASOVNI_PAS);
+  // Obstoječi zapisi »Ustvarjeno« (besedilo ISO) → datum in čas.
+  const st = stolpec.createdAt;
+  if (sh.getLastRow() > 1) {
+    const obseg = sh.getRange(2, st, sh.getLastRow() - 1, 1);
+    obseg.setValues(obseg.getValues().map(([v]) => [v instanceof Date ? v : v && !isNaN(new Date(v)) ? new Date(v) : v]));
+  }
+  sh.getRange(2, st, sh.getMaxRows() - 1, 1).setNumberFormat(FORMAT_CASA);
+  osveziNarocilaStrank_();
 }
 
 function preberiStranke() {
   const sh = listStranke();
   if (sh.getLastRow() < 2) return [];
-  return sh.getRange(2, 1, sh.getLastRow() - 1, POLJA_STRANKE.length).getDisplayValues()
-    .map((r) => {
-      const c = Object.fromEntries(POLJA_STRANKE.map((p, i) => [p[0], r[i]]));
+  const stolpec = glavaStrank_(sh);
+  const obseg = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn());
+  const prikaz = obseg.getDisplayValues();
+  const vrednosti = obseg.getValues();
+  return prikaz
+    .map((r, i) => {
+      const c = {};
+      POLJA_STRANKE.forEach(([k]) => { c[k] = r[stolpec[k] - 1]; });
+      const ust = vrednosti[i][stolpec.createdAt - 1];
+      c.createdAt = ust instanceof Date ? ust.toISOString() : String(ust || '');
       try { c.measures = c.measures ? JSON.parse(c.measures) : null; } catch (e) { c.measures = null; }
       if (!c.measures) delete c.measures;
       return c;
@@ -381,8 +440,7 @@ function shraniStranko(vnos) {
   if (!vnos.name || !vnos.phone) throw new Error('Ime in telefon sta obvezna');
   const sh = listStranke();
   const vse = preberiStranke();
-  const tel = (x) => String(x || '').replace(/\D/g, '').replace(/^386/, '0');
-  if (vse.some((c) => tel(c.phone) === tel(vnos.phone) && c.id !== vnos.id)) throw new Error('Stranka s to številko že obstaja');
+  if (vse.some((c) => telefon_(c.phone) === telefon_(vnos.phone) && c.id !== vnos.id)) throw new Error('Stranka s to številko že obstaja');
   const c = {
     id: vnos.id || Utilities.getUuid(),
     name: String(vnos.name), phone: String(vnos.phone), email: String(vnos.email || ''), note: String(vnos.note || ''),
@@ -391,10 +449,28 @@ function shraniStranko(vnos) {
   if (vnos.measures) c.measures = vnos.measures;
   const i = vse.findIndex((x) => x.id === c.id);
   const vrstica = i >= 0 ? i + 2 : sh.getLastRow() + 1;
-  const obseg = sh.getRange(vrstica, 1, 1, POLJA_STRANKE.length);
-  obseg.setNumberFormat('@');
-  obseg.setValues([POLJA_STRANKE.map((p) => (p[0] === 'measures' ? (c.measures ? JSON.stringify(c.measures) : '') : c[p[0]]))]);
+  const stolpec = glavaStrank_(sh);
+  POLJA_STRANKE.forEach(([k]) => {
+    const celica = sh.getRange(vrstica, stolpec[k]);
+    if (k === 'createdAt') celica.setNumberFormat(FORMAT_CASA).setValue(isNaN(new Date(c.createdAt)) ? c.createdAt : new Date(c.createdAt));
+    else celica.setNumberFormat('@').setValue(k === 'measures' ? (c.measures ? JSON.stringify(c.measures) : '') : c[k]);
+  });
   return c;
+}
+
+/** V stolpec »Naročila« zapiše številke naročil vsake stranke (po telefonski številki), npr. »P-0001, N-0002«. */
+function osveziNarocilaStrank_() {
+  const sh = listStranke();
+  if (sh.getLastRow() < 2) return;
+  const stolpec = glavaStrank_(sh);
+  const poTelefonu = {};
+  vsa(SpreadsheetApp.getActive().getSheetByName(LIST)).forEach(({ o }) => {
+    const t = telefon_(o.phone);
+    if (t && o.num) (poTelefonu[t] = poTelefonu[t] || []).push(String(o.num));
+  });
+  const telefoni = sh.getRange(2, stolpec.phone, sh.getLastRow() - 1, 1).getDisplayValues();
+  sh.getRange(2, stolpec.orders, telefoni.length, 1).setNumberFormat('@')
+    .setValues(telefoni.map(([t]) => [(poTelefonu[telefon_(t)] || []).sort().join(', ')]));
 }
 
 function shraniStoritve(list) {
