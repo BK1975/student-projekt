@@ -512,8 +512,9 @@ function message(type, o) {
     : { your: `vaša oblačila (št. ${o.num})`, yours: `vaših oblačil (št. ${o.num})`, isReady: 'so pripravljena', them: 'jih', waits: 'še vedno čakajo', left: 'Oblačila, ki niso prevzeta', leftLow: 'oblačila, ki niso prevzeta' };
   if (type === 'ready') {
     return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
-      `Po tem roku zaračunamo zamudnino ${fee}, ${W.leftLow} v enem mesecu ` +
-      `(do ${fmt(discardDue(o))}), pa oddamo v zabojnik ${CONFIG.donation}.` + end;
+      `Po preteku roka se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
+      `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (${fmt(discardDue(o))}), ` +
+      `bomo podarili v dobrodelne namene.` + end;
   }
   if (type === 'reminder') {
     const when = addDays(today(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : dayLabel(o.deadline).toLowerCase();
@@ -1613,17 +1614,15 @@ function confirmDiscard(o) {
 function openDetail(o) {
   const st = stage(o);
   const steps = [
-    [o.sector === 'narocilo' ? 'Naročeno' : 'Oddano v poslovalnico', o.received],
+    [o.sector === 'narocilo' ? 'Naročeno' : 'Oddano', o.received],
     ...(o.sector === 'narocilo' && o.dueDate ? [['Dogovorjen datum izdaje', o.dueDate]] : []),
-    ['Gotovo', o.readyDate],
+    ['Pripravljeno za prevzem', o.readyDate],
     ['Stranka obveščena', o.readyNotified],
-    ['Opomnik poslan', o.reminderDate],
-    ['Obvestilo o zamudnini', o.lateNoticeDate],
-    [`Opozorilo pred oddajo v ${CONFIG.donation}`, o.warnDate],
+    ['Prvi opomnik', o.reminderDate],
+    ['Drugi opomnik', o.warnDate],
     ['Rok za prevzem', o.deadline],
-    [`Oddaja v ${CONFIG.donation} od`, o.readyDate ? discardDue(o) : ''],
     ['Izdano stranki', o.handedDate],
-    [`Oddano v ${CONFIG.donation}`, o.discardedDate],
+    ['Oddano v dobrodelne namene', o.discardedDate],
   ];
   const editable = o.status === 'sprejeto' || o.status === 'gotovo';
   const dis = editable ? '' : 'disabled';

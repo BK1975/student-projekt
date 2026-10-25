@@ -320,8 +320,9 @@ function sporocilo(vrsta, o, t) {
     : { your: `vaša oblačila (št. ${o.num})`, yours: `vaših oblačil (št. ${o.num})`, isReady: 'so pripravljena', them: 'jih', waits: 'še vedno čakajo', left: 'Oblačila, ki niso prevzeta', leftLow: 'oblačila, ki niso prevzeta' };
   if (vrsta === 'ready') {
     return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
-      `Po tem roku zaračunamo zamudnino ${zamudnina}, ${W.leftLow} v enem mesecu ` +
-      `(do ${fmt(oddajaOd(o))}), pa oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
+      `Po preteku roka se za vsak delovni dan zaračuna zamudnina v višini ${String(NASTAVITVE.zamudninaNaDan).replace('.', ',')} €. ` +
+      `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (${fmt(oddajaOd(o))}), ` +
+      `bomo podarili v dobrodelne namene.` + konec;
   }
   if (vrsta === 'reminder') {
     const kdaj = dodajDni(t || danes(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : fmt(o.deadline);
