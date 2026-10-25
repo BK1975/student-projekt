@@ -19,8 +19,9 @@ potrebna.
   datumu oddaje (najnovejše ali najstarejše najprej, z naslovom dneva). Brez iskanja so prikazana vsa
   gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
 - **V popravilu** – vsa oblačila, ki so v delu, razvrščena po datumu oddaje; z gumbom **Označi kot gotovo**.
-- **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), **Evidenca** in zadnja
-  **Koledar odsotnosti**. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank
+- **Pregled** – **Uredi danes** (stranke, ki jih je treba obvestiti, prvi in drugi opomnik, dobrodelna
+  oddaja ter lastni zapiski z gumbom **+ Dodaj**, npr. »kupi zadrge«; zapisek ima lahko datum, od katerega se
+  pokaže), **Koledar odsotnosti** (slovenski prazniki se upoštevajo sami) in **Pregled** po dnevih. Pregled prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank
   je bilo ta dan **V popravilu**, **Gotovih** in **Oddanih** (prinesenih ta dan) – vsak seznam se odpre s klikom. V koledarju
   odsotnosti s klikom označite dneve, ko je poslovalnica zaprta (dopust, bolniška); ti dnevi se ne štejejo
   v rok za prevzem in ne v zamudnino.

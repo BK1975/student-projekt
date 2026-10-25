@@ -30,11 +30,8 @@ const NASTAVITVE = {
   najmanjDniPoRoku: 3,        // oddaja v zabojnik najprej toliko delovnih dni po roku za prevzem
   zabojnik: 'Humana',
   delovniDnevi: [2, 3, 4, 5], // dnevi, ko je poslovalnica odprta (0 = nedelja … 6 = sobota)
-  prazniki: [
-    '2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02', '2027-02-08',
-    '2027-03-28', '2027-03-29', '2027-04-27', '2027-05-01', '2027-05-02',
-    '2027-06-25', '2027-08-15', '2027-10-31', '2027-11-01', '2027-12-25', '2027-12-26',
-  ],
+  // Slovenski dela prosti prazniki se izračunajo sami (tudi velika noč); sem dodajte le izredne proste dni.
+  prazniki: [],
   uraDnevnegaPregleda: 8,
 };
 
@@ -59,6 +56,8 @@ const POLJA = [
 const LIST_STORITVE = 'Storitve';
 const LIST_STRANKE = 'Stranke';
 const LIST_ODSOTNOSTI = 'Odsotnosti';
+const LIST_ZAPISKI = 'Zapiski';
+const POLJA_ZAPISKI = [['id', 'ID'], ['text', 'Besedilo'], ['date', 'Pokaži od'], ['createdAt', 'Ustvarjeno']];
 const JSON_POLJA = ['services', 'items'];
 const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno'],
   ['measures', 'Mere']]; // mere so shranjene kot JSON
@@ -125,9 +124,11 @@ function obdelaj_(besedilo) {
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
     uskladiGlavo_(sh);
-    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti() });
+    if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti(), notes: preberiZapiske() });
     if (req.action === 'saveAbsences') { shraniOdsotnosti(req.absences || []); return json({ ok: true }); }
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
+    if (req.action === 'saveNote') return json({ ok: true, note: shraniZapisek(req.note || {}) });
+    if (req.action === 'deleteNote') { izbrisiZapisek(req.id); return json({ ok: true }); }
     let odgovor;
     if (req.action === 'importAll') odgovor = Object.assign({ ok: true }, uvoziVse(sh, req));
     else if (req.action === 'deleteCustomer') odgovor = Object.assign({ ok: true }, odstraniStranko(sh, req.id, req.orderIds));
@@ -518,7 +519,19 @@ function iso(d) {
 }
 function dodajDni(s, n) { const d = razcleni(s); d.setDate(d.getDate() + n); return iso(d); }
 function jeDelovniDan(s) {
-  return NASTAVITVE.delovniDnevi.includes(razcleni(s).getDay()) && !NASTAVITVE.prazniki.includes(s) && !odsotnosti().includes(s);
+  return NASTAVITVE.delovniDnevi.includes(razcleni(s).getDay()) && !jePraznik_(s) && !odsotnosti().includes(s);
+}
+
+// Slovenski dela prosti dnevi (enako kot holidaysOf v aplikaciji).
+function jePraznik_(s) {
+  const y = Number(s.slice(0, 4));
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const dvo = (n) => String(n).padStart(2, '0');
+  const veNoc = `${y}-${dvo(Math.floor((h + l - 7 * m + 114) / 31))}-${dvo(((h + l - 7 * m + 114) % 31) + 1)}`;
+  const fiksni = ['01-01', '01-02', '02-08', '04-27', '05-01', '05-02', '06-25', '08-15', '10-31', '11-01', '12-25', '12-26'];
+  return fiksni.includes(s.slice(5)) || [veNoc, dodajDni(veNoc, 1), dodajDni(veNoc, 49)].includes(s) || NASTAVITVE.prazniki.includes(s);
 }
 
 /* ---------- Odsotnosti (dnevi, ko je poslovalnica zaprta) ---------- */
@@ -531,6 +544,44 @@ function odsotnosti() {
     : sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().map((r) => r[0]).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
   return odsotnostiCache;
 }
+/* ---------- Zapiski (lastni opomniki v »Uredi danes«) ---------- */
+
+function listZapiskov_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(LIST_ZAPISKI);
+  if (!sh) {
+    sh = ss.insertSheet(LIST_ZAPISKI);
+    sh.getRange(1, 1, 1, POLJA_ZAPISKI.length).setValues([POLJA_ZAPISKI.map((p) => p[1])]).setFontWeight('bold').setBackground('#e5eeea');
+    sh.setFrozenRows(1);
+    sh.getRange(2, 1, sh.getMaxRows() - 1, POLJA_ZAPISKI.length).setNumberFormat('@');
+  }
+  return sh;
+}
+
+function preberiZapiske() {
+  const sh = listZapiskov_();
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, POLJA_ZAPISKI.length).getDisplayValues()
+    .map((r) => Object.fromEntries(POLJA_ZAPISKI.map((p, i) => [p[0], r[i]])))
+    .filter((n) => n.id);
+}
+
+function shraniZapisek(vnos) {
+  if (!String(vnos.text || '').trim()) throw new Error('Zapisek je prazen');
+  const sh = listZapiskov_();
+  const n = { id: vnos.id || Utilities.getUuid(), text: String(vnos.text), date: String(vnos.date || ''), createdAt: vnos.createdAt || new Date().toISOString() };
+  const i = preberiZapiske().findIndex((x) => x.id === n.id);
+  const obseg = sh.getRange(i >= 0 ? i + 2 : sh.getLastRow() + 1, 1, 1, POLJA_ZAPISKI.length);
+  obseg.setNumberFormat('@');
+  obseg.setValues([POLJA_ZAPISKI.map((p) => n[p[0]])]);
+  return n;
+}
+
+function izbrisiZapisek(id) {
+  const i = preberiZapiske().findIndex((x) => x.id === id);
+  if (i >= 0) listZapiskov_().deleteRow(i + 2);
+}
+
 function shraniOdsotnosti(list) {
   const sh = SpreadsheetApp.getActive().getSheetByName(LIST_ODSOTNOSTI);
   if (!sh) throw new Error('Ni lista Odsotnosti – zaženite funkcijo nastavi');

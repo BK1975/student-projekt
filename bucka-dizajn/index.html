@@ -303,11 +303,8 @@ const CONFIG = {
 
   // Dnevi, ko je poslovalnica odprta – po njih se štejejo roki (0 = nedelja … 6 = sobota).
   workDays: [2, 3, 4, 5],
-  holidays: [
-    '2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02', '2027-02-08',
-    '2027-03-28', '2027-03-29', '2027-04-27', '2027-05-01', '2027-05-02',
-    '2027-06-25', '2027-08-15', '2027-10-31', '2027-11-01', '2027-12-25', '2027-12-26',
-  ],
+  // Slovenski dela prosti prazniki se izračunajo sami (tudi velika noč); sem dodajte le izredne proste dni.
+  holidays: [],
 };
 
 // Začetni seznam storitev po ceniku Bucka Dizajn (brez cen – cene so v blagajni). Urejate ga v aplikaciji (Nastavitve → Storitve).
@@ -415,6 +412,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const SETTINGS_KEY = 'bucka-settings';
 const LOCAL_KEY = 'bucka-orders-v2';
 const ABSENCES_KEY = 'bucka-absences';
+const NOTES_KEY = 'bucka-notes';
 const SERVICES_KEY = 'bucka-services';
 const CUSTOMERS_KEY = 'bucka-customers';
 
@@ -428,8 +426,29 @@ const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const today = () => iso(new Date());
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+let notes = []; // zapiski v »Uredi danes«: { id, text, date, createdAt }
 let absences = []; // dnevi odsotnosti (LLLL-MM-DD) – poslovalnica je zaprta
-const isWorkDay = (s) => CONFIG.workDays.includes(parse(s).getDay()) && !CONFIG.holidays.includes(s) && !absences.includes(s);
+
+// Slovenski dela prosti dnevi za leto y: { 'LLLL-MM-DD': ime }.
+const holidayCache = {};
+function holidaysOf(y) {
+  if (holidayCache[y]) return holidayCache[y];
+  // Velika noč (gregorijanski koledar).
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const easter = `${y}-${pad(Math.floor((h + l - 7 * m + 114) / 31))}-${pad(((h + l - 7 * m + 114) % 31) + 1)}`;
+  return (holidayCache[y] = {
+    [`${y}-01-01`]: 'novo leto', [`${y}-01-02`]: 'novo leto', [`${y}-02-08`]: 'Prešernov dan',
+    [easter]: 'velikonočna nedelja', [addDays(easter, 1)]: 'velikonočni ponedeljek',
+    [`${y}-04-27`]: 'dan upora proti okupatorju', [`${y}-05-01`]: 'praznik dela', [`${y}-05-02`]: 'praznik dela',
+    [addDays(easter, 49)]: 'binkošti', [`${y}-06-25`]: 'dan državnosti', [`${y}-08-15`]: 'Marijino vnebovzetje',
+    [`${y}-10-31`]: 'dan reformacije', [`${y}-11-01`]: 'dan spomina na mrtve',
+    [`${y}-12-25`]: 'božič', [`${y}-12-26`]: 'dan samostojnosti in enotnosti',
+  });
+}
+const holidayName = (s) => holidaysOf(Number(s.slice(0, 4)))[s] || (CONFIG.holidays.includes(s) ? 'prost dan' : '');
+const isWorkDay = (s) => CONFIG.workDays.includes(parse(s).getDay()) && !holidayName(s) && !absences.includes(s);
 function addWorkDays(s, n) {
   let x = s;
   while (n > 0) { x = addDays(x, 1); if (isWorkDay(x)) n--; }
@@ -488,6 +507,7 @@ function stage(o, t = today()) {
   if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: 'Podarjeno v dobrodelne namene' };
   // status 'gotovo'
   if (t >= discardDue(o)) return { key: 'humana', label: 'Ni prevzeto v enem mesecu', due: true };
+  if (!o.readyNotified) return { key: 'obvesti', label: 'Stranka še ni obveščena', due: true };
   if (!o.warnDate && t >= secondReminderDue(o)) return { key: 'opozorilo', label: 'Pošlji drugi opomnik', due: true };
   if (t > o.deadline) {
     const n = lateDays(o, t);
@@ -584,11 +604,13 @@ const store = {
       serviceList = res.services && res.services.length ? res.services : DEFAULT_SERVICES;
       customerRecords = res.customers || [];
       absences = res.absences || [];
+      notes = res.notes || [];
     } else {
       orders = lsGet(LOCAL_KEY, []);
       serviceList = lsGet(SERVICES_KEY, DEFAULT_SERVICES);
       customerRecords = lsGet(CUSTOMERS_KEY, []);
       absences = lsGet(ABSENCES_KEY, []);
+      notes = lsGet(NOTES_KEY, []);
     }
     orders.forEach((o) => {
       if (!Array.isArray(o.services)) o.services = [];
@@ -606,6 +628,18 @@ const store = {
     else if (!lsSet(ABSENCES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
     absences = list;
     refreshDeadlines();
+  },
+  async saveNote(n) {
+    if (this.remote()) n = (await this.call('saveNote', { note: n })).note;
+    else if (!n.id) { n.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()); n.createdAt = new Date().toISOString(); }
+    const i = notes.findIndex((x) => x.id === n.id);
+    if (i >= 0) notes[i] = n; else notes.push(n);
+    if (!this.remote() && !lsSet(NOTES_KEY, notes)) throw new Error('Shranjevanje ni uspelo');
+  },
+  async deleteNote(id) {
+    if (this.remote()) await this.call('deleteNote', { id });
+    notes = notes.filter((x) => x.id !== id);
+    if (!this.remote()) lsSet(NOTES_KEY, notes);
   },
   async saveCustomer(c) {
     if (this.remote()) {
@@ -735,7 +769,7 @@ function renderHome(app) {
 
 function renderRepair(app, tab) {
   const S = SECTORS[SECTOR];
-  const due = orders.filter((o) => inSector(o) && stage(o).due).length;
+  const due = orders.filter((o) => inSector(o) && stage(o).due).length + notes.filter((n) => !n.date || n.date <= today()).length;
   const inRepair = orders.filter((o) => inSector(o) && o.status === 'sprejeto').length;
   const tabs = [['stranke', 'Stranke'], ...(SECTOR === 'narocilo' ? [['mere', 'Mere']] : []),
     ['prevzem', S.intakeTab], ['popravilo', S.workTab], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
@@ -1300,18 +1334,64 @@ function renderInRepair(el) {
 
 let statsDay = today();
 
+/* ---- Zapiski (lastni opomniki v »Uredi danes«, npr. »kupi zadrge«) ---- */
+
+function noteCard(n) {
+  return `
+    <div class="order">
+      <p style="margin:0;white-space:pre-wrap">${esc(n.text)}</p>
+      ${n.date ? `<p class="dates">${n.date > today() ? 'od' : 'za'} ${fmt(n.date)}</p>` : ''}
+      <div class="actions">
+        <button class="btn small" data-notedone="${esc(n.id)}">Opravljeno</button>
+        <button class="btn small secondary" data-noteedit="${esc(n.id)}">Uredi</button>
+      </div>
+    </div>`;
+}
+
+function openNoteForm(n) {
+  showModal(n ? 'Uredi zapisek' : 'Nov zapisek', `
+    <label for="nText">Kaj je treba urediti?</label>
+    <textarea id="nText" placeholder="npr. kupi zadrge: 2× 20 cm črna, 1× 50 cm skrita">${esc(n?.text)}</textarea>
+    <label for="nDate">Pokaži od dne <small>(neobvezno – sicer takoj)</small></label>
+    <input id="nDate" type="date" value="${esc(n?.date)}">
+    <p class="error" id="noteError" hidden></p>
+    <div class="actions"><button class="btn" id="saveNote">Shrani</button>${n ? '<button class="btn secondary" id="delNote">Izbriši</button>' : ''}</div>`);
+  $('#nText').focus();
+  $('#saveNote').onclick = async () => {
+    const text = $('#nText').value.trim();
+    if (!text) { $('#noteError').textContent = 'Vpiši besedilo.'; $('#noteError').hidden = false; return; }
+    const ok = await busy(() => store.saveNote({ ...(n || {}), text, date: $('#nDate').value }).then(() => true));
+    if (ok) { closeModal(); render(); }
+  };
+  if (n) $('#delNote').onclick = () => noteDone(n.id);
+}
+
+async function noteDone(id) {
+  const ok = await busy(() => store.deleteNote(id).then(() => true));
+  closeModal(); render();
+  if (ok) toast('Zapisek odstranjen');
+}
+
 function renderOverview(el) {
   const t = today();
   const repairs = orders.filter((o) => inSector(o));
-  const urgency = ['humana', 'opozorilo', 'opomnik'];
+  const urgency = ['humana', 'opozorilo', 'opomnik', 'obvesti'];
   const due = repairs.filter((o) => stage(o, t).due)
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
+  const nowNotes = notes.filter((n) => !n.date || n.date <= t);
+  const laterNotes = notes.filter((n) => n.date && n.date > t).sort((a, b) => a.date.localeCompare(b.date));
+  const total = due.length + nowNotes.length;
   el.innerHTML = `
-    <h2>Za urediti danes ${due.length ? `<span class="count">${due.length}</span>` : ''}</h2>
-    <div class="cards">${due.map((o) => orderCard(o)).join('')}</div>${due.length ? '' : '<p class="empty">Danes ni opomnikov ali obvestil.</p>'}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2>Uredi danes ${total ? `<span class="count">${total}</span>` : ''}</h2>
+      <button class="btn small" id="addNote">+ Dodaj</button>
+    </div>
+    ${nowNotes.length ? `<div class="cards" style="margin-bottom:10px">${nowNotes.map(noteCard).join('')}</div>` : ''}
+    <div class="cards">${due.map((o) => orderCard(o)).join('')}</div>${total ? '' : '<p class="empty">Danes ni nič za urediti.</p>'}
+    ${laterNotes.length ? `<details style="margin:10px 0 18px"><summary class="hint" style="cursor:pointer">Zapiski za kasneje (${laterNotes.length})</summary><div class="cards" style="margin-top:8px">${laterNotes.map(noteCard).join('')}</div></details>` : ''}
     <div class="cols">
-      <div><h2>Evidenca</h2><div id="stats"></div></div>
       <div><h2>Koledar odsotnosti</h2><div id="absences" class="card"></div></div>
+      <div><h2>Pregled</h2><div id="stats"></div></div>
     </div>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
   renderStats();
@@ -1333,13 +1413,15 @@ function renderAbsences() {
   for (let i = 0; i < lead; i++) cells.push('<span></span>');
   for (let d = 1; d <= days; d++) {
     const ds = `${calMonth}-${pad(d)}`;
-    const regular = CONFIG.workDays.includes(parse(ds).getDay()) && !CONFIG.holidays.includes(ds);
+    const hol = holidayName(ds);
+    const regular = CONFIG.workDays.includes(parse(ds).getDay()) && !hol;
     const cls = ds === today() ? 'today' : '';
     cells.push(regular
       ? `<button class="${cls} ${absences.includes(ds) ? 'absent' : ''}" data-absent="${ds}" title="${absences.includes(ds) ? 'Odsotnost – klikni za preklic' : 'Klikni za odsotnost'}">${d}</button>`
-      : `<span class="d closed ${cls}" title="Zaprto">${d}</span>`);
+      : `<span class="d closed ${cls}" title="${hol ? `Praznik: ${esc(hol)}` : 'Zaprto'}">${d}</span>`);
   }
   const inMonth = absences.filter((a) => a.startsWith(calMonth));
+  const hols = Object.entries(holidaysOf(y)).filter(([d]) => d.startsWith(calMonth)).sort();
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <button class="btn small secondary" data-cal="-1" aria-label="Prejšnji mesec">‹</button>
@@ -1347,7 +1429,8 @@ function renderAbsences() {
       <button class="btn small secondary" data-cal="1" aria-label="Naslednji mesec">›</button>
     </div>
     <div class="cal">${['pon', 'tor', 'sre', 'čet', 'pet', 'sob', 'ned'].map((d) => `<span class="h">${d}</span>`).join('')}${cells.join('')}</div>
-    <p class="hint" style="margin-top:8px">Klikni delovni dan, da ga označiš kot odsotnost (obarva se rožnato). Dnevi odsotnosti se ne štejejo v rok za prevzem in ne v zamudnino. Sivi dnevi so zaprti.</p>
+    <p class="hint" style="margin-top:8px">Za označitev odsotnosti klikni na določen dan (obarva se rožnato). Dnevi odsotnosti se ne štejejo v rok za prevzem in zamudnino. Sivi prostorčki označujejo dneve, ko je poslovalnica zaprta.</p>
+    ${hols.length ? `<p class="hint">Prazniki: ${hols.map(([d, n]) => `${fmt(d)} (${esc(n)})`).join(', ')}</p>` : ''}
     ${inMonth.length ? `<p class="hint">Odsotnost ta mesec: ${inMonth.map((a) => fmt(a)).join(', ')}</p>` : ''}`;
 }
 
@@ -1399,13 +1482,13 @@ function renderStats() {
 }
 
 function policyHtml() {
-  return `<b>Roki za prevzem</b>
-    <ol>
-      <li>Ko ${SECTOR === 'narocilo' ? 'je naročilo gotovo' : 'so oblačila gotova'}, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
-      <li>Delovni dan pred iztekom roka pošljemo <b>prvi opomnik</b> (z opozorilom, da se po roku zaračuna zamudnina).</li>
-      <li>Prvi delovni dan po roku pošljemo <b>drugi opomnik</b>: teče zamudnina ${money(CONFIG.lateFeePerDay)} za vsak delovni dan (brez dni odsotnosti), razen če se stranka javi in se dogovorimo drugače, in datum dobrodelne oddaje.</li>
-      <li>${SECTOR === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v <b>enem mesecu</b> od obvestila, podarimo v dobrodelne namene (zabojnik ${esc(CONFIG.donation)}). Aplikacija ob tem sama vpraša.</li>
-    </ol>`;
+  const nar = SECTOR === 'narocilo';
+  return `<b>Pogoji poslovanja</b>
+    <ul>
+      <li>Ko ${nar ? 'je naročilo pripravljeno' : 'so oblačila pripravljena'}, stranko obvestimo.</li>
+      <li>Za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
+      <li>${nar ? 'Naročila, ki niso prevzeta' : 'Oblačila, ki niso prevzeta'} v enem mesecu, oddamo v dobrodelne namene.</li>
+    </ul>`;
 }
 
 /* ---- Kartica naročila ---- */
@@ -1446,6 +1529,7 @@ function cardActions(o, st) {
     case 'caka':
     case 'opomnjeno':
     case 'zamuda': main = `${issue()} ${renotify}`; break;
+    case 'obvesti': main = `<button class="btn small warn" data-act="notify" data-type="ready" data-id="${id}">Obvesti stranko</button> ${issue('secondary')}`; break;
     case 'opomnik': main = `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji prvi opomnik</button> ${issue('secondary')} ${renotify}`; break;
     case 'opozorilo': main = `<button class="btn small danger" data-act="notify" data-type="warning" data-id="${id}">Pošlji drugi opomnik</button> ${issue('secondary')} ${renotify}`; break;
     case 'humana': main = `${issue()} <button class="btn small danger" data-act="discard" data-id="${id}">Podari v dobrodelne namene</button> ${renotify}`; break;
@@ -1577,7 +1661,7 @@ function confirmRemoveCustomer(c) {
   }
   showModal('Odstrani stranko', `
     <p>Odstranim stranko <b>${esc(c.name)}</b> · ${esc(c.phone)}?</p>
-    ${c.orders.length ? `<p>Odstranjena bodo tudi njena zaključena naročila (${c.orders.map((o) => esc(o.num)).join(', ')}) in ne bodo več vidna v evidenci.</p>` : ''}
+    ${c.orders.length ? `<p>Odstranjena bodo tudi njena zaključena naročila (${c.orders.map((o) => esc(o.num)).join(', ')}) in ne bodo več vidna v pregledu.</p>` : ''}
     <p class="hint">Tega ni mogoče razveljaviti.</p>
     <div class="actions"><button class="btn danger" id="doRemoveCustomer">Odstrani stranko</button><button class="btn secondary" id="cancelRemove">Prekliči</button></div>`);
   $('#cancelRemove').onclick = closeModal;
@@ -1984,7 +2068,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
@@ -2035,6 +2119,9 @@ document.addEventListener('click', (e) => {
       else { customerQuery = ''; render(); }
     });
   }
+  if (t.id === 'addNote') return openNoteForm(null);
+  if (t.dataset.notedone) return noteDone(t.dataset.notedone);
+  if (t.dataset.noteedit) return openNoteForm(notes.find((n) => n.id === t.dataset.noteedit));
   if (t.dataset.removecustomer) {
     const c = customers().find((x) => x.key === t.dataset.removecustomer);
     if (c) confirmRemoveCustomer(c);
