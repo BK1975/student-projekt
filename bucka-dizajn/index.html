@@ -159,6 +159,9 @@
   .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
   .callout.ok { background: var(--brand-soft); border-color: #b9d1c7; }
   .policy { font-size: .88rem; }
+  .report { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .report td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  .report tr:first-child td { border-top: 0; }
   .policy ol { margin: 6px 0 0; padding-left: 20px; }
   details summary { cursor: pointer; color: var(--brand); font-weight: 600; margin: 18px 0 10px; }
   .svc-group { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin-top: 6px; background: var(--card); }
@@ -506,6 +509,7 @@ function stage(o, t = today()) {
   if (o.status === 'izdano') return { key: 'izdano', label: 'Izdano' };
   if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: 'Podarjeno v dobrodelne namene' };
   // status 'gotovo'
+  if (!o.readyDate || !o.deadline) return { key: 'caka', label: 'Čaka na prevzem' }; // nepopolni podatki
   if (t >= discardDue(o)) return { key: 'humana', label: 'Ni prevzeto v enem mesecu', due: true };
   if (!o.readyNotified) return { key: 'obvesti', label: 'Stranka še ni obveščena', due: true };
   if (!o.warnDate && t >= secondReminderDue(o)) return { key: 'opozorilo', label: 'Pošlji drugi opomnik', due: true };
@@ -1224,7 +1228,7 @@ function csvLine(l) {
 const servicesToText = (list) => list.map((x) => `${x.group}; ${x.name}`).join('\n');
 
 const digits = (s) => String(s || '').replace(/\D/g, '').replace(/^386/, '0');
-const pieces = (n) => (Number(n) === 1 ? 'kos' : Number(n) === 2 ? 'kosa' : Number(n) <= 4 ? 'kosi' : 'kosov');
+const pieces = (n) => (Number(n) === 1 ? 'kos' : Number(n) === 2 ? 'kosa' : Number(n) === 3 || Number(n) === 4 ? 'kosi' : 'kosov');
 
 async function saveIntake() {
   const f = Object.fromEntries(new FormData($('#intakeForm')));
@@ -1345,6 +1349,71 @@ function renderInRepair(el) {
 }
 
 let statsDay = today();
+let reportMonth = today().slice(0, 7);
+
+/* ---- Mesečno poročilo ---- */
+
+function monthReport(month) {
+  const os = orders.filter((o) => inSector(o));
+  const inM = (d) => d && d.startsWith(month);
+  const received = os.filter((o) => inM(o.received));
+  const ready = os.filter((o) => inM(o.readyDate));
+  const handed = os.filter((o) => o.status === 'izdano' && inM(o.handedDate));
+  const donated = os.filter((o) => o.status === 'zavrzeno' && inM(o.discardedDate));
+  const pcs = (list) => list.reduce((n, o) => n + (Number(o.pieces) || 0), 0);
+  // Obisk: različne stranke, ki so ta dan oddale ali prevzele (po telefonu).
+  const visits = {};
+  const visit = (d, o) => { (visits[d] = visits[d] || new Set()).add(digits(o.phone)); };
+  received.forEach((o) => visit(o.received, o));
+  handed.forEach((o) => visit(o.handedDate, o));
+  const days = [];
+  for (let d = `${month}-01`; d.startsWith(month) && d <= today(); d = addDays(d, 1)) {
+    if (isWorkDay(d) || visits[d]) days.push([d, visits[d] ? visits[d].size : 0]);
+  }
+  const sorted = [...days].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  // Najpogostejše storitve (popravila) oziroma izdelki (naročila).
+  const count = {};
+  received.forEach((o) => (o.items || []).forEach((it) => {
+    (SECTOR === 'narocilo' || !it.services.length ? [it.garment] : it.services).forEach((x) => { if (x) count[x] = (count[x] || 0) + 1; });
+  }));
+  const top = Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const prices = handed.reduce((n, o) => n + (Number(String(o.price).replace(',', '.')) || 0), 0);
+  const fees = handed.reduce((n, o) => n + (Number(o.lateFee) || 0), 0);
+  const newCustomers = customerRecords.filter((c) => inM((c.createdAt || '').slice(0, 10))).length;
+  return { received, ready, handed, donated, pcs, days, most: sorted[0], least: sorted[sorted.length - 1], top, prices, fees, newCustomers,
+    visitors: days.reduce((n, [, v]) => n + v, 0) };
+}
+
+function renderReport() {
+  const el = $('#report');
+  if (!el) return;
+  const r = monthReport(reportMonth);
+  const nar = SECTOR === 'narocilo';
+  const name = parse(`${reportMonth}-01`).toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' });
+  const row = (label, list, extra = '') => `<tr><td>${label}</td><td style="text-align:right"><b>${list.length}</b> ${list.length === 1 ? 'naročilo' : list.length === 2 ? 'naročili' : list.length && list.length <= 4 ? 'naročila' : 'naročil'} · ${r.pcs(list)} ${pieces(r.pcs(list))}${extra}</td></tr>`;
+  const dayTxt = (x) => (x ? `${esc(dayLabel(x[0]))} – ${x[1]} ${x[1] === 1 ? 'stranka' : x[1] === 2 ? 'stranki' : x[1] && x[1] <= 4 ? 'stranke' : 'strank'}` : '–');
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <button class="btn small secondary" data-rep="-1" aria-label="Prejšnji mesec">‹</button>
+      <b style="text-transform:capitalize">${esc(name)}</b>
+      <button class="btn small secondary" data-rep="1" aria-label="Naslednji mesec" ${reportMonth >= today().slice(0, 7) ? 'disabled' : ''}>›</button>
+    </div>
+    <table class="report">
+      ${row(nar ? 'Naročeno' : 'Oddano v popravilo', r.received)}
+      ${row('Pripravljeno za prevzem', r.ready)}
+      ${row('Izdano strankam', r.handed)}
+      ${row('Oddano v dobrodelne namene', r.donated)}
+      <tr><td>Nove stranke</td><td style="text-align:right"><b>${r.newCustomers}</b></td></tr>
+      <tr><td>Prihodek ${nar ? 'naročil' : 'popravil'} <small class="hint">(vpisane cene)</small></td><td style="text-align:right"><b>${money(r.prices)}</b></td></tr>
+      <tr><td>Zamudnine</td><td style="text-align:right"><b>${money(r.fees)}</b></td></tr>
+      <tr><td>Obiski <small class="hint">(oddaje in prevzemi)</small></td><td style="text-align:right"><b>${r.visitors}</b></td></tr>
+      <tr><td>Najbolj obiskan dan</td><td style="text-align:right">${r.most && r.most[1] ? dayTxt(r.most) : '–'}</td></tr>
+      <tr><td>Najmanj obiskan dan</td><td style="text-align:right">${r.least && r.days.length > 1 ? dayTxt(r.least) : '–'}</td></tr>
+    </table>
+    ${r.top.length ? `<p style="margin:12px 0 4px"><b>${nar ? 'Najpogostejši izdelki' : 'Najpogostejše storitve'}</b></p>
+      <ol class="hint" style="margin:0;padding-left:20px">${r.top.map(([n, c]) => `<li>${esc(n)} – ${c}×</li>`).join('')}</ol>` : ''}
+    <p class="hint" style="margin-top:10px">Prihodek je vsota cen, vpisanih pri izdanih naročilih (cene so sicer v blagajni). Obiski štejejo stranke, ki so ta dan oddale ali prevzele naročilo; upoštevani so dnevi, ko je bila poslovalnica odprta.</p>`;
+}
 
 /* ---- Zapiski (lastni opomniki v »Uredi danes«, npr. »kupi zadrge«) ---- */
 
@@ -1405,9 +1474,11 @@ function renderOverview(el) {
       <div><h2>Koledar odsotnosti</h2><div id="absences" class="card"></div></div>
       <div><h2>Pregled</h2><div id="stats"></div></div>
     </div>
+    <h2>Mesečno poročilo</h2><div id="report" class="card"></div>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
   renderStats();
   renderAbsences();
+  renderReport();
 }
 
 let calMonth = today().slice(0, 7);
@@ -2080,7 +2151,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-rep], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
@@ -2103,6 +2174,7 @@ document.addEventListener('click', (e) => {
     it.services = it.services.includes(n) ? it.services.filter((x) => x !== n) : [...it.services, n];
     return renderItems();
   }
+  if (t.dataset.rep) { reportMonth = addMonths(reportMonth + '-01', Number(t.dataset.rep)).slice(0, 7); return renderReport(); }
   if (t.dataset.cal) { calMonth = addMonths(calMonth + '-01', Number(t.dataset.cal)).slice(0, 7); return renderAbsences(); }
   if (t.dataset.absent) {
     const d = t.dataset.absent;
