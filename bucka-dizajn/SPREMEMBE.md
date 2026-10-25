@@ -1,0 +1,27 @@
+# Bucka Dizajn Pick&Collect – kaj je novo (oktober 2026)
+
+**Stranke**
+- Gumb **Odstrani stranko** (s potrditvijo; skupaj z zaključenimi naročili, ne pa pri odprtih naročilih).
+- Brez e-pošte: stranka ima samo ime, telefon in opombo.
+- Telefonska številka se pri vnosu sama oblikuje: `040 123 456`.
+
+**Popravilo oblačil**
+- Zavihek **Prevzem** se zdaj imenuje **Oddaja** (»Nova oddaja«, »Datum oddaje«).
+- Na listku piše **Datum oddaje** in novo besedilo **Pogojev prevzema**.
+- Novo besedilo obvestila »pripravljeno za prevzem«.
+- **Dva opomnika**: prvi delovni dan pred rokom, drugi prvi delovni dan po roku (zamudnina in datum
+  dobrodelne oddaje).
+- Okno obvestila: samo **Pošlji SMS** in **Kopiraj**, nato **Stranka je obveščena**.
+- Po enem mesecu aplikacija sama vpraša, ali naj neprevzeta oblačila **podari v dobrodelne namene**.
+- Podrobnosti naročila: Oddano, Pripravljeno za prevzem, Stranka obveščena, Prvi opomnik, Drugi opomnik,
+  Rok za prevzem, Izdano stranki, Oddano v dobrodelne namene.
+
+**Pregled**
+- **Uredi danes**: kaj je treba danes urediti in lastni zapiski z gumbom **+ Dodaj** (npr. »kupi zadrge«).
+- **Koledar odsotnosti** je pred pregledom; slovenski prazniki se upoštevajo sami.
+- **Pregled** po dnevih (prej Evidenca) in novo **Mesečno poročilo**.
+- **Pogoji poslovanja** z novim besedilom.
+
+**Preglednica**
+- List **Stranke**: prvi stolpec **Naročila** (npr. `P-0001, N-0002`), »Ustvarjeno« v obliki `d.m.yyyy hh:mm AM/PM`.
+- Nov list **Zapiski**; stolpci »Datum oddaje«, »Prvi opomnik«, »Drugi opomnik«.
