@@ -485,9 +485,9 @@ const lateFee = (o, t) => (o.feeWaived ? 0 : lateDays(o, t) * CONFIG.lateFeePerD
 function stage(o, t = today()) {
   if (o.status === 'sprejeto') return { key: 'sprejeto', label: sec(o).workTab };
   if (o.status === 'izdano') return { key: 'izdano', label: 'Izdano' };
-  if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: `Oddano v ${CONFIG.donation}` };
+  if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: 'Podarjeno v dobrodelne namene' };
   // status 'gotovo'
-  if (t >= discardDue(o)) return { key: 'humana', label: `Odda se v ${CONFIG.donation}`, due: true };
+  if (t >= discardDue(o)) return { key: 'humana', label: 'Ni prevzeto v enem mesecu', due: true };
   if (!o.warnDate && t >= secondReminderDue(o)) return { key: 'opozorilo', label: 'Pošlji drugi opomnik', due: true };
   if (t > o.deadline) {
     const n = lateDays(o, t);
@@ -753,6 +753,7 @@ function renderRepair(app, tab) {
   else if (tab === 'popravilo') renderInRepair(el);
   else if (tab === 'mere' && SECTOR === 'narocilo') renderMeasures(el);
   else renderCustomers(el);
+  askDiscard();
 }
 
 /* ---- Prevzem v poslovalnico ---- */
@@ -1403,7 +1404,7 @@ function policyHtml() {
       <li>Ko ${SECTOR === 'narocilo' ? 'je naročilo gotovo' : 'so oblačila gotova'}, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
       <li>Delovni dan pred iztekom roka pošljemo <b>prvi opomnik</b> (z opozorilom, da se po roku zaračuna zamudnina).</li>
       <li>Prvi delovni dan po roku pošljemo <b>drugi opomnik</b>: teče zamudnina ${money(CONFIG.lateFeePerDay)} za vsak delovni dan (brez dni odsotnosti), razen če se stranka javi in se dogovorimo drugače, in datum dobrodelne oddaje.</li>
-      <li>${SECTOR === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
+      <li>${SECTOR === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v <b>enem mesecu</b> od obvestila, podarimo v dobrodelne namene (zabojnik ${esc(CONFIG.donation)}). Aplikacija ob tem sama vpraša.</li>
     </ol>`;
 }
 
@@ -1447,7 +1448,7 @@ function cardActions(o, st) {
     case 'zamuda': main = `${issue()} ${renotify}`; break;
     case 'opomnik': main = `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji prvi opomnik</button> ${issue('secondary')} ${renotify}`; break;
     case 'opozorilo': main = `<button class="btn small danger" data-act="notify" data-type="warning" data-id="${id}">Pošlji drugi opomnik</button> ${issue('secondary')} ${renotify}`; break;
-    case 'humana': main = `<button class="btn small danger" data-act="discard" data-id="${id}">Oddano v ${esc(CONFIG.donation)}</button> ${issue('secondary')} ${renotify}`; break;
+    case 'humana': main = `${issue()} <button class="btn small danger" data-act="discard" data-id="${id}">Podari v dobrodelne namene</button> ${renotify}`; break;
     default: main = '';
   }
   // Stik s stranko je vedno na voljo (naprava v poslovalnici omogoča klice in SMS).
@@ -1533,11 +1534,9 @@ function openNotify(o, type) {
     <div class="msg">${esc(text)}</div>
     <div class="actions">
       <a class="btn" href="${esc(smsLink(o.phone, text))}">Pošlji SMS</a>
-      <a class="btn secondary" href="${esc(telHref(o.phone))}">Kliči</a>
       <button class="btn secondary" id="copyMsg">Kopiraj</button>
     </div>
-    <button class="btn block ${already ? 'secondary' : ''}" style="margin-top:14px" id="confirmNotify">${already ? 'Zapri' : 'Stranka je obveščena – zabeleži'}</button>
-    ${type === 'ready' && !already ? '<p class="hint" style="text-align:center">Rok za prevzem teče od danes ne glede na to.</p>' : ''}`);
+    <button class="btn block ${already ? 'secondary' : ''}" style="margin-top:14px" id="confirmNotify">${already ? 'Zapri' : 'Stranka je obveščena'}</button>`);
   $('#copyMsg').onclick = () => navigator.clipboard?.writeText(text).then(() => toast('Kopirano'));
   $('#confirmNotify').onclick = () => (already ? closeModal() : markNotified(o, type));
 }
@@ -1556,7 +1555,7 @@ function confirmIssue(o) {
     ${o.price || fee ? `<p style="font-size:1.2rem;margin:8px 0">Za plačilo: <b>${money(total)}</b></p>` : ''}
     ${n && !o.feeWaived ? '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="waiveFee" style="width:auto"> Zamudnine ne zaračunamo (dogovor s stranko)</label>' : ''}
     ${o.status === 'sprejeto' ? '<div class="callout">To naročilo še ni označeno kot gotovo.</div>' : ''}
-    ${st.key === 'humana' ? `<div class="callout">Rok za oddajo v ${esc(CONFIG.donation)} je že potekel – preveri, da blago še ni oddano.</div>` : ''}
+    ${st.key === 'humana' ? `<div class="callout">Rok enega meseca je že potekel – preveri, da blago še ni podarjeno v dobrodelne namene.</div>` : ''}
     <button class="btn block" style="margin-top:14px" id="doIssue">Potrdi izdajo stranki</button>`);
   $('#doIssue').onclick = async () => {
     const waive = o.feeWaived || $('#waiveFee')?.checked;
@@ -1573,7 +1572,7 @@ function confirmRemoveCustomer(c) {
   if (open.length) {
     showModal('Stranke ni mogoče odstraniti', `
       <p><b>${esc(c.name)}</b> ima odprta naročila: ${open.map((o) => `<b>${esc(o.num)}</b>`).join(', ')}.</p>
-      <p class="hint">Stranko lahko odstranite, ko so vsa njena naročila izdana ali oddana v zabojnik ${esc(CONFIG.donation)}.</p>`);
+      <p class="hint">Stranko lahko odstranite, ko so vsa njena naročila izdana ali podarjena v dobrodelne namene.</p>`);
     return;
   }
   showModal('Odstrani stranko', `
@@ -1589,17 +1588,38 @@ function confirmRemoveCustomer(c) {
   };
 }
 
+// Po enem mesecu aplikacija vpraša, ali naj neprevzeta oblačila podarimo v dobrodelne namene.
 function confirmDiscard(o) {
-  showModal(`Oddaja v ${esc(CONFIG.donation)} · ${esc(o.num)}`, `
-    <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
-    <p>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(orderText(o))}</p>
-    <p class="hint">Gotovo ${fmt(o.readyDate)} · rok za prevzem ${fmt(o.deadline)}${o.reminderDate ? ` · opomnik ${fmt(o.reminderDate)}` : ''} · oddaja od ${fmt(discardDue(o))}</p>
-    <button class="btn block danger" style="margin-top:14px" id="doDiscard">Blago je oddano v zabojnik ${esc(CONFIG.donation)}</button>`);
+  const nar = o.sector === 'narocilo';
+  showModal('Podarim v dobrodelne namene?', `
+    <p><b class="num" style="color:var(--brand)">${esc(o.num)}</b> · <b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · ${esc(orderText(o))}</p>
+    <p>${nar ? 'Naročilo ni bilo prevzeto' : 'Oblačila niso bila prevzeta'} v enem mesecu od prejema obvestila (${fmt(o.readyNotified || o.readyDate)}).
+      Želite ${nar ? 'naročilo' : 'oblačila'} podariti v dobrodelne namene?</p>
+    <div class="actions">
+      <button class="btn danger" id="doDiscard">Da, podari</button>
+      <button class="btn secondary" id="discardIssue">Izdaj stranki</button>
+      <button class="btn secondary" id="discardLater">Ne zdaj</button>
+    </div>`);
+  $('#discardLater').onclick = closeModal;
+  $('#discardIssue').onclick = () => confirmIssue(o);
   $('#doDiscard').onclick = async () => {
     const ok = await busy(() => store.update(o.id, { status: 'zavrzeno', discardedDate: today() }));
     closeModal(); render();
-    if (ok) toast('Zabeleženo');
+    if (ok) toast('Zabeleženo: podarjeno v dobrodelne namene');
   };
+}
+
+// Ob odprtju sektorja enkrat na dan sam vpraša za naročila, ki niso bila prevzeta v enem mesecu.
+const ASKED_KEY = 'bucka-discard-asked';
+function askDiscard() {
+  if ($('#modal').innerHTML) return;
+  const t = today();
+  const asked = lsGet(ASKED_KEY, {});
+  const o = orders.find((x) => inSector(x) && x.status === 'gotovo' && stage(x, t).key === 'humana' && asked[x.id] !== t);
+  if (!o) return;
+  asked[o.id] = t;
+  lsSet(ASKED_KEY, Object.fromEntries(Object.entries(asked).filter(([, d]) => d === t)));
+  confirmDiscard(o);
 }
 
 function openDetail(o) {
