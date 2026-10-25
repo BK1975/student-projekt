@@ -18,7 +18,7 @@ const NASTAVITVE = {
   kljuc: 'SPREMENI-ME',
 
   imeDelavnice: 'Bucka Dizajn',
-  emailDelavnice: 'info@bucka-dizajn.si', // sem pride dnevni povzetek
+  emailDelavnice: 'buckadizajn@gmail.com', // sem pride dnevni povzetek
   telefon: '040 428 401',
   naslov: 'Ulica Hermana Potočnika 7, 1000 Ljubljana',
   delovniCas: 'ponedeljek zaprto; torek, četrtek in petek 10.00–14.00; sreda 14.00–18.00',
