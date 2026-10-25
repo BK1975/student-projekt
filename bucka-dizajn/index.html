@@ -676,16 +676,16 @@ function nav(hash) { location.hash = hash; }
 // Sektorja uporabljata iste zavihke; razlikujejo se besedila, številke naročil in izbira kosov.
 const SECTORS = {
   popravilo: {
-    title: 'Popravilo oblačil', prefix: 'P-', intakeTab: 'Prevzem', workTab: 'V popravilu',
-    dateLabel: 'Datum prevzema', dueLabel: 'Dogovorjeno do', save: 'Shrani prevzem', newBtn: 'Nov prevzem',
-    done: 'Oblačila prevzeta. Številka za listek:', recent: 'Zadnji prevzemi', empty: 'Ni oblačil v popravilu.',
-    back: 'Vrni v popravilo', ticket: 'Prevzemni listek',
+    title: 'Popravilo oblačil', prefix: 'P-', intakeTab: 'Oddaja', workTab: 'V popravilu',
+    dateLabel: 'Datum oddaje', dueLabel: 'Dogovorjeno do', save: 'Shrani oddajo', newBtn: 'Nova oddaja',
+    done: 'Oddaja zabeležena. Številka za listek:', recent: 'Zadnje oddaje', empty: 'Ni oblačil v popravilu.',
+    back: 'Vrni v popravilo', ticket: 'Prevzemni listek', receivedBox: 'Oddano', receivedWord: 'oddano',
   },
   narocilo: {
     title: 'Izdelava po naročilu', prefix: 'N-', intakeTab: 'Naročilo', workTab: 'V izdelavi',
     dateLabel: 'Datum naročila', dueLabel: 'Datum izdaje', save: 'Shrani naročilo', newBtn: 'Novo naročilo',
     done: 'Naročilo zabeleženo. Številka naročila:', recent: 'Zadnja naročila', empty: 'Ni naročil v izdelavi.',
-    back: 'Vrni v izdelavo', ticket: 'Naročilo',
+    back: 'Vrni v izdelavo', ticket: 'Naročilo', receivedBox: 'Prevzeto', receivedWord: 'naročeno',
   },
 };
 let SECTOR = 'popravilo';
@@ -723,7 +723,7 @@ function renderHome(app) {
     <div class="sectors">
       <button class="sector" data-nav="#/popravilo/stranke">
         <b>Popravilo oblačil</b>
-        <span>Prevzem oblačil v poslovalnico, izdaja popravljenih oblačil in roki za prevzem.</span>
+        <span>Oddaja oblačil v poslovalnico, izdaja popravljenih oblačil in roki za prevzem.</span>
         ${stats('popravilo', 'V popravilu')}
       </button>
       <button class="sector" data-nav="#/narocilo/stranke">
@@ -782,7 +782,7 @@ function renderIntake(el) {
       <div class="card done">
         <p>${SECTORS[SECTOR].done}</p>
         <div class="bignum">${esc(o.num)}</div>
-        <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · ${o.sector === 'narocilo' ? 'naročeno' : 'prevzeto'} ${fmt(o.received)}${o.sector === 'narocilo' && o.dueDate ? ` · izdaja ${fmt(o.dueDate)}` : ''}</p>
+        <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · ${sec(o).receivedWord} ${fmt(o.received)}${o.sector === 'narocilo' && o.dueDate ? ` · izdaja ${fmt(o.dueDate)}` : ''}</p>
         <div class="actions" style="justify-content:center">
           <button class="btn" data-print="${esc(o.id)}">Natisni listek</button>
           <button class="btn secondary" id="newIntake">${SECTORS[SECTOR].newBtn}</button>
@@ -838,7 +838,7 @@ function renderCustomerBox() {
   if (c) {
     box.innerHTML = `
       <div class="callout ok" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <span><b>${esc(c.name)}</b><br>Kontaktna številka: <b>${esc(c.phone)}</b>${c.email ? `<br><small>${esc(c.email)}</small>` : ''}<br><small>${c.orders.length}× pri nas</small>
+        <span><b>${esc(c.name)}</b><br>Kontaktna številka: <b>${esc(c.phone)}</b><br><small>${c.orders.length}× pri nas</small>
           ${SECTOR === 'narocilo' ? `<br><small>${measureList(c).length ? `Mere: ${esc(measuresText(c))}` : 'Mere še niso vpisane.'}</small>
             <br><button type="button" class="open" style="border:0;background:none;padding:0;color:var(--brand);font-weight:600;text-decoration:underline" data-measure="${esc(c.key)}">${measureList(c).length ? 'Uredi mere' : 'Vpiši mere'}</button>` : ''}</span>
         <button type="button" class="btn small secondary" id="changeCustomer">Zamenjaj</button>
@@ -888,7 +888,7 @@ function findCustomers(query) {
   const q = norm(query.trim());
   const qd = digits(query);
   if (!q) return customers();
-  return customers().filter((c) => norm(c.name).includes(q) || (qd.length >= 3 && c.key.includes(qd)) || norm(c.email).includes(q));
+  return customers().filter((c) => norm(c.name).includes(q) || (qd.length >= 3 && c.key.includes(qd)));
 }
 
 // Obrazec za novo stranko ali urejanje obstoječe. Po shranjevanju pokliče done(stranka).
@@ -899,8 +899,6 @@ function openCustomerForm(c, done) {
       <input id="fName" name="name" value="${esc(c?.name)}" autocomplete="off">
       <label for="fPhone">Telefon</label>
       <input id="fPhone" name="phone" type="tel" inputmode="tel" value="${esc(c?.phone)}" placeholder="040 123 456" autocomplete="off">
-      <label for="fEmail">E-pošta <small>(neobvezno – za samodejna obvestila)</small></label>
-      <input id="fEmail" name="email" type="email" value="${esc(c?.email)}" autocomplete="off">
       <label for="fNote">Opomba <small>(neobvezno)</small></label>
       <input id="fNote" name="note" value="${esc(c?.note)}">
       <p class="error" id="custError" hidden></p>
@@ -911,10 +909,9 @@ function openCustomerForm(c, done) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData($('#custForm')));
     const err = (m) => { $('#custError').textContent = m; $('#custError').hidden = false; };
-    const next = { name: f.name.trim(), phone: f.phone.trim(), email: f.email.trim(), note: f.note.trim() };
+    const next = { name: f.name.trim(), phone: f.phone.trim(), note: f.note.trim() };
     if (!next.name) return err('Vpiši ime in priimek.');
     if (digits(next.phone).length < 6) return err('Vpiši telefonsko številko.');
-    if (next.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) return err('E-poštni naslov ni veljaven.');
     const key = digits(next.phone);
     const dup = customers().find((x) => x.key === key && x.key !== c?.key);
     if (dup) return err(`Stranka s to številko že obstaja: ${dup.name}.`);
@@ -923,8 +920,8 @@ function openCustomerForm(c, done) {
       // Kontaktne podatke posodobi tudi na naročilih te stranke (zanje gredo obvestila).
       if (c) {
         for (const o of c.orders) {
-          if (o.name !== next.name || o.phone !== next.phone || (o.email || '') !== next.email) {
-            await store.update(o.id, { name: next.name, phone: next.phone, email: next.email });
+          if (o.name !== next.name || o.phone !== next.phone) {
+            await store.update(o.id, { name: next.name, phone: next.phone });
           }
         }
       }
@@ -939,7 +936,7 @@ function openCustomerForm(c, done) {
 
 function renderCustomers(el) {
   el.innerHTML = `
-    <div class="search" style="display:flex;gap:8px"><input id="cq" type="search" placeholder="Išči stranko po imenu, telefonu ali e-pošti …" value="${esc(customerQuery)}" autocomplete="off"><button class="btn" style="white-space:nowrap;border-radius:999px" data-newcustomer="list">+ Nova</button></div>
+    <div class="search" style="display:flex;gap:8px"><input id="cq" type="search" placeholder="Išči stranko po imenu ali telefonu …" value="${esc(customerQuery)}" autocomplete="off"><button class="btn" style="white-space:nowrap;border-radius:999px" data-newcustomer="list">+ Nova</button></div>
     <div id="cList"></div>`;
   const q = $('#cq');
   q.addEventListener('input', () => { customerQuery = q.value; renderCustomerList(); });
@@ -957,7 +954,7 @@ function renderCustomerList() {
       return `
         <div class="order">
           <div class="top">
-            <div><span class="who">${esc(c.name)}</span> · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a>${c.email ? `<br><small class="hint">${esc(c.email)}</small>` : ''}</div>
+            <div><span class="who">${esc(c.name)}</span> · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a></div>
             ${open ? `<span class="pill caka">Odprto: ${open}</span>` : ''}
           </div>
           ${c.note ? `<p class="desc">${esc(c.note)}</p>` : ''}
@@ -1276,7 +1273,7 @@ function renderResults() {
   const groupDate = (g) => g.map((o) => o.received).sort()[sortNewest ? g.length - 1 : 0];
   const sorted = [...groups.values()].sort(byDate(groupDate));
   let lastHead = '';
-  el.innerHTML = (q ? '' : `<p class="hint" style="margin-bottom:10px">${SECTOR === 'narocilo' ? 'Gotova naročila, ki čakajo na izdajo, razvrščena po datumu naročila' : 'Gotova oblačila, ki čakajo na izdajo, razvrščena po datumu prevzema'}. Za iskanje vpiši ime ali telefon.</p>`) +
+  el.innerHTML = (q ? '' : `<p class="hint" style="margin-bottom:10px">${SECTOR === 'narocilo' ? 'Gotova naročila, ki čakajo na izdajo, razvrščena po datumu naročila' : 'Gotova oblačila, ki čakajo na izdajo, razvrščena po datumu oddaje'}. Za iskanje vpiši ime ali telefon.</p>`) +
     sorted.map((g) => {
       g.sort(byDate((o) => o.received));
       const open = g.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
@@ -1356,7 +1353,7 @@ function renderAbsences() {
     ${inMonth.length ? `<p class="hint">Odsotnost ta mesec: ${inMonth.map((a) => fmt(a)).join(', ')}</p>` : ''}`;
 }
 
-// Evidenca za en dan: stranke, katerih oblačila so bila ta dan prevzeta, v popravilu ali gotova.
+// Evidenca za en dan: stranke, katerih oblačila so bila ta dan oddana, v popravilu ali gotova.
 function dayStats(day) {
   const repairs = orders.filter((o) => inSector(o));
   const gone = (o) => (o.handedDate && o.handedDate <= day) || (o.discardedDate && o.discardedDate <= day);
@@ -1398,7 +1395,7 @@ function renderStats() {
     <div style="display:grid;gap:8px">
       ${box(SECTORS[SECTOR].workTab, st.inRepair)}
       ${box('Gotovo', st.ready)}
-      ${box('Prevzeto', st.received)}
+      ${box(SECTORS[SECTOR].receivedBox, st.received)}
     </div>`;
   $('#statsDay').addEventListener('change', (e) => { if (e.target.value) { statsDay = e.target.value > today() ? today() : e.target.value; renderStats(); } });
 }
@@ -1420,7 +1417,7 @@ function orderCard(o, { hideWho = false } = {}) {
   const st = stage(o);
   const cls = st.key === 'humana' || st.key === 'opozorilo' ? 'late' : st.due || st.key === 'zamuda' ? 'due' : '';
   const nar = o.sector === 'narocilo';
-  const dates = [`${nar ? 'naročeno' : 'prevzeto'} ${fmt(o.received)}`];
+  const dates = [`${sec(o).receivedWord} ${fmt(o.received)}`];
   if (o.dueDate && o.status === 'sprejeto') dates.push(`${nar ? 'izdaja' : 'dogovorjeno do'} ${fmt(o.dueDate)}`);
   if (o.readyDate) dates.push(`gotovo ${fmt(o.readyDate)}`);
   if (o.deadline && o.status === 'gotovo') dates.push(`rok za prevzem ${fmt(o.deadline)}`);
@@ -1540,12 +1537,10 @@ function openNotify(o, type) {
   const text = message(type, o);
   const already = o[MSG_FIELD[type]];
   showModal(MSG_TITLE[type] + ` · ${esc(o.num)}`, `
-    <p><b>${esc(o.name)}</b> · ${esc(o.phone)}${o.email ? ` · ${esc(o.email)}` : ''}</p>
+    <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
     <div class="msg">${esc(text)}</div>
-    ${store.remote() && o.email ? '<p class="hint">Stranka ima e-pošto – preglednica ji to sporočilo pošlje tudi samodejno.</p>' : ''}
     <div class="actions">
       <a class="btn" href="${esc(smsLink(o.phone, text))}">Pošlji SMS</a>
-      ${o.email ? `<a class="btn secondary" href="mailto:${esc(o.email)}?subject=${encodeURIComponent(MSG_TITLE[type] + ' – ' + CONFIG.shopName)}&body=${encodeURIComponent(text)}">E-pošta</a>` : ''}
       <a class="btn secondary" href="${esc(telHref(o.phone))}">Kliči</a>
       <button class="btn secondary" id="copyMsg">Kopiraj</button>
     </div>
@@ -1618,7 +1613,7 @@ function confirmDiscard(o) {
 function openDetail(o) {
   const st = stage(o);
   const steps = [
-    [o.sector === 'narocilo' ? 'Naročeno' : 'Prevzeto v poslovalnico', o.received],
+    [o.sector === 'narocilo' ? 'Naročeno' : 'Oddano v poslovalnico', o.received],
     ...(o.sector === 'narocilo' && o.dueDate ? [['Dogovorjen datum izdaje', o.dueDate]] : []),
     ['Gotovo', o.readyDate],
     ['Stranka obveščena', o.readyNotified],
@@ -1634,7 +1629,7 @@ function openDetail(o) {
   const dis = editable ? '' : 'disabled';
   showModal(`Naročilo ${esc(o.num)} <span class="pill ${st.key}">${esc(st.label)}</span>`, `
     <form id="editForm" novalidate>
-      <p style="margin:0"><b>${esc(o.name)}</b> · ${esc(o.phone)}${o.email ? ` · ${esc(o.email)}` : ''}
+      <p style="margin:0"><b>${esc(o.name)}</b> · ${esc(o.phone)}
         <button type="button" style="border:0;background:none;color:var(--muted);text-decoration:underline;padding:0;font-size:.82rem" data-editcustomer="${esc(digits(o.phone))}">uredi stranko</button></p>
       <div class="three">
         <div><label>${sec(o).dateLabel}</label><input name="received" type="date" value="${esc(o.received)}" ${dis}></div>
@@ -1736,8 +1731,8 @@ function renderSettings(app) {
     <div class="card">
       <b>Shranjevanje podatkov</b>
       ${store.remote()
-        ? '<div class="callout ok" style="margin-top:8px">Povezano z Google preglednico. Vse naprave v poslovalnici vidijo iste podatke, stranke z e-pošto prejemajo obvestila samodejno.</div>'
-        : `<div class="callout" style="margin-top:8px">Podatki so shranjeni <b>samo na tej napravi</b> (${nOrders(orders.length)}, ${nCustomers(customerRecords.length)}). Druge naprave jih ne vidijo – tudi na iPhonu sta Safari in aplikacija na domačem zaslonu ločena. Za skupno rabo in samodejna e-poštna obvestila povežite Google preglednico (navodila: <code>google-apps-script/NAVODILA.md</code>).</div>`}
+        ? '<div class="callout ok" style="margin-top:8px">Povezano z Google preglednico. Vse naprave v poslovalnici vidijo iste podatke.</div>'
+        : `<div class="callout" style="margin-top:8px">Podatki so shranjeni <b>samo na tej napravi</b> (${nOrders(orders.length)}, ${nCustomers(customerRecords.length)}). Druge naprave jih ne vidijo – tudi na iPhonu sta Safari in aplikacija na domačem zaslonu ločena. Za skupno rabo povežite Google preglednico (navodila: <code>google-apps-script/NAVODILA.md</code>).</div>`}
       <form id="settingsForm" novalidate>
         <label for="sUrl">URL Google Apps Script <small>(konča se z /exec)</small></label>
         <input id="sUrl" name="url" value="${esc(settings.url)}" placeholder="https://script.google.com/macros/s/…/exec">

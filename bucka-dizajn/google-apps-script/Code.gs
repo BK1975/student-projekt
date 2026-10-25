@@ -44,7 +44,7 @@ const LIST = 'Naročila';
 const CASOVNI_PAS = 'Europe/Ljubljana';
 // [ključ v aplikaciji, naslov stolpca v preglednici]
 const POLJA = [
-  ['num', 'Številka'], ['sector', 'Sektor'], ['status', 'Status'], ['received', 'Datum prevzema'],
+  ['num', 'Številka'], ['sector', 'Sektor'], ['status', 'Status'], ['received', 'Datum oddaje'],
   ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['pieces', 'Kosov'],
   ['description', 'Opis'], ['price', 'Cena (€)'], ['dueDate', 'Dogovorjeno do'], ['note', 'Opomba'],
   ['readyDate', 'Gotovo dne'], ['readyNotified', 'Obveščeno'], ['deadline', 'Rok za prevzem'],
@@ -124,6 +124,7 @@ function obdelaj_(besedilo) {
   lock.waitLock(20000);
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(LIST);
+    uskladiGlavo_(sh);
     if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti() });
     if (req.action === 'saveAbsences') { shraniOdsotnosti(req.absences || []); return json({ ok: true }); }
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
@@ -457,6 +458,12 @@ function shraniStranko(vnos) {
     else celica.setNumberFormat('@').setValue(k === 'measures' ? (c.measures ? JSON.stringify(c.measures) : '') : c[k]);
   });
   return c;
+}
+
+/** Naslove stolpcev na listu Naročila uskladi s POLJA (npr. po preimenovanju »Datum prevzema« → »Datum oddaje«). */
+function uskladiGlavo_(sh) {
+  const glava = sh.getRange(1, 1, 1, POLJA.length).getDisplayValues()[0];
+  if (POLJA.some((p, i) => glava[i] !== p[1])) sh.getRange(1, 1, 1, POLJA.length).setValues([POLJA.map((p) => p[1])]);
 }
 
 /** Izbriše stranko (po ID) in njena zaključena naročila; odprtih naročil ne izbriše. */

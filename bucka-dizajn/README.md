@@ -8,21 +8,20 @@ potrebna.
 
 ### Popravilo oblačil (narejeno)
 
-- **Stranke** (prvi zavihek) – vse stranke poslovalnice: ime in priimek, telefon, neobvezna e-pošta in
-  opomba. Nova stranka se doda z gumbom **+ Nova**, obstoječo lahko uredite (podatki se posodobijo tudi
+- **Stranke** (prvi zavihek) – vse stranke poslovalnice: ime in priimek, telefon in opomba. Nova stranka se doda z gumbom **+ Nova**, obstoječo lahko uredite (podatki se posodobijo tudi
   na njenih naročilih) ali odstranite z gumbom **Odstrani stranko** (s potrditvijo; skupaj z njenimi zaključenimi
-  naročili – stranke z odprtimi naročili ni mogoče odstraniti). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumba
-  **Nov prevzem** in **Naročila**. Stranka se prepozna po telefonski številki.
-- **Prevzem** – izbira stranke (ali **+ Nova stranka**), datum prevzema, neobvezni dogovorjeni rok in
+  naročili – stranke z odprtimi naročili ni mogoče odstraniti). Iskanje po imenu ali telefonu, število obiskov in zadnji obisk, gumba
+  **Nova oddaja** in **Naročila**. Stranka se prepozna po telefonski številki.
+- **Oddaja** (stranka prinese oblačila) – izbira stranke (ali **+ Nova stranka**), datum oddaje, neobvezni dogovorjeni rok in
   kosi: z gumbom **+ DODAJ NOV KOS** izberete vrsto kosa (hlače, krilo, jakna …), eno ali več storitev
-  zanj in opombo. Število kosov se izračuna samo. Vsak prevzem dobi številko (`P-0001` …).
+  zanj in opombo. Število kosov se izračuna samo. Vsaka oddaja dobi številko (`P-0001` …).
 - **Izdaja** – iskanje po imenu, telefonu ali številki; naročila so združena po stranki in razvrščena po
-  datumu prevzema (najnovejše ali najstarejše najprej, z naslovom dneva). Brez iskanja so prikazana vsa
+  datumu oddaje (najnovejše ali najstarejše najprej, z naslovom dneva). Brez iskanja so prikazana vsa
   gotova oblačila, ki čakajo na izdajo. Ob izdaji se prikaže znesek za plačilo.
-- **V popravilu** – vsa oblačila, ki so v delu, razvrščena po datumu prevzema; z gumbom **Označi kot gotovo**.
+- **V popravilu** – vsa oblačila, ki so v delu, razvrščena po datumu oddaje; z gumbom **Označi kot gotovo**.
 - **Pregled** – »Za urediti danes« (opomniki, končna obvestila, oddaja v zabojnik), **Evidenca** in zadnja
   **Koledar odsotnosti**. Evidenca prikaže en dan naenkrat (puščici ‹ › ali izbira datuma): koliko strank
-  je bilo ta dan **V popravilu**, **Gotovih** in **Prevzetih** – vsak seznam se odpre s klikom. V koledarju
+  je bilo ta dan **V popravilu**, **Gotovih** in **Oddanih** (prinesenih ta dan) – vsak seznam se odpre s klikom. V koledarju
   odsotnosti s klikom označite dneve, ko je poslovalnica zaprta (dopust, bolniška); ti dnevi se ne štejejo
   v rok za prevzem in ne v zamudnino.
 
@@ -48,13 +47,13 @@ opozorilo pet 13. 11. → oddaja v Humano tor 17. 11.
 Besedila sporočil so v `index.html` (funkcija `message`) in v `google-apps-script/Code.gs` (funkcija
 `sporocilo`); naslov, telefon in delovni čas pa v `CONFIG` oziroma `NASTAVITVE`.
 
-**Prevzemni listek** (zavihek **Prevzem**, termo papir 56 mm): zgornji del dobi stranka – podatki
-poslovalnice (naslov, telefon, delovni čas), stranka, številka naročila, datum prevzema, število kosov in
+**Prevzemni listek** (zavihek **Oddaja**, termo papir 56 mm): zgornji del dobi stranka – podatki
+poslovalnice (naslov, telefon, delovni čas), stranka, številka naročila, datum oddaje, število kosov in
 pogoji prevzema. Spodnji odrezek ostane v poslovalnici – številka naročila, stranka s telefonom, datum
-prevzema in vsi kosi s storitvami in opombami.
+oddaje in vsi kosi s storitvami in opombami.
 
-Obvestila se pošiljajo s pripravljenim SMS (en dotik), po e-pošti ali s klicem. Če je povezana Google
-preglednica, strankam z e-pošto obvestila pošilja **samodejno**.
+Obvestila se pošiljajo s pripravljenim SMS (en dotik) ali s klicem. Če je povezana Google preglednica,
+poslovalnica vsak delovni dan prejme e-poštni povzetek, koga je treba obvestiti.
 
 ### Izdelava po naročilu (narejeno)
 
@@ -95,8 +94,8 @@ z istim Apple ID-jem, na iPhonu pa vklopljeno: *Nastavitve → Telefon → Klici
   naprave jih ne vidijo – na iPhonu sta celo Safari in aplikacija na domačem zaslonu ločena. Aplikacija na
   to opozori na začetnem zaslonu. V Nastavitvah lahko naredite varnostno kopijo (naročila, stranke,
   odsotnosti in storitve v eni datoteki JSON).
-- **Z Google preglednico** (priporočeno) vse naprave vidijo iste stranke in naročila, strankam z e-pošto
-  pa se obvestila pošiljajo samodejno. Navodila: [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md).
+- **Z Google preglednico** (priporočeno) vse naprave vidijo iste stranke in naročila, poslovalnica
+  pa vsak delovni dan prejme e-poštni povzetek obvestil. Navodila: [`google-apps-script/NAVODILA.md`](google-apps-script/NAVODILA.md).
   - Ob prvi povezavi aplikacija ponudi **prenos podatkov s te naprave** v preglednico (brez podvajanja;
     zasedena številka naročila dobi novo številko).
   - **Druge naprave povežete z enim dotikom:** Nastavitve → *Poveži drugo napravo* → pošljite povezavo
