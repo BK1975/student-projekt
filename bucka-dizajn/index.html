@@ -464,9 +464,8 @@ function openOnOrAfter(s) {
 // Oddaja v zabojnik: en mesec po »gotovo« (prvi odprti dan), a ne prej kot nekaj delovnih dni po roku.
 const discardDue = (o) => maxIso(openOnOrAfter(addMonths(o.readyDate, CONFIG.discardAfterMonths)),
   addWorkDays(o.deadline, CONFIG.minOpenDaysAfterDeadline));
-const lateNoticeDue = (o) => openOnOrAfter(addDays(o.deadline, 1));
-// Opozorilo: zadnji odprti dan pred oddajo, a ne pred obvestilom o zamudnini.
-const warnDue = (o) => maxIso(prevWorkDay(discardDue(o)), lateNoticeDue(o));
+// Drugi opomnik: prvi odprti dan po roku za prevzem (približno teden pred dobrodelno oddajo).
+const secondReminderDue = (o) => openOnOrAfter(addDays(o.deadline, 1));
 const dayWord = (n) => (n === 1 ? 'dan' : n === 2 ? 'dneva' : n < 5 ? 'dnevi' : 'dni');
 // Zamudnina: koledarski dnevi po roku za prevzem (do danes oziroma do izdaje).
 // Zamudnina: delovni dnevi (ko je poslovalnica odprta) po roku za prevzem – do danes oziroma do izdaje.
@@ -489,13 +488,12 @@ function stage(o, t = today()) {
   if (o.status === 'zavrzeno') return { key: 'zavrzeno', label: `Oddano v ${CONFIG.donation}` };
   // status 'gotovo'
   if (t >= discardDue(o)) return { key: 'humana', label: `Odda se v ${CONFIG.donation}`, due: true };
-  if (!o.warnDate && t >= warnDue(o)) return { key: 'opozorilo', label: `Pošlji opozorilo (${CONFIG.donation})`, due: true };
-  if (t >= lateNoticeDue(o) && !o.lateNoticeDate) return { key: 'zamudnina', label: 'Pošlji obvestilo o zamudnini', due: true };
+  if (!o.warnDate && t >= secondReminderDue(o)) return { key: 'opozorilo', label: 'Pošlji drugi opomnik', due: true };
   if (t > o.deadline) {
     const n = lateDays(o, t);
     return { key: 'zamuda', label: `Zamuda ${n} ${n === 1 ? 'del. dan' : 'del. dni'}${o.feeWaived ? ' · brez zamudnine' : ` · ${money(lateFee(o, t))}`}` };
   }
-  if (!o.reminderDate && t >= reminderDue(o)) return { key: 'opomnik', label: 'Pošlji opomnik', due: true };
+  if (!o.reminderDate && t >= reminderDue(o)) return { key: 'opomnik', label: 'Pošlji prvi opomnik', due: true };
   const left = daysBetween(t, o.deadline);
   return { key: o.reminderDate ? 'opomnjeno' : 'caka', label: left === 0 ? 'Rok za prevzem je danes' : `Čaka na prevzem · še ${left} ${dayWord(left)}` };
 }
@@ -503,7 +501,6 @@ function stage(o, t = today()) {
 /* ---------- Sporočila strankam ---------- */
 
 function message(type, o) {
-  const fee = `${money(CONFIG.lateFeePerDay)} za vsak delovni dan`;
   const end = `\n\nDelovni čas: ${CONFIG.hours}.\n${CONFIG.shopName}, ${CONFIG.address}, tel. ${CONFIG.phone}`;
   const nar = o.sector === 'narocilo';
   // Besede za popravila (oblačila, množina) ali naročila (naročilo, ednina).
@@ -516,23 +513,22 @@ function message(type, o) {
       `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (${fmt(discardDue(o))}), ` +
       `bomo podarili v dobrodelne namene.` + end;
   }
+  const feeText = `za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €`;
   if (type === 'reminder') {
     const when = addDays(today(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : dayLabel(o.deadline).toLowerCase();
     return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem ${W.yours} brez zamudnine. ` +
-      `Po tem roku zaračunamo zamudnino ${fee}.` + end;
+      `Po preteku roka se ${feeText}.` + end;
   }
-  if (type === 'late') {
-    return `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}. ` +
-      `Od ${fmt(lateNoticeDue(o))} zaračunavamo zamudnino ${fee}. ` +
-      `${W.left} do ${fmt(discardDue(o))}, oddamo v zabojnik ${CONFIG.donation}.` + end;
-  }
+  // Drugi opomnik (po roku za prevzem): zamudnina in datum dobrodelne oddaje.
   const late = lateDays(o) > 0 && !o.feeWaived;
-  return `Pozdravljeni, ${W.your} ${W.waits} na prevzem. Če ${W.them} ne prevzamete do ${fmt(discardDue(o))}, ` +
-    `${W.them} bomo oddali v zabojnik ${CONFIG.donation}.` +
-    (late ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${fee}; do danes znaša ${money(lateFee(o))}.` : '') + end;
+  return (late
+    ? `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}, zato se ${feeText}; do danes znaša ${money(lateFee(o))}. `
+    : `Pozdravljeni, ${W.your} ${W.waits} na prevzem. `) +
+    `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(discardDue(o))}, bomo podarili v dobrodelne namene.` + end;
 }
-const MSG_TITLE = { ready: 'Obvestilo: pripravljeno na prevzem', reminder: 'Opomnik za prevzem', late: 'Obvestilo o zamudnini', warning: `Opozorilo pred oddajo v ${CONFIG.donation}` };
-const MSG_FIELD = { ready: 'readyNotified', reminder: 'reminderDate', late: 'lateNoticeDate', warning: 'warnDate' };
+const MSG_TITLE = { ready: 'Obvestilo: pripravljeno na prevzem', reminder: 'Prvi opomnik', warning: 'Drugi opomnik' };
+// Drugi opomnik se zapiše v polje warnDate (prej »opozorilo pred oddajo«).
+const MSG_FIELD = { ready: 'readyNotified', reminder: 'reminderDate', warning: 'warnDate' };
 
 function smsLink(phone, text) {
   const n = phone.replace(/[^\d+]/g, '');
@@ -1306,7 +1302,7 @@ let statsDay = today();
 function renderOverview(el) {
   const t = today();
   const repairs = orders.filter((o) => inSector(o));
-  const urgency = ['humana', 'opozorilo', 'zamudnina', 'opomnik'];
+  const urgency = ['humana', 'opozorilo', 'opomnik'];
   const due = repairs.filter((o) => stage(o, t).due)
     .sort((a, b) => urgency.indexOf(stage(a, t).key) - urgency.indexOf(stage(b, t).key));
   el.innerHTML = `
@@ -1405,9 +1401,8 @@ function policyHtml() {
   return `<b>Roki za prevzem</b>
     <ol>
       <li>Ko ${SECTOR === 'narocilo' ? 'je naročilo gotovo' : 'so oblačila gotova'}, stranko obvestimo – za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
-      <li>Delovni dan pred iztekom roka pošljemo <b>opomnik</b>.</li>
-      <li>Dan po roku pošljemo <b>obvestilo o zamudnini</b> – ${money(CONFIG.lateFeePerDay)} za vsak delovni dan (brez dni odsotnosti), razen če se stranka javi in se dogovorimo drugače.</li>
-      <li>Zadnji delovni dan pred oddajo pošljemo <b>opozorilo</b> z datumom oddaje v zabojnik (če je isti dan na vrsti tudi obvestilo o zamudnini, gre eno sporočilo).</li>
+      <li>Delovni dan pred iztekom roka pošljemo <b>prvi opomnik</b> (z opozorilom, da se po roku zaračuna zamudnina).</li>
+      <li>Prvi delovni dan po roku pošljemo <b>drugi opomnik</b>: teče zamudnina ${money(CONFIG.lateFeePerDay)} za vsak delovni dan (brez dni odsotnosti), razen če se stranka javi in se dogovorimo drugače, in datum dobrodelne oddaje.</li>
       <li>${SECTOR === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v <b>enem mesecu</b> od obvestila, oddamo v zabojnik <b>${esc(CONFIG.donation)}</b>.</li>
     </ol>`;
 }
@@ -1437,7 +1432,7 @@ function orderCard(o, { hideWho = false } = {}) {
 }
 
 // Zadnje obvestilo, ki ga je stranka prejela (za »Ponovno obvesti«).
-const lastNotice = (o) => (o.warnDate ? 'warning' : o.lateNoticeDate ? 'late' : o.reminderDate ? 'reminder' : 'ready');
+const lastNotice = (o) => (o.warnDate ? 'warning' : o.reminderDate ? 'reminder' : 'ready');
 const telHref = (phone) => `tel:${String(phone || '').replace(/[^\d+]/g, '')}`;
 
 function cardActions(o, st) {
@@ -1450,9 +1445,8 @@ function cardActions(o, st) {
     case 'caka':
     case 'opomnjeno':
     case 'zamuda': main = `${issue()} ${renotify}`; break;
-    case 'opomnik': main = `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji opomnik</button> ${issue('secondary')} ${renotify}`; break;
-    case 'zamudnina': main = `<button class="btn small warn" data-act="notify" data-type="late" data-id="${id}">Obvesti o zamudnini</button> ${issue('secondary')} ${renotify}`; break;
-    case 'opozorilo': main = `<button class="btn small danger" data-act="notify" data-type="warning" data-id="${id}">Pošlji opozorilo</button> ${issue('secondary')} ${renotify}`; break;
+    case 'opomnik': main = `<button class="btn small warn" data-act="notify" data-type="reminder" data-id="${id}">Pošlji prvi opomnik</button> ${issue('secondary')} ${renotify}`; break;
+    case 'opozorilo': main = `<button class="btn small danger" data-act="notify" data-type="warning" data-id="${id}">Pošlji drugi opomnik</button> ${issue('secondary')} ${renotify}`; break;
     case 'humana': main = `<button class="btn small danger" data-act="discard" data-id="${id}">Oddano v ${esc(CONFIG.donation)}</button> ${issue('secondary')} ${renotify}`; break;
     default: main = '';
   }
@@ -1478,9 +1472,8 @@ function openSms(o, c) {
   const templates = [];
   if (o && o.status === 'gotovo') {
     templates.push(['ready', 'Pripravljeno']);
-    templates.push(['reminder', 'Opomnik']);
-    if (lateDays(o) > 0 || today() > o.deadline) templates.push(['late', 'Zamudnina']);
-    templates.push(['warning', `Opozorilo (${CONFIG.donation})`]);
+    templates.push(['reminder', 'Prvi opomnik']);
+    templates.push(['warning', 'Drugi opomnik']);
   }
   templates.push(['free', 'Prosto besedilo']);
   const textFor = (t) => (t === 'free' ? free : message(t, o));
@@ -1525,9 +1518,7 @@ async function markReady(id) {
 async function markNotified(o, type) {
   const t = today();
   const field = MSG_FIELD[type];
-  let patch = o[field] ? null : { [field]: t };
-  // Opozorilo že vsebuje podatek o zamudnini, zato posebnega obvestila o zamudnini ni treba pošiljati.
-  if (patch && type === 'warning' && !o.lateNoticeDate && t > o.deadline) patch.lateNoticeDate = t;
+  const patch = o[field] ? null : { [field]: t };
   if (patch) await busy(() => store.update(o.id, patch));
   closeModal();
   render();

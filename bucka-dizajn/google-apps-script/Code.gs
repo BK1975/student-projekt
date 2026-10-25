@@ -4,8 +4,8 @@
  * - shranjuje naročila, ki jih zaposleni vnesejo v aplikaciji (list »Naročila«),
  *   tako da vse naprave v poslovalnici vidijo iste podatke
  * - ko je naročilo označeno kot gotovo, stranki z e-pošto samodejno pošlje obvestilo z rokom za prevzem
- * - vsak dan strankam z e-pošto samodejno pošlje opomnik (delovni dan pred rokom), obvestilo o
- *   zamudnini (dan po roku) in opozorilo pred oddajo v zabojnik (po 21 delovnih dneh),
+ * - vsak dan strankam z e-pošto samodejno pošlje prvi opomnik (delovni dan pred rokom) in drugi
+ *   opomnik (prvi delovni dan po roku: zamudnina in datum dobrodelne oddaje),
  *   poslovalnici pa povzetek, koga je treba obvestiti po SMS/telefonu in kaj odnesti v zabojnik
  *
  * Namestitev: glej NAVODILA.md.
@@ -48,12 +48,12 @@ const POLJA = [
   ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['pieces', 'Kosov'],
   ['description', 'Opis'], ['price', 'Cena (€)'], ['dueDate', 'Dogovorjeno do'], ['note', 'Opomba'],
   ['readyDate', 'Gotovo dne'], ['readyNotified', 'Obveščeno'], ['deadline', 'Rok za prevzem'],
-  ['reminderDate', 'Opomnik'], ['lastDeadline', 'Zadnji rok'], ['finalDate', 'Končno obvestilo'],
+  ['reminderDate', 'Prvi opomnik'], ['lastDeadline', 'Zadnji rok'], ['finalDate', 'Končno obvestilo'],
   ['handedDate', 'Izdano'], ['discardedDate', 'Oddano v zabojnik'],
   ['createdAt', 'Ustvarjeno'], ['updatedAt', 'Posodobljeno'], ['id', 'ID'],
   ['services', 'Storitve'], // nove stolpce dodajajte samo na konec
   ['feeWaived', 'Brez zamudnine'], ['lateFee', 'Zamudnina (€)'],
-  ['lateNoticeDate', 'Obvestilo o zamudnini'], ['warnDate', 'Opozorilo pred oddajo'],
+  ['lateNoticeDate', 'Obvestilo o zamudnini'], ['warnDate', 'Drugi opomnik'],
   ['items', 'Kosi'], ['measures', 'Mere ob naročilu'],
 ];
 const LIST_STORITVE = 'Storitve';
@@ -238,9 +238,8 @@ function dnevniPregled() {
   const poslano = [];
   const rocno = [];
   const VRSTE = {
-    opomnik: { polje: 'reminderDate', sporocilo: 'reminder', zadeva: 'Opomnik: rok za prevzem oblačil', ime: 'OPOMNIK' },
-    zamudnina: { polje: 'lateNoticeDate', sporocilo: 'late', zadeva: 'Rok za prevzem oblačil je potekel', ime: 'OBVESTILO O ZAMUDNINI' },
-    opozorilo: { polje: 'warnDate', sporocilo: 'warning', zadeva: `Oblačila bomo oddali v zabojnik ${NASTAVITVE.zabojnik}`, ime: 'OPOZORILO PRED ODDAJO' },
+    opomnik: { polje: 'reminderDate', sporocilo: 'reminder', zadeva: 'Prvi opomnik: rok za prevzem', ime: 'PRVI OPOMNIK' },
+    opozorilo: { polje: 'warnDate', sporocilo: 'warning', zadeva: 'Drugi opomnik: rok za prevzem je potekel', ime: 'DRUGI OPOMNIK' },
   };
   vsa(sh).forEach((v) => {
     const o = v.o;
@@ -251,7 +250,6 @@ function dnevniPregled() {
       if (o.email) {
         o[vrsta.polje] = t;
         // Opozorilo vsebuje tudi podatek o zamudnini.
-        if (faza === 'opozorilo' && !o.lateNoticeDate && t > o.deadline) o.lateNoticeDate = t;
         o.updatedAt = new Date().toISOString();
         posljiStranki(o.email, vrsta.zadeva, sporocilo(vrsta.sporocilo, o, t));
         zapisi(sh, v.vrstica, o);
@@ -276,10 +274,9 @@ function dnevniPregled() {
 function faza_(o, t) {
   if (o.status !== 'gotovo' || !o.deadline || !o.readyDate) return null;
   if (t >= oddajaOd(o)) return 'humana';
-  const zamudninaOd = odprtOdDne(dodajDni(o.deadline, 1));
-  const opozoriloOd = najkasnejsi(prejsnjiDelovniDan(oddajaOd(o)), zamudninaOd);
-  if (!o.warnDate && t >= opozoriloOd) return 'opozorilo';
-  if (t > o.deadline) return o.lateNoticeDate || t < zamudninaOd ? null : 'zamudnina';
+  // Drugi opomnik: prvi delovni dan po roku za prevzem.
+  if (!o.warnDate && t >= odprtOdDne(dodajDni(o.deadline, 1))) return 'opozorilo';
+  if (t > o.deadline) return null;
   if (!o.reminderDate && t >= prejsnjiDelovniDan(o.deadline)) return 'opomnik';
   return null;
 }
@@ -313,7 +310,6 @@ function prejsnjiDelovniDan(s) {
 function sporocilo(vrsta, o, t) {
   const konec = `\n\nDelovni čas: ${NASTAVITVE.delovniCas}.\n${NASTAVITVE.imeDelavnice}, ${NASTAVITVE.naslov}, tel. ${NASTAVITVE.telefon}`;
   const evri = (x) => `${x.toFixed(2).replace('.', ',')} €`;
-  const zamudnina = `${evri(NASTAVITVE.zamudninaNaDan)} za vsak delovni dan`;
   // Enako kot message() v aplikaciji: popravila (oblačila) ali naročila (naročilo).
   const W = o.sector === 'narocilo'
     ? { your: `vaše naročilo (št. ${o.num})`, yours: `vašega naročila (št. ${o.num})`, isReady: 'je pripravljeno', them: 'ga', waits: 'še vedno čaka', left: 'Izdelke, ki niso prevzeti', leftLow: 'izdelke, ki niso prevzeti' }
@@ -324,21 +320,18 @@ function sporocilo(vrsta, o, t) {
       `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (${fmt(oddajaOd(o))}), ` +
       `bomo podarili v dobrodelne namene.` + konec;
   }
+  const zamudninaBesedilo = `za vsak delovni dan zaračuna zamudnina v višini ${String(NASTAVITVE.zamudninaNaDan).replace('.', ',')} €`;
   if (vrsta === 'reminder') {
     const kdaj = dodajDni(t || danes(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : fmt(o.deadline);
     return `Pozdravljeni, opominjamo vas, da je ${kdaj} zadnji dan za prevzem ${W.yours} brez zamudnine. ` +
-      `Po tem roku zaračunamo zamudnino ${zamudnina}.` + konec;
+      `Po preteku roka se ${zamudninaBesedilo}.` + konec;
   }
-  if (vrsta === 'late') {
-    return `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}. ` +
-      `Od ${fmt(odprtOdDne(dodajDni(o.deadline, 1)))} zaračunavamo zamudnino ${zamudnina}. ` +
-      `${W.left} do ${fmt(oddajaOd(o))}, oddamo v zabojnik ${NASTAVITVE.zabojnik}.` + konec;
-  }
+  // Drugi opomnik (enako kot message('warning') v aplikaciji).
   const dni = dniZamude(o, t || danes());
-  return `Pozdravljeni, ${W.your} ${W.waits} na prevzem. Če ${W.them} ne prevzamete do ${fmt(oddajaOd(o))}, ` +
-    `${W.them} bomo oddali v zabojnik ${NASTAVITVE.zabojnik}.` +
-    (dni && !o.feeWaived ? ` Rok za prevzem je potekel ${fmt(o.deadline)}, zato zaračunavamo zamudnino ${zamudnina}; ` +
-      `do danes znaša ${evri(dni * NASTAVITVE.zamudninaNaDan)}.` : '') + konec;
+  return (dni && !o.feeWaived
+    ? `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}, zato se ${zamudninaBesedilo}; do danes znaša ${evri(dni * NASTAVITVE.zamudninaNaDan)}. `
+    : `Pozdravljeni, ${W.your} ${W.waits} na prevzem. `) +
+    `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(oddajaOd(o))}, bomo podarili v dobrodelne namene.` + konec;
 }
 
 function posljiStranki(email, zadeva, besedilo) {

@@ -29,20 +29,19 @@ potrebna.
 brez praznikov in brez dni odsotnosti iz koledarja):
 
 1. **Gotovo** – stranka dobi obvestilo: za prevzem ima **14 delovnih dni**, po roku zamudnina
-   **0,50 € za vsak delovni dan**, neprevzeta oblačila po enem mesecu oddamo v zabojnik **Humana**.
-2. **Opomnik** – delovni dan pred iztekom roka.
-3. **Obvestilo o zamudnini** – prvi delovni dan po izteku roka. Zamudnina se šteje samo za delovne dneve
-   (torek–petek, brez praznikov in dni odsotnosti).
-4. **Opozorilo pred oddajo** – zadnji delovni dan pred oddajo, z datumom oddaje in zneskom zamudnine.
-   Če je isti dan na vrsti tudi obvestilo o zamudnini, gre samo opozorilo.
-5. **Oddaja v Humano** – en mesec po obvestilu »gotovo«; če ta dan poslovalnica ni odprta, se datum
+   **0,5 € za vsak delovni dan**, neprevzeta oblačila po enem mesecu podarimo v dobrodelne namene
+   (zabojnik **Humana**).
+2. **Prvi opomnik** – delovni dan pred iztekom roka, z opozorilom, da se po roku zaračuna zamudnina.
+3. **Drugi opomnik** – prvi delovni dan po izteku roka (približno teden pred oddajo): teče zamudnina
+   (samo za delovne dneve: torek–petek, brez praznikov in dni odsotnosti) in datum dobrodelne oddaje.
+4. **Oddaja v Humano** – en mesec po obvestilu »gotovo«; če ta dan poslovalnica ni odprta, se datum
    premakne na prvi naslednji delovni dan (in nikoli prej kot 3 delovne dni po roku).
 
 Če se stranka javi, v podrobnostih naročila ali ob izdaji označite »Brez zamudnine«. Ob izdaji aplikacija
 izračuna zamudnino in znesek za plačilo.
 
-Primer: gotovo čet 15. 10. → opomnik pet 6. 11. → rok tor 10. 11. → zamudnina sre 11. 11. →
-opozorilo pet 13. 11. → oddaja v Humano tor 17. 11.
+Primer: gotovo tor 27. 10. → prvi opomnik sre 18. 11. → rok čet 19. 11. → drugi opomnik (zamudnina
+teče) pet 20. 11. → oddaja v Humano pet 27. 11.
 
 Besedila sporočil so v `index.html` (funkcija `message`) in v `google-apps-script/Code.gs` (funkcija
 `sporocilo`); naslov, telefon in delovni čas pa v `CONFIG` oziroma `NASTAVITVE`.
