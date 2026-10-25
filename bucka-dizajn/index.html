@@ -1700,9 +1700,11 @@ function printTicket(o) {
       </table>
       <div class="t-terms">
         <b>Pogoji prevzema</b><br>
-        ${o.sector === 'narocilo' ? 'Ko bo naročilo gotovo' : 'Ko bodo oblačila gotova'}, vas obvestimo. Za prevzem imate ${CONFIG.pickupWorkDays} delovnih dni od obvestila.
-        Po tem roku zaračunamo zamudnino ${money(CONFIG.lateFeePerDay)} za vsak delovni dan.
-        ${o.sector === 'narocilo' ? 'Izdelke, ki niso prevzeti' : 'Oblačila, ki niso prevzeta'} v enem mesecu od obvestila, oddamo v zabojnik ${esc(CONFIG.donation)}.
+        ${o.sector === 'narocilo' ? 'Ko bo vaše naročilo pripravljeno' : 'Ko bodo vaša oblačila pripravljena'}, vas bomo obvestili.
+        Prevzamete ${o.sector === 'narocilo' ? 'ga' : 'jih'} lahko v roku ${CONFIG.pickupWorkDays} delovnih dni od prejema obvestila.
+        Če boste v tem času odsotni, nam to prosim sporočite, da se dogovorimo glede prevzema.
+        Po preteku ${CONFIG.pickupWorkDays} dni se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €.
+        ${o.sector === 'narocilo' ? 'Izdelke' : 'Oblačila'}, ki jih ne boste prevzeli v enem mesecu od prejema obvestila, bomo podarili v dobrodelne namene.
         Ob prevzemu prinesite ta listek.
       </div>
       <div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>
