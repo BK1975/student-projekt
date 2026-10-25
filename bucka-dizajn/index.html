@@ -923,6 +923,17 @@ function findCustomers(query) {
   return customers().filter((c) => norm(c.name).includes(q) || (qd.length >= 3 && c.key.includes(qd)));
 }
 
+// Telefonska številka v obliki »040 123 456« (tuje: »+386 40 123 456«) – ne glede na to, kako je vpisana.
+function formatPhone(raw) {
+  const plus = String(raw).trim().startsWith('+') || String(raw).trim().startsWith('00');
+  let d = String(raw).replace(/\D/g, '');
+  if (String(raw).trim().startsWith('00')) d = d.slice(2);
+  const groups = (x) => x.replace(/(\d{3})(?=\d)/g, '$1 ');
+  if (!plus) return groups(d);
+  if (d.startsWith('386')) return `+386 ${d.slice(3, 5)}${d.length > 5 ? ' ' : ''}${groups(d.slice(5))}`.trim();
+  return '+' + String(raw).replace(/^\s*(\+|00)/, '').replace(/[^\d ]/g, '').replace(/\s+/g, ' ').trim(); // tuje številke pustimo, kot so vpisane
+}
+
 // Obrazec za novo stranko ali urejanje obstoječe. Po shranjevanju pokliče done(stranka).
 function openCustomerForm(c, done) {
   showModal(c ? 'Uredi stranko' : 'Nova stranka', `
@@ -937,11 +948,12 @@ function openCustomerForm(c, done) {
       <button class="btn block" style="margin-top:14px" id="saveCustomer">Shrani stranko</button>
     </form>`);
   $('#fName').focus();
+  $('#fPhone').addEventListener('input', (e) => { e.target.value = formatPhone(e.target.value); });
   $('#saveCustomer').onclick = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData($('#custForm')));
     const err = (m) => { $('#custError').textContent = m; $('#custError').hidden = false; };
-    const next = { name: f.name.trim(), phone: f.phone.trim(), note: f.note.trim() };
+    const next = { name: f.name.trim(), phone: formatPhone(f.phone), note: f.note.trim() };
     if (!next.name) return err('Vpiši ime in priimek.');
     if (digits(next.phone).length < 6) return err('Vpiši telefonsko številko.');
     const key = digits(next.phone);
