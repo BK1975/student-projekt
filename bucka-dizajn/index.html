@@ -646,6 +646,14 @@ const store = {
     }
     return orders[i];
   },
+  // Odstrani stranko in njena zaključena naročila (odprtih ne – te je treba najprej izdati).
+  async deleteCustomer(c) {
+    const orderIds = c.orders.map((o) => o.id);
+    if (this.remote()) await this.call('deleteCustomer', { id: c.record?.id || '', orderIds });
+    customerRecords = customerRecords.filter((x) => x !== c.record);
+    orders = orders.filter((o) => !orderIds.includes(o.id));
+    if (!this.remote()) { lsSet(CUSTOMERS_KEY, customerRecords); this.saveLocal(); }
+  },
   saveLocal() {
     if (!lsSet(LOCAL_KEY, orders)) toast('Shranjevanje na napravo ni uspelo!');
   },
@@ -961,6 +969,7 @@ function renderCustomerList() {
             <button class="btn small secondary" data-smscust="${esc(c.key)}">Pošlji SMS</button>
             ${SECTOR === 'narocilo' ? `<button class="btn small secondary" data-measure="${esc(c.key)}">Mere${measureList(c).length ? ` (${measureList(c).length})` : ''}</button>` : ''}
             <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
+            <button class="btn small secondary" data-removecustomer="${esc(c.key)}">Odstrani stranko</button>
           </div>
         </div>`;
     }).join('') + '</div>' + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>'));
@@ -1572,6 +1581,27 @@ function confirmIssue(o) {
   };
 }
 
+function confirmRemoveCustomer(c) {
+  const open = c.orders.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
+  if (open.length) {
+    showModal('Stranke ni mogoče odstraniti', `
+      <p><b>${esc(c.name)}</b> ima odprta naročila: ${open.map((o) => `<b>${esc(o.num)}</b>`).join(', ')}.</p>
+      <p class="hint">Stranko lahko odstranite, ko so vsa njena naročila izdana ali oddana v zabojnik ${esc(CONFIG.donation)}.</p>`);
+    return;
+  }
+  showModal('Odstrani stranko', `
+    <p>Odstranim stranko <b>${esc(c.name)}</b> · ${esc(c.phone)}?</p>
+    ${c.orders.length ? `<p>Odstranjena bodo tudi njena zaključena naročila (${c.orders.map((o) => esc(o.num)).join(', ')}) in ne bodo več vidna v evidenci.</p>` : ''}
+    <p class="hint">Tega ni mogoče razveljaviti.</p>
+    <div class="actions"><button class="btn danger" id="doRemoveCustomer">Odstrani stranko</button><button class="btn secondary" id="cancelRemove">Prekliči</button></div>`);
+  $('#cancelRemove').onclick = closeModal;
+  $('#doRemoveCustomer').onclick = async () => {
+    const ok = await busy(() => store.deleteCustomer(c).then(() => true));
+    closeModal(); render();
+    if (ok) toast('Stranka odstranjena');
+  };
+}
+
 function confirmDiscard(o) {
   showModal(`Oddaja v ${esc(CONFIG.donation)} · ${esc(o.num)}`, `
     <p><b>${esc(o.name)}</b> · ${esc(o.phone)}</p>
@@ -1947,7 +1977,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
   if (t.dataset.day) {
@@ -1997,6 +2027,11 @@ document.addEventListener('click', (e) => {
       else if (SECTOR === 'narocilo' && route.startsWith('#/narocilo')) { measureKey = c.key; customerQuery = ''; location.hash === '#/narocilo/mere' ? render() : nav('#/narocilo/mere'); }
       else { customerQuery = ''; render(); }
     });
+  }
+  if (t.dataset.removecustomer) {
+    const c = customers().find((x) => x.key === t.dataset.removecustomer);
+    if (c) confirmRemoveCustomer(c);
+    return;
   }
   if (t.dataset.editcustomer) {
     const c = customers().find((x) => x.key === t.dataset.editcustomer);

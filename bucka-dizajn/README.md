@@ -10,7 +10,8 @@ potrebna.
 
 - **Stranke** (prvi zavihek) – vse stranke poslovalnice: ime in priimek, telefon, neobvezna e-pošta in
   opomba. Nova stranka se doda z gumbom **+ Nova**, obstoječo lahko uredite (podatki se posodobijo tudi
-  na njenih naročilih). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumba
+  na njenih naročilih) ali odstranite z gumbom **Odstrani stranko** (s potrditvijo; skupaj z njenimi zaključenimi
+  naročili – stranke z odprtimi naročili ni mogoče odstraniti). Iskanje po imenu, telefonu ali e-pošti, število obiskov in zadnji obisk, gumba
   **Nov prevzem** in **Naročila**. Stranka se prepozna po telefonski številki.
 - **Prevzem** – izbira stranke (ali **+ Nova stranka**), datum prevzema, neobvezni dogovorjeni rok in
   kosi: z gumbom **+ DODAJ NOV KOS** izberete vrsto kosa (hlače, krilo, jakna …), eno ali več storitev

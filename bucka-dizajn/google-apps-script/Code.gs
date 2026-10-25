@@ -129,6 +129,7 @@ function obdelaj_(besedilo) {
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
     let odgovor;
     if (req.action === 'importAll') odgovor = Object.assign({ ok: true }, uvoziVse(sh, req));
+    else if (req.action === 'deleteCustomer') odgovor = Object.assign({ ok: true }, odstraniStranko(sh, req.id, req.orderIds));
     else if (req.action === 'saveCustomer') odgovor = { ok: true, customer: shraniStranko(req.customer || {}) };
     else if (req.action === 'create') odgovor = { ok: true, order: ustvari(sh, req.order || {}) };
     else if (req.action === 'update') odgovor = { ok: true, order: posodobi(sh, req.id, req.patch || {}) };
@@ -456,6 +457,22 @@ function shraniStranko(vnos) {
     else celica.setNumberFormat('@').setValue(k === 'measures' ? (c.measures ? JSON.stringify(c.measures) : '') : c[k]);
   });
   return c;
+}
+
+/** Izbriše stranko (po ID) in njena zaključena naročila; odprtih naročil ne izbriše. */
+function odstraniStranko(sh, id, orderIds) {
+  const ids = new Set(orderIds || []);
+  const narocila = vsa(sh).filter((v) => ids.has(v.o.id));
+  const odprta = narocila.filter((v) => v.o.status === 'sprejeto' || v.o.status === 'gotovo');
+  if (odprta.length) throw new Error('Stranka ima odprta naročila: ' + odprta.map((v) => v.o.num).join(', '));
+  narocila.map((v) => v.vrstica).sort((a, b) => b - a).forEach((r) => sh.deleteRow(r));
+  const st = listStranke();
+  if (id && st.getLastRow() > 1) {
+    const idji = st.getRange(2, glavaStrank_(st).id, st.getLastRow() - 1, 1).getDisplayValues().map((r) => r[0]);
+    const i = idji.indexOf(id);
+    if (i >= 0) st.deleteRow(i + 2);
+  }
+  return { orders: narocila.length };
 }
 
 /** V stolpec »Naročila« zapiše številke naročil vsake stranke (po telefonski številki), npr. »P-0001, N-0002«. */
