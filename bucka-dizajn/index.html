@@ -159,6 +159,11 @@
   .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
   .callout.ok { background: var(--brand-soft); border-color: #b9d1c7; }
   .policy { font-size: .88rem; }
+  .due-h { font-size: 1rem; margin: 16px 0 6px; display: flex; align-items: center; gap: 8px; }
+  details.letter { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; }
+  details.letter > summary { cursor: pointer; list-style: none; font-size: 1.05rem; }
+  details.letter > summary::before { content: '▸ '; color: var(--brand); }
+  details.letter[open] > summary::before { content: '▾ '; }
   .report { width: 100%; border-collapse: collapse; font-size: .92rem; }
   .report td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
   .report tr:first-child td { border-top: 0; }
@@ -250,6 +255,7 @@
   .update-bar button { color: var(--brand); }
   .toast { background: var(--text); }
   /* Prevzemni listek za termo tiskalnik (papir 56 mm, potisk ~48 mm) */
+  .ticket-paper { background: #fff; width: 56mm; padding: 4mm; margin: 0 auto; box-shadow: 0 2px 12px rgba(0,0,0,.15); border-radius: 4px; }
   .ticket { width: 48mm; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #000; font-size: 8.5pt; line-height: 1.3; }
   .ticket .t-shop { font-size: 7.5pt; text-align: center; }
   .ticket .t-shop b { font-size: 10pt; }
@@ -720,7 +726,7 @@ const SECTORS = {
     title: 'Izdelava po naročilu', prefix: 'N-', intakeTab: 'Naročilo', workTab: 'V izdelavi',
     dateLabel: 'Datum naročila', dueLabel: 'Datum izdaje', save: 'Shrani naročilo', newBtn: 'Novo naročilo',
     done: 'Naročilo zabeleženo. Številka naročila:', recent: 'Zadnja naročila', empty: 'Ni naročil v izdelavi.',
-    back: 'Vrni v izdelavo', ticket: 'Naročilo', receivedBox: 'Prevzeto', receivedWord: 'naročeno',
+    back: 'Vrni v izdelavo', ticket: 'Naročilo', receivedBox: 'Naročeno', receivedWord: 'naročeno',
   },
 };
 let SECTOR = 'popravilo';
@@ -820,23 +826,27 @@ function renderIntake(el) {
         <div class="bignum">${esc(o.num)}</div>
         <p><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>${esc(o.pieces)} ${pieces(o.pieces)} · ${sec(o).receivedWord} ${fmt(o.received)}${o.sector === 'narocilo' && o.dueDate ? ` · izdaja ${fmt(o.dueDate)}` : ''}</p>
         <div class="actions" style="justify-content:center">
-          <button class="btn" data-print="${esc(o.id)}">Natisni listek</button>
+          <button class="btn" data-print="${esc(o.id)}">Predogled in tisk listka</button>
           <button class="btn secondary" id="newIntake">${SECTORS[SECTOR].newBtn}</button>
           <button class="btn secondary" data-open="${esc(o.id)}">Odpri naročilo</button>
         </div>
       </div>`;
     return;
   }
+  const ed = editingOrder && inSector(editingOrder) ? editingOrder : null;
   el.innerHTML = `
+    ${ed ? `<div class="callout" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">
+      <span>Urejanje naročila <b>${esc(ed.num)}</b> – dodaj ali popravi kose in klikni »Shrani spremembe«.</span>
+      <button type="button" class="btn small secondary" id="cancelEdit">Prekliči</button></div>` : ''}
     <form class="card" id="intakeForm" novalidate>
       <div class="two">
         <div>
           <label for="iDate">${SECTORS[SECTOR].dateLabel}</label>
-          <input id="iDate" name="received" type="date" value="${today()}" max="${today()}">
+          <input id="iDate" name="received" type="date" value="${ed ? esc(ed.received) : today()}" max="${today()}">
         </div>
         <div>
           <label for="iDue">${SECTORS[SECTOR].dueLabel} <small>(neobvezno)</small></label>
-          <input id="iDue" name="dueDate" type="date" min="${today()}">
+          <input id="iDue" name="dueDate" type="date" value="${ed ? esc(ed.dueDate || '') : ''}">
         </div>
       </div>
       <label for="cSearch">Stranka</label>
@@ -845,12 +855,18 @@ function renderIntake(el) {
       <div id="itemsBox"></div>
       <button type="button" class="btn block secondary" style="margin-top:8px" data-additem>+ DODAJ NOV KOS</button>
       <p class="error" id="formError" hidden></p>
-      <button class="btn block" style="margin-top:14px" id="saveIntake">${SECTORS[SECTOR].save}</button>
+      <button class="btn block" style="margin-top:14px" id="saveIntake">${ed ? 'Shrani spremembe' : SECTORS[SECTOR].save}</button>
     </form>
     `;
-  el.innerHTML = `<div class="cols"><div>${el.innerHTML}</div><div>${recentIntakes()}</div></div>`;
+  el.innerHTML = `<div class="cols"><div>${el.innerHTML}</div><div>${ed ? '' : recentIntakes()}</div></div>`;
 
-  intakeItems = [];
+  if (ed) {
+    intakeKey = digits(ed.phone);
+    // Starejša naročila brez kosov: kosi iz storitev (po skupinah).
+    intakeItems = ed.items && ed.items.length ? ed.items.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note || '' }))
+      : [...new Set((ed.services || []).map((x) => x.group))].map((g) => ({ garment: g, services: ed.services.filter((x) => x.group === g).map((x) => x.name), note: '' }));
+    $('#cancelEdit').onclick = () => { editingOrder = null; intakeKey = null; nav(`#/${SECTOR}/popravilo`); };
+  } else intakeItems = [];
   renderItems();
   const box = $('#itemsBox');
   box.addEventListener('change', (e) => {
@@ -992,32 +1008,53 @@ function renderCustomers(el) {
   if (!matchMedia('(pointer: coarse)').matches) q.focus();
 }
 
+// Priimek = zadnja beseda imena; razvrščanje po slovenski abecedi (č, š, ž).
+const surname = (c) => String(c.name || '').trim().split(/\s+/).pop();
+const bySurname = (a, b) => surname(a).localeCompare(surname(b), 'sl', { sensitivity: 'base' }) || String(a.name).localeCompare(String(b.name), 'sl');
+const openLetters = new Set();
+
+function customerCard(c) {
+  const open = c.orders.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo').length;
+  return `
+    <div class="order">
+      <div class="top">
+        <div><span class="who">${esc(c.name)}</span> · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a></div>
+        ${open ? `<span class="pill caka">Odprto: ${open}</span>` : ''}
+      </div>
+      ${c.note ? `<p class="desc">${esc(c.note)}</p>` : ''}
+      <p class="dates">${c.orders.length ? `${c.orders.length}× pri nas · zadnji obisk ${fmt(c.last)}` : 'še brez naročil'}</p>
+      <div class="actions">
+        <button class="btn small" data-newfor="${esc(c.key)}">${SECTORS[SECTOR].newBtn}</button>
+        ${c.orders.length ? `<button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>` : ''}
+        <a class="btn small secondary" href="${esc(telHref(c.phone))}">Kliči</a>
+        <button class="btn small secondary" data-smscust="${esc(c.key)}">Pošlji SMS</button>
+        ${SECTOR === 'narocilo' ? `<button class="btn small secondary" data-measure="${esc(c.key)}">Mere${measureList(c).length ? ` (${measureList(c).length})` : ''}</button>` : ''}
+        <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
+        <button class="btn small secondary" data-removecustomer="${esc(c.key)}">Odstrani stranko</button>
+      </div>
+    </div>`;
+}
+
 function renderCustomerList() {
   const all = customers();
-  const list = findCustomers(customerQuery);
+  const list = findCustomers(customerQuery).sort(bySurname);
   if (!all.length) { $('#cList').innerHTML = '<p class="empty">Ni še shranjenih strank. Dodaj prvo z gumbom »+ Nova«.</p>'; return; }
-  $('#cList').innerHTML = `<p class="hint" style="margin-bottom:10px">${list.length} od ${all.length} strank</p><div class="cards">` +
-    (list.slice(0, 100).map((c) => {
-      const open = c.orders.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo').length;
-      return `
-        <div class="order">
-          <div class="top">
-            <div><span class="who">${esc(c.name)}</span> · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ''))}">${esc(c.phone)}</a></div>
-            ${open ? `<span class="pill caka">Odprto: ${open}</span>` : ''}
-          </div>
-          ${c.note ? `<p class="desc">${esc(c.note)}</p>` : ''}
-          <p class="dates">${c.orders.length ? `${c.orders.length}× pri nas · zadnji obisk ${fmt(c.last)}` : 'še brez naročil'}</p>
-          <div class="actions">
-            <button class="btn small" data-newfor="${esc(c.key)}">${SECTORS[SECTOR].newBtn}</button>
-            ${c.orders.length ? `<button class="btn small secondary" data-ordersfor="${esc(c.key)}">Naročila</button>` : ''}
-            <a class="btn small secondary" href="${esc(telHref(c.phone))}">Kliči</a>
-            <button class="btn small secondary" data-smscust="${esc(c.key)}">Pošlji SMS</button>
-            ${SECTOR === 'narocilo' ? `<button class="btn small secondary" data-measure="${esc(c.key)}">Mere${measureList(c).length ? ` (${measureList(c).length})` : ''}</button>` : ''}
-            <button class="btn small secondary" data-editcustomer="${esc(c.key)}">Uredi</button>
-            <button class="btn small secondary" data-removecustomer="${esc(c.key)}">Odstrani stranko</button>
-          </div>
-        </div>`;
-    }).join('') + '</div>' + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>'));
+  const groups = new Map();
+  list.forEach((c) => {
+    const l = surname(c).charAt(0).toLocaleUpperCase('sl') || '#';
+    groups.set(l, [...(groups.get(l) || []), c]);
+  });
+  const searching = !!customerQuery.trim();
+  $('#cList').innerHTML = `<p class="hint" style="margin-bottom:10px">${list.length} od ${all.length} strank · razvrščeno po priimku</p>` +
+    [...groups].map(([l, cs]) => `
+      <details class="letter" data-letter="${esc(l)}" ${searching || openLetters.has(l) ? 'open' : ''}>
+        <summary><b>${esc(l)}</b> <span class="hint">(${cs.length})</span></summary>
+        <div class="cards" style="margin-top:8px">${cs.map(customerCard).join('')}</div>
+      </details>`).join('') + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>');
+  $('#cList').querySelectorAll('details.letter').forEach((d) => d.addEventListener('toggle', () => {
+    if (searching) return;
+    if (d.open) openLetters.add(d.dataset.letter); else openLetters.delete(d.dataset.letter);
+  }));
 }
 
 /* ---- Mere (sektor Izdelava po naročilu) – shranjene pri stranki ---- */
@@ -1146,6 +1183,7 @@ async function saveMeasures(c) {
 
 // Kosi pri prevzemu: { garment, services: [ime storitve], note }
 let intakeItems = [];
+let editingOrder = null; // naročilo, ki ga urejamo v obrazcu za oddajo
 const EXTRA_GROUP = 'Manjša popravila'; // storitve te skupine so na voljo pri vsakem kosu
 const CUSTOM_GROUPS = ['Izdelava po naročilu', 'Šivanje po meri']; // izdelki sektorja »Izdelava po naročilu«
 function customProducts() {
@@ -1258,6 +1296,16 @@ async function saveIntake() {
   };
   if (o.received > today()) return err(`${SECTORS[SECTOR].dateLabel} ne more biti v prihodnosti.`);
   if (o.dueDate && o.dueDate < o.received) return err(`${SECTORS[SECTOR].dueLabel} ne more biti pred datumom naročila.`);
+  if (editingOrder) {
+    const ed = editingOrder;
+    const patch = { received: o.received, dueDate: o.dueDate, name: o.name, phone: o.phone, pieces: o.pieces, items: o.items, services: o.services };
+    if (SECTOR === 'narocilo' && digits(ed.phone) !== digits(o.phone)) patch.measures = o.measures;
+    const ok = await busy(() => store.update(ed.id, patch).then(() => true));
+    if (!ok) return;
+    editingOrder = null; intakeKey = null;
+    toast(`Naročilo ${ed.num} posodobljeno`);
+    return nav(`#/${SECTOR}/popravilo`);
+  }
   const saved = await busy(() => store.create(o));
   if (saved) { lastCreated = saved; intakeKey = null; render(); }
 }
@@ -1467,10 +1515,15 @@ function renderOverview(el) {
       <h2>Uredi danes ${total ? `<span class="count">${total}</span>` : ''}</h2>
       <button class="btn small" id="addNote">+ Dodaj</button>
     </div>
-    ${nowNotes.length ? `<div class="cards" style="margin-bottom:10px">${nowNotes.map(noteCard).join('')}</div>` : ''}
-    <div class="cards">${due.map((o) => orderCard(o)).join('')}</div>${total ? '' : '<p class="empty">Danes ni nič za urediti.</p>'}
+    ${[['obvesti', 'Obvesti stranke – pripravljeno za prevzem'], ['opomnik', 'Pošlji prvi opomnik'], ['opozorilo', 'Pošlji drugi opomnik'], ['humana', 'Ni prevzeto v enem mesecu – dobrodelna oddaja']]
+      .map(([k, title]) => { const g = due.filter((o) => stage(o, t).key === k); return g.length ? `
+        <h3 class="due-h">${title} <span class="count">${g.length}</span></h3>
+        <p class="hint" style="margin:0 0 6px">${g.map((o) => esc(o.name)).join(', ')}</p>
+        <div class="cards">${g.map((o) => orderCard(o)).join('')}</div>` : ''; }).join('')}
+    ${nowNotes.length ? `<h3 class="due-h">Zapiski <span class="count">${nowNotes.length}</span></h3><div class="cards">${nowNotes.map(noteCard).join('')}</div>` : ''}
+    ${total ? '' : '<p class="empty">Danes ni nič za urediti.</p>'}
     ${laterNotes.length ? `<details style="margin:10px 0 18px"><summary class="hint" style="cursor:pointer">Zapiski za kasneje (${laterNotes.length})</summary><div class="cards" style="margin-top:8px">${laterNotes.map(noteCard).join('')}</div></details>` : ''}
-    <div class="cols">
+    <div class="cols" style="margin-top:22px">
       <div><h2>Koledar odsotnosti</h2><div id="absences" class="card"></div></div>
       <div><h2>Pregled</h2><div id="stats"></div></div>
     </div>
@@ -1608,7 +1661,8 @@ function cardActions(o, st) {
   const renotify = `<button class="btn small secondary" data-act="notify" data-type="${lastNotice(o)}" data-id="${id}">Ponovno obvesti</button>`;
   let main;
   switch (st.key) {
-    case 'sprejeto': main = `<button class="btn small" data-act="ready" data-id="${id}">Označi kot gotovo</button>`; break;
+    case 'sprejeto': main = `<button class="btn small" data-act="ready" data-id="${id}">Označi kot gotovo</button>
+      <button class="btn small secondary" data-act="edit" data-id="${id}">Uredi naročilo</button>`; break;
     case 'caka':
     case 'opomnjeno':
     case 'zamuda': main = `${issue()} ${renotify}`; break;
@@ -1825,6 +1879,8 @@ function openDetail(o) {
     <ul class="timeline">${steps.map(([l, d]) => `<li class="${d ? 'on' : ''}">${l}${d ? `: <b>${fmt(d)}</b>` : ''}</li>`).join('')}</ul>
     <div class="actions">
       ${editable ? '<button class="btn" id="saveEdit">Shrani spremembe</button>' : ''}
+      ${o.status === 'sprejeto' ? `<button class="btn secondary" data-act="edit" data-id="${esc(o.id)}">Uredi kose</button>` : ''}
+      <button class="btn secondary" data-print="${esc(o.id)}">Predogled listka</button>
       ${o.status === 'gotovo' && !o.reminderDate ? `<button class="btn secondary" id="backToRepair">${sec(o).back}</button>` : ''}
       ${o.status === 'izdano' ? '<button class="btn secondary" id="undoIssue">Razveljavi izdajo</button>' : ''}
     </div>`);
@@ -1856,11 +1912,28 @@ function openDetail(o) {
 
 /* ---------- Prevzemni listek ---------- */
 
+// Predogled listka v oknu, z gumbom za tiskanje.
+function previewTicket(o) {
+  showModal(`Predogled listka · ${esc(o.num)}`, `
+    <div class="ticket-paper">${ticketHtml(o)}</div>
+    <div class="actions" style="justify-content:center;margin-top:12px">
+      <button class="btn" id="doPrint">Natisni</button>
+      <button class="btn secondary" id="closePreview">Zapri</button>
+    </div>`);
+  $('#doPrint').onclick = () => printTicket(o);
+  $('#closePreview').onclick = closeModal;
+}
+
 function printTicket(o) {
+  $('#print').innerHTML = ticketHtml(o);
+  window.print();
+}
+
+function ticketHtml(o) {
   const items = o.items && o.items.length ? o.items.map(itemText)
     : [orderText(o)].filter(Boolean);
   const hours = CONFIG.hours.split(';').map((h) => esc(h.trim())).join('<br>');
-  $('#print').innerHTML = `
+  return `
     <div class="ticket">
       <div class="t-shop">
         <b>${esc(CONFIG.shopName)}</b><br>${esc(CONFIG.address)}<br>tel. ${esc(CONFIG.phone)}
@@ -1898,7 +1971,6 @@ function printTicket(o) {
         ${o.measures ? `<p style="font-size:7.5pt"><b>Mere:</b> ${esc(o.measures)}</p>` : ''}
       </div>
     </div>`;
-  window.print();
 }
 
 /* ---------- Nastavitve ---------- */
@@ -2153,7 +2225,7 @@ async function busy(fn, rethrow = false) {
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-rep], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
-  if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) printTicket(o); return; }
+  if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) previewTicket(o); return; }
   if (t.dataset.day) {
     const n = Number(t.dataset.day);
     statsDay = n === 0 ? today() : addDays(statsDay, n) > today() ? today() : addDays(statsDay, n);
@@ -2230,6 +2302,7 @@ document.addEventListener('click', (e) => {
     case 'notify': return openNotify(o, t.dataset.type);
     case 'issue': return confirmIssue(o);
     case 'discard': return confirmDiscard(o);
+    case 'edit': closeModal(); editingOrder = o; lastCreated = null; return nav(`#/${o.sector || 'popravilo'}/prevzem`);
   }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });

@@ -25,3 +25,10 @@
 **Preglednica**
 - List **Stranke**: prvi stolpec **Naročila** (npr. `P-0001, N-0002`), »Ustvarjeno« v obliki `d.m.yyyy hh:mm AM/PM`.
 - Nov list **Zapiski**; stolpci »Datum oddaje«, »Prvi opomnik«, »Drugi opomnik«.
+
+## Dopolnitve (26. 10. 2026)
+- **Predogled listka** pred tiskanjem (tudi v podrobnostih naročila).
+- **Uredi naročilo** v zavihku V popravilu / V izdelavi: dodajanje in popravljanje kosov, storitev in opomb.
+- **Stranke** po abecedi (po priimku), za vsako črko spustni seznam; iskanje odpre vse zadetke.
+- **Uredi danes** po skupinah: obvesti stranke, prvi opomnik, drugi opomnik, dobrodelna oddaja, zapiski.
+- **Izdelava po naročilu**: popravljena napaka »Manjka opis ali storitev« pri shranjevanju; Pregled enak kot pri popravilih.

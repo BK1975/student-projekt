@@ -147,7 +147,7 @@ function obdelaj_(besedilo) {
 
 function ustvari(sh, vnos) {
   if (!vnos.name || !vnos.phone) throw new Error('Ime in telefon sta obvezna');
-  if (!vnos.description && !(vnos.services || []).length) throw new Error('Manjka opis ali storitev');
+  if (!vnos.description && !(vnos.services || []).length && !(vnos.items || []).length) throw new Error('Manjka opis ali storitev');
   const sector = vnos.sector || 'popravilo';
   const predpona = sector === 'popravilo' ? 'P-' : 'N-';
   const zadnja = vsa(sh).filter((v) => String(v.o.num).startsWith(predpona))
