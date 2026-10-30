@@ -60,7 +60,7 @@ const LIST_ZAPISKI = 'Zapiski';
 const POLJA_ZAPISKI = [['id', 'ID'], ['text', 'Besedilo'], ['date', 'Pokaži od'], ['createdAt', 'Ustvarjeno']];
 const JSON_POLJA = ['services', 'items'];
 const POLJA_STRANKE = [['id', 'ID'], ['name', 'Ime in priimek'], ['phone', 'Telefon'], ['email', 'E-pošta'], ['note', 'Opomba'], ['createdAt', 'Ustvarjeno'],
-  ['measures', 'Mere']]; // mere so shranjene kot JSON
+  ['measures', 'Mere'], ['lastName', 'Priimek']]; // mere so shranjene kot JSON
 // Na listu Stranke se stolpci iščejo po naslovu, zato jih lahko premikate. Stolpec »Naročila« (številke
 // naročil stranke) izpolni skripta sama; »Ustvarjeno« je zapisan kot datum in čas.
 const STOLPEC_NAROCILA = 'Naročila';
@@ -440,7 +440,7 @@ function shraniStranko(vnos) {
   if (vse.some((c) => telefon_(c.phone) === telefon_(vnos.phone) && c.id !== vnos.id)) throw new Error('Stranka s to številko že obstaja');
   const c = {
     id: vnos.id || Utilities.getUuid(),
-    name: String(vnos.name), phone: String(vnos.phone), email: String(vnos.email || ''), note: String(vnos.note || ''),
+    name: String(vnos.name), lastName: String(vnos.lastName || ''), phone: String(vnos.phone), email: String(vnos.email || ''), note: String(vnos.note || ''),
     createdAt: vnos.createdAt || new Date().toISOString(),
   };
   if (vnos.measures) c.measures = vnos.measures;

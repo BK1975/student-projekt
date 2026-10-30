@@ -956,10 +956,16 @@ function formatPhone(raw) {
 
 // Obrazec za novo stranko ali urejanje obstoječe. Po shranjevanju pokliče done(stranka).
 function openCustomerForm(c, done) {
+  // Priimek in ime ločeno; pri starejših strankah brez priimka je priimek zadnja beseda imena.
+  const last = c ? surname(c) : '';
+  const full = String(c?.name || '').trim();
+  const first = !c ? '' : c.lastName && full.endsWith(c.lastName) ? full.slice(0, -c.lastName.length).trim() : full.split(/\s+/).slice(0, -1).join(' ');
   showModal(c ? 'Uredi stranko' : 'Nova stranka', `
     <form id="custForm" novalidate>
-      <label for="fName">Ime in priimek</label>
-      <input id="fName" name="name" value="${esc(c?.name)}" autocomplete="off">
+      <label for="fLast">Priimek</label>
+      <input id="fLast" name="lastName" value="${esc(last)}" autocomplete="off" autocapitalize="words">
+      <label for="fFirst">Ime</label>
+      <input id="fFirst" name="firstName" value="${esc(first)}" autocomplete="off" autocapitalize="words">
       <label for="fPhone">Telefon</label>
       <input id="fPhone" name="phone" type="tel" inputmode="tel" value="${esc(c?.phone)}" placeholder="040 123 456" autocomplete="off">
       <label for="fNote">Opomba <small>(neobvezno)</small></label>
@@ -967,14 +973,17 @@ function openCustomerForm(c, done) {
       <p class="error" id="custError" hidden></p>
       <button class="btn block" style="margin-top:14px" id="saveCustomer">Shrani stranko</button>
     </form>`);
-  $('#fName').focus();
+  $('#fLast').focus();
   $('#fPhone').addEventListener('input', (e) => { e.target.value = formatPhone(e.target.value); });
   $('#saveCustomer').onclick = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData($('#custForm')));
     const err = (m) => { $('#custError').textContent = m; $('#custError').hidden = false; };
-    const next = { name: f.name.trim(), phone: formatPhone(f.phone), note: f.note.trim() };
-    if (!next.name) return err('Vpiši ime in priimek.');
+    const lastName = f.lastName.trim().replace(/\s+/g, ' ');
+    const firstName = f.firstName.trim().replace(/\s+/g, ' ');
+    if (!lastName) return err('Vpiši priimek.');
+    if (!firstName) return err('Vpiši ime.');
+    const next = { name: `${firstName} ${lastName}`, lastName, phone: formatPhone(f.phone), note: f.note.trim() };
     if (digits(next.phone).length < 6) return err('Vpiši telefonsko številko.');
     const key = digits(next.phone);
     const dup = customers().find((x) => x.key === key && x.key !== c?.key);
@@ -1009,7 +1018,7 @@ function renderCustomers(el) {
 }
 
 // Priimek = zadnja beseda imena; razvrščanje po slovenski abecedi (č, š, ž).
-const surname = (c) => String(c.name || '').trim().split(/\s+/).pop();
+const surname = (c) => (c.lastName || (c.record && c.record.lastName) || String(c.name || '').trim().split(/\s+/).pop() || '').trim();
 const bySurname = (a, b) => surname(a).localeCompare(surname(b), 'sl', { sensitivity: 'base' }) || String(a.name).localeCompare(String(b.name), 'sl');
 const openLetters = new Set();
 
