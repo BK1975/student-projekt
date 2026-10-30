@@ -1929,7 +1929,9 @@ function previewTicket(o) {
     <div class="actions" style="justify-content:center;margin-top:12px">
       <button class="btn" id="doPrint">Natisni</button>
       <button class="btn secondary" id="closePreview">Zapri</button>
-    </div>`);
+    </div>
+    ${iosHomeScreen() ? '<p class="hint" style="text-align:center">Odpre se meni za deljenje – izberi <b>Natisni</b> in nato tiskalnik.</p>' : ''}`);
+  if (iosHomeScreen()) ticketImage(o).then((f) => { ticketFiles[o.id] = f; });
   $('#doPrint').onclick = () => printTicket(o);
   $('#closePreview').onclick = closeModal;
 }
@@ -1937,14 +1939,83 @@ function previewTicket(o) {
 // Aplikacija na začetnem zaslonu iPhona (window.print tam ne odpre ničesar): listek odpremo v Safariju,
 // kjer se tiskanje odpre. Podatki listka so v naslovu, ker Safari nima podatkov aplikacije.
 const iosHomeScreen = () => navigator.standalone === true;
+const ticketFiles = {}; // pripravljene slike listkov za deljenje na iPhonu
 const TICKET_FIELDS = ['num', 'sector', 'name', 'phone', 'received', 'dueDate', 'pieces', 'items', 'services', 'description', 'measures'];
 const encodeTicket = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(Object.fromEntries(TICKET_FIELDS.map((k) => [k, o[k]]))))))
   .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const decodeTicket = (s) => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
 
+// Listek kot slika PNG (širina termo papirja 48 mm pri 8 pik/mm, dvojna ločljivost).
+function ticketImage(o) {
+  const W = 768, pad = 16, S = 2;
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d');
+  const font = (px, bold) => `${bold ? 700 : 400} ${px * S}px -apple-system, system-ui, sans-serif`;
+  const ops = [];
+  let y = pad;
+  const wrap = (text, f, max) => {
+    g.font = f;
+    const lines = [];
+    let line = '';
+    String(text).split(/\s+/).forEach((w) => {
+      const t = line ? `${line} ${w}` : w;
+      if (g.measureText(t).width > max && line) { lines.push(line); line = w; } else line = t;
+    });
+    if (line) lines.push(line);
+    return lines;
+  };
+  const text = (t, px, { bold = false, align = 'left', gap = 4, indent = 0 } = {}) => {
+    const f = font(px, bold);
+    wrap(t, f, W - 2 * pad - indent).forEach((ln) => { y += px * S; ops.push(['t', ln, f, align, y, indent]); y += gap; });
+  };
+  const row = (l, v) => { y += 15 * S; ops.push(['r', l, v, y]); y += 6; };
+  const line = (dash) => { y += 10; ops.push(['l', y, dash]); y += 10; };
+  const rows = ticketRows(o);
+  text(CONFIG.shopName, 20, { bold: true, align: 'center' });
+  text(CONFIG.address, 14, { align: 'center' });
+  text(`tel. ${CONFIG.phone}`, 14, { align: 'center' });
+  y += 8; text('Delovni čas', 14, { bold: true, align: 'center' });
+  CONFIG.hours.split(';').forEach((h) => text(h.trim(), 14, { align: 'center' }));
+  y += 10; text(sec(o).ticket.toUpperCase(), 14, { bold: true, align: 'center' });
+  text(o.num, 36, { bold: true, align: 'center', gap: 10 });
+  rows.forEach(([l, v]) => row(l, v));
+  line(true);
+  text('Pogoji prevzema', 13, { bold: true });
+  text(ticketTerms(o), 13, { gap: 3 });
+  y += 14; text('✂ - - - - - - - - - - - - - - - - - - -', 13);
+  y += 6; text(o.num, 30, { bold: true, align: 'center', gap: 10 });
+  rows.forEach(([l, v]) => row(l, v));
+  ticketItems(o).forEach((t, i) => text(`${i + 1}. ${t}`, 14, { indent: 0 }));
+  if (o.measures) text(`Mere: ${o.measures}`, 13);
+  c.width = W; c.height = y + pad * 2;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#000'; g.strokeStyle = '#000';
+  ops.forEach((op) => {
+    if (op[0] === 't') {
+      const [, ln, f, align, yy, indent] = op;
+      g.font = f; g.textAlign = align;
+      g.fillText(ln, align === 'center' ? W / 2 : pad + indent, yy);
+    } else if (op[0] === 'r') {
+      const [, l, v, yy] = op;
+      g.font = font(15, false); g.textAlign = 'left'; g.fillText(l, pad, yy);
+      g.font = font(15, true); g.textAlign = 'right'; g.fillText(v, W - pad, yy);
+    } else {
+      g.setLineDash(op[2] ? [8, 6] : []); g.lineWidth = 2;
+      g.beginPath(); g.moveTo(pad, op[1]); g.lineTo(W - pad, op[1]); g.stroke(); g.setLineDash([]);
+    }
+  });
+  return new Promise((res) => c.toBlob((b) => res(new File([b], `listek-${o.num}.png`, { type: 'image/png' })), 'image/png'));
+}
+
 function printTicket(o) {
   if (iosHomeScreen()) {
-    window.open(`${location.pathname}#/listek/${encodeTicket(o)}`, '_blank');
+    // Slika je pripravljena že ob odprtju predogleda, ker mora deljenje slediti dotiku takoj.
+    const file = ticketFiles[o.id];
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: `Listek ${o.num}` }).catch(() => {});
+    } else {
+      window.open(`${location.pathname}#/listek/${encodeTicket(o)}`, '_blank');
+    }
     return;
   }
   $('#print').innerHTML = ticketHtml(o);
@@ -1966,9 +2037,24 @@ function renderTicketPage(app) {
   $('#pagePrint').onclick = () => { $('#print').innerHTML = ticketHtml(o); window.print(); };
 }
 
+// Vsebina listka (skupna za HTML in sliko za iPhone).
+function ticketRows(o) {
+  return [['Stranka', o.name], ['Telefon', o.phone], [sec(o).dateLabel, fmt(o.received)],
+    ...(o.sector === 'narocilo' && o.dueDate ? [['Datum izdaje', fmt(o.dueDate)]] : []), ['Število kosov', String(o.pieces)]];
+}
+function ticketTerms(o) {
+  const nar = o.sector === 'narocilo';
+  return `${nar ? 'Ko bo vaše naročilo pripravljeno' : 'Ko bodo vaša oblačila pripravljena'}, vas bomo obvestili. ` +
+    `Prevzamete ${nar ? 'ga' : 'jih'} lahko v roku ${CONFIG.pickupWorkDays} delovnih dni od prejema obvestila. ` +
+    'Če boste v tem času odsotni, nam to prosim sporočite, da se dogovorimo glede prevzema. ' +
+    `Po preteku ${CONFIG.pickupWorkDays} dni se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
+    `${nar ? 'Izdelke' : 'Oblačila'}, ki jih ne boste prevzeli v enem mesecu od prejema obvestila, bomo podarili v dobrodelne namene. ` +
+    'Ob prevzemu prinesite ta listek.';
+}
+const ticketItems = (o) => (o.items && o.items.length ? o.items.map(itemText) : [orderText(o)].filter(Boolean));
+
 function ticketHtml(o) {
-  const items = o.items && o.items.length ? o.items.map(itemText)
-    : [orderText(o)].filter(Boolean);
+  const items = ticketItems(o);
   const hours = CONFIG.hours.split(';').map((h) => esc(h.trim())).join('<br>');
   return `
     <div class="ticket">
@@ -1978,32 +2064,15 @@ function ticketHtml(o) {
       </div>
       <div class="t-title">${sec(o).ticket}</div>
       <div class="t-num">${esc(o.num)}</div>
-      <table>
-        <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
-        <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
-        <tr><td>${sec(o).dateLabel}</td><td>${fmt(o.received)}</td></tr>
-        ${o.sector === 'narocilo' && o.dueDate ? `<tr><td>Datum izdaje</td><td>${fmt(o.dueDate)}</td></tr>` : ''}
-        <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
-      </table>
+      <table>${ticketRows(o).map(([l, v]) => `<tr><td>${esc(l)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
       <div class="t-terms">
         <b>Pogoji prevzema</b><br>
-        ${o.sector === 'narocilo' ? 'Ko bo vaše naročilo pripravljeno' : 'Ko bodo vaša oblačila pripravljena'}, vas bomo obvestili.
-        Prevzamete ${o.sector === 'narocilo' ? 'ga' : 'jih'} lahko v roku ${CONFIG.pickupWorkDays} delovnih dni od prejema obvestila.
-        Če boste v tem času odsotni, nam to prosim sporočite, da se dogovorimo glede prevzema.
-        Po preteku ${CONFIG.pickupWorkDays} dni se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €.
-        ${o.sector === 'narocilo' ? 'Izdelke' : 'Oblačila'}, ki jih ne boste prevzeli v enem mesecu od prejema obvestila, bomo podarili v dobrodelne namene.
-        Ob prevzemu prinesite ta listek.
+        ${esc(ticketTerms(o))}
       </div>
       <div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>
       <div class="t-staff">
         <div class="t-num">${esc(o.num)}</div>
-        <table>
-          <tr><td>Stranka</td><td>${esc(o.name)}</td></tr>
-          <tr><td>Telefon</td><td>${esc(o.phone)}</td></tr>
-          <tr><td>${sec(o).dateLabel}</td><td>${fmt(o.received)}</td></tr>
-          ${o.sector === 'narocilo' && o.dueDate ? `<tr><td>Datum izdaje</td><td>${fmt(o.dueDate)}</td></tr>` : ''}
-          <tr><td>Število kosov</td><td>${esc(o.pieces)}</td></tr>
-        </table>
+        <table>${ticketRows(o).map(([l, v]) => `<tr><td>${esc(l)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
         <ol>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
         ${o.measures ? `<p style="font-size:7.5pt"><b>Mere:</b> ${esc(o.measures)}</p>` : ''}
       </div>

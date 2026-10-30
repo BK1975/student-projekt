@@ -35,5 +35,5 @@
 
 ## Dopolnitve (30. 10. 2026)
 - Pri vnosu stranke ločeni polji **Priimek** in **Ime** (v preglednici stolpec »Priimek«).
-- **Tiskanje na iPhonu** iz aplikacije na začetnem zaslonu: listek se odpre v Safariju, kjer tapnete
-  **Natisni** (ali Deli → Natisni) in izberete AirPrint tiskalnik.
+- **Tiskanje na iPhonu** iz aplikacije na začetnem zaslonu: »Natisni« pripravi listek kot sliko in odpre
+  meni za deljenje, kjer izberete **Natisni** in AirPrint tiskalnik.
