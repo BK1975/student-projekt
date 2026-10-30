@@ -32,3 +32,8 @@
 - **Stranke** po abecedi (po priimku), za vsako črko spustni seznam; iskanje odpre vse zadetke.
 - **Uredi danes** po skupinah: obvesti stranke, prvi opomnik, drugi opomnik, dobrodelna oddaja, zapiski.
 - **Izdelava po naročilu**: popravljena napaka »Manjka opis ali storitev« pri shranjevanju; Pregled enak kot pri popravilih.
+
+## Dopolnitve (30. 10. 2026)
+- Pri vnosu stranke ločeni polji **Priimek** in **Ime** (v preglednici stolpec »Priimek«).
+- **Tiskanje na iPhonu** iz aplikacije na začetnem zaslonu: listek se odpre v Safariju, kjer tapnete
+  **Natisni** (ali Deli → Natisni) in izberete AirPrint tiskalnik.
