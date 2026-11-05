@@ -42,3 +42,5 @@
 - Zavihek **Oddaja**: pri vsakem kosu vrstica **Dodatno**, kamor vpišete storitev, ki je ni na seznamu
   (»Dodaj« ali tipka Enter). Dodana storitev je označena kot izbrana; s klikom jo odstranite.
 - Med vrstami kosov je na koncu nova izbira **Drugo** – za kose, ki jih ni na seznamu; storitev vpišete v vrstico **Dodatno**.
+- Zavihek **V popravilu** (in **V izdelavi**): naročila so razdeljena po datumu oddaje; vsak datum je spustni seznam
+  s številom naročil ter številkami in imeni strank (P-0000 ostanejo enake).

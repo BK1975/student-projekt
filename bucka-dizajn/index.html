@@ -1424,10 +1424,24 @@ function renderResults() {
 
 /* ---- V popravilu ---- */
 
+// V popravilu / V izdelavi: naročila po datumu oddaje, vsak datum je spustni seznam.
+const openRepairDays = new Set();
 function renderInRepair(el) {
-  const list = orders.filter((o) => inSector(o) && o.status === 'sprejeto').sort(byDate((o) => o.received));
+  const list = orders.filter((o) => inSector(o) && o.status === 'sprejeto').sort(byDate((o) => o.received + String(o.num).padStart(10, '0')));
+  const days = new Map();
+  list.forEach((o) => days.set(o.received, [...(days.get(o.received) || []), o]));
+  const n = (k) => `${k} ${k === 1 ? 'naročilo' : k === 2 ? 'naročili' : k === 3 || k === 4 ? 'naročila' : 'naročil'}`;
   el.innerHTML = `${sortSwitch()}
-    <div class="cards">${list.map((o) => orderCard(o)).join('')}</div>${list.length ? '' : `<p class="empty">${SECTORS[SECTOR].empty}</p>`}`;
+    ${[...days].map(([d, os]) => `
+      <details class="letter" data-rday="${esc(d)}" ${openRepairDays.has(d) || days.size === 1 ? 'open' : ''}>
+        <summary><b>${esc(dayLabel(d))}</b> <span class="hint">· ${n(os.length)}</span>
+          <span class="hint" style="display:block;font-size:.85rem;margin-left:1.2em">${os.map((o) => `${esc(o.num)} ${esc(o.name)}`).join(', ')}</span></summary>
+        <div class="cards" style="margin-top:8px">${os.map((o) => orderCard(o)).join('')}</div>
+      </details>`).join('')}
+    ${list.length ? '' : `<p class="empty">${SECTORS[SECTOR].empty}</p>`}`;
+  el.querySelectorAll('details[data-rday]').forEach((x) => x.addEventListener('toggle', () => {
+    if (x.open) openRepairDays.add(x.dataset.rday); else openRepairDays.delete(x.dataset.rday);
+  }));
 }
 
 let statsDay = today();
