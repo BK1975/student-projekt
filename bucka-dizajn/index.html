@@ -1250,10 +1250,29 @@ function renderItems() {
       ${it.garment ? `
         <div class="chips" style="margin-top:8px">
           ${servicesFor(it.garment).map((n) => `<button type="button" class="chip ${it.services.includes(n) ? 'on' : ''}" data-itemsvc="${i}" data-name="${esc(n)}">${it.services.includes(n) ? '✓ ' : '+ '}${esc(n)}</button>`).join('')}
+          ${it.services.filter((n) => !servicesFor(it.garment).includes(n)).map((n) => `<button type="button" class="chip on" data-itemsvc="${i}" data-name="${esc(n)}" title="Klikni za odstranitev">✓ ${esc(n)}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
+          <b style="font-size:.88rem;white-space:nowrap">Dodatno:</b>
+          <input data-extrasvc="${i}" placeholder="Vpiši storitev" style="flex:1;margin:0" enterkeyhint="done">
+          <button type="button" class="btn small secondary" data-addsvc="${i}">Dodaj</button>
         </div>` : ''}
       <input data-itemnote="${i}" value="${esc(it.note)}" placeholder="Opomba (npr. skrajšati za 3 cm)" style="margin-top:8px">
     </div>`).join('') || '<p class="hint">Dodaj vsaj en kos.</p>';
 }
+
+// Dodatna storitev, ki je ni na seznamu (vpiše se ročno in se shrani kot izbrana storitev kosa).
+function addExtraService(i) {
+  const input = $(`[data-extrasvc="${i}"]`);
+  const n = input ? input.value.trim().replace(/\s+/g, ' ') : '';
+  if (!n) return input?.focus();
+  const it = intakeItems[i];
+  if (!it.services.includes(n)) it.services = [...it.services, n];
+  renderItems();
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.dataset && e.target.dataset.extrasvc !== undefined) { e.preventDefault(); addExtraService(Number(e.target.dataset.extrasvc)); }
+});
 
 // Vrstice »Skupina; Storitev« (dodatni stolpci, npr. cena, se prezrejo).
 function parseServices(text) {
@@ -2329,7 +2348,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-absent], [data-cal], [data-rep], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-addsvc], [data-absent], [data-cal], [data-rep], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) previewTicket(o); return; }
   if (t.dataset.day) {
@@ -2346,6 +2365,7 @@ document.addEventListener('click', (e) => {
   }
   if ('additem' in t.dataset) { intakeItems.push({ garment: '', services: [], note: '' }); renderItems(); $(`[data-garment="${intakeItems.length - 1}"]`)?.focus(); return; }
   if (t.dataset.removeitem) { intakeItems.splice(Number(t.dataset.removeitem), 1); return renderItems(); }
+  if (t.dataset.addsvc) return addExtraService(Number(t.dataset.addsvc));
   if (t.dataset.itemsvc) {
     const it = intakeItems[Number(t.dataset.itemsvc)];
     const n = t.dataset.name;

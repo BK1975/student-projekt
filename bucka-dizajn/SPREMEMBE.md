@@ -37,3 +37,7 @@
 - Pri vnosu stranke ločeni polji **Priimek** in **Ime** (v preglednici stolpec »Priimek«).
 - **Tiskanje na iPhonu** iz aplikacije na začetnem zaslonu: »Natisni« pripravi listek kot sliko in odpre
   meni za deljenje, kjer izberete **Natisni** in AirPrint tiskalnik.
+
+## Dopolnitev (5. 11. 2026)
+- Zavihek **Oddaja**: pri vsakem kosu vrstica **Dodatno**, kamor vpišete storitev, ki je ni na seznamu
+  (»Dodaj« ali tipka Enter). Dodana storitev je označena kot izbrana; s klikom jo odstranite.
