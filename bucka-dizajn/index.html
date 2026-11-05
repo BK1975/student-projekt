@@ -1206,7 +1206,12 @@ function serviceGroups() {
   serviceList.forEach((x) => { if (!m.has(x.group)) m.set(x.group, []); m.get(x.group).push(x); });
   return [...m];
 }
-const garmentTypes = () => serviceGroups().map(([g]) => g).filter((g) => g !== EXTRA_GROUP && !CUSTOM_GROUPS.includes(g));
+// »Drugo« je vedno zadnja izbira – za kose, ki jih ni na seznamu (storitev se vpiše v vrstico »Dodatno«).
+const OTHER_GARMENT = 'Drugo';
+const garmentTypes = () => {
+  const list = serviceGroups().map(([g]) => g).filter((g) => g !== EXTRA_GROUP && !CUSTOM_GROUPS.includes(g) && g !== OTHER_GARMENT);
+  return [...list, OTHER_GARMENT];
+};
 function servicesFor(garment) {
   const own = serviceList.filter((x) => x.group === garment).map((x) => x.name);
   const extra = serviceList.filter((x) => x.group === EXTRA_GROUP && x.group !== garment).map((x) => x.name);

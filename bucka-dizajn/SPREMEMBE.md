@@ -41,3 +41,4 @@
 ## Dopolnitev (5. 11. 2026)
 - Zavihek **Oddaja**: pri vsakem kosu vrstica **Dodatno**, kamor vpišete storitev, ki je ni na seznamu
   (»Dodaj« ali tipka Enter). Dodana storitev je označena kot izbrana; s klikom jo odstranite.
+- Med vrstami kosov je na koncu nova izbira **Drugo** – za kose, ki jih ni na seznamu; storitev vpišete v vrstico **Dodatno**.
