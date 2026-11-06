@@ -44,3 +44,11 @@
 - Med vrstami kosov je na koncu nova izbira **Drugo** – za kose, ki jih ni na seznamu; storitev vpišete v vrstico **Dodatno**.
 - Zavihek **V popravilu** (in **V izdelavi**): naročila so razdeljena po datumu oddaje; vsak datum je spustni seznam
   s številom naročil ter številkami in imeni strank (P-0000 ostanejo enake).
+
+## Novi roki (od 6. 11. 2026)
+- Prevzem v **8 delovnih dneh** od obvestila »pripravljeno«.
+- Zamudnina **0,5 € za vsak delovni dan od 9. do 16. delovnega dne** (največ 4 €).
+- Po 16. delovnem dnevu (en mesec) aplikacija vpraša za **dobrodelno oddajo**.
+- Prvi opomnik: delovni dan pred rokom; drugi opomnik: 9. delovni dan.
+- Naročila, ki so bila pripravljena pred 6. 11. 2026, ostanejo pri starih rokih (14 delovnih dni, en mesec),
+  ker so stranke že dobile obvestilo s starim rokom.

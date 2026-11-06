@@ -24,10 +24,12 @@ const NASTAVITVE = {
   delovniCas: 'ponedeljek zaprto; torek, četrtek in petek 10.00–14.00; sreda 14.00–18.00',
 
   // Enako kot CONFIG v index.html:
-  rokPrevzemaDelovnihDni: 14, // za prevzem ima stranka toliko delovnih dni od obvestila »gotovo«
-  zamudninaNaDan: 0.5,        // € za vsak delovni dan po roku za prevzem
-  oddajaPoMesecih: 1,         // po toliko mesecih od obvestila »gotovo« neprevzeto oddamo v zabojnik
-  najmanjDniPoRoku: 3,        // oddaja v zabojnik najprej toliko delovnih dni po roku za prevzem
+  rokPrevzemaDelovnihDni: 8,  // za prevzem ima stranka toliko delovnih dni od obvestila »gotovo«
+  zamudninaNaDan: 0.5,        // € za vsak delovni dan po roku (od 9. do 16. delovnega dne)
+  oddajaPoDelovnihDneh: 16,   // po 16. delovnem dnevu (en mesec) neprevzeto podarimo v dobrodelne namene
+  // Naročila, pripravljena pred tem dnem, ostanejo pri starih pravilih:
+  novaPravilaOd: '2026-11-06',
+  stara: { rokPrevzemaDelovnihDni: 14, oddajaPoMesecih: 1, najmanjDniPoRoku: 3 },
   zabojnik: 'Humana',
   delovniDnevi: [2, 3, 4, 5], // dnevi, ko je poslovalnica odprta (0 = nedelja … 6 = sobota)
   // Slovenski dela prosti prazniki se izračunajo sami (tudi velika noč); sem dodajte le izredne proste dni.
@@ -244,7 +246,7 @@ function dnevniPregled() {
   };
   vsa(sh).forEach((v) => {
     const o = v.o;
-    if (o.status === 'gotovo' && o.readyDate) o.deadline = dodajDelovneDni(o.readyDate, NASTAVITVE.rokPrevzemaDelovnihDni);
+    if (o.status === 'gotovo' && o.readyDate) o.deadline = dodajDelovneDni(o.readyDate, rokDni_(o));
     const faza = faza_(o, t);
     const vrsta = VRSTE[faza];
     if (vrsta) {
@@ -282,14 +284,20 @@ function faza_(o, t) {
   return null;
 }
 
+const starapravila_ = (o) => !!o.readyDate && o.readyDate < NASTAVITVE.novaPravilaOd;
+const rokDni_ = (o) => (starapravila_(o) ? NASTAVITVE.stara.rokPrevzemaDelovnihDni : NASTAVITVE.rokPrevzemaDelovnihDni);
+
+// Dobrodelna oddaja: prvi delovni dan po 16. delovnem dnevu (enako kot discardDue v aplikaciji).
 function oddajaOd(o) {
+  if (!starapravila_(o)) return dodajDelovneDni(o.readyDate, NASTAVITVE.oddajaPoDelovnihDneh + 1);
   const d = razcleni(o.readyDate);
   const dan = d.getDate();
   d.setDate(1);
-  d.setMonth(d.getMonth() + NASTAVITVE.oddajaPoMesecih);
+  d.setMonth(d.getMonth() + NASTAVITVE.stara.oddajaPoMesecih);
   d.setDate(Math.min(dan, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
-  return najkasnejsi(odprtOdDne(iso(d)), dodajDelovneDni(o.deadline, NASTAVITVE.najmanjDniPoRoku));
+  return najkasnejsi(odprtOdDne(iso(d)), dodajDelovneDni(o.deadline, NASTAVITVE.stara.najmanjDniPoRoku));
 }
+const zadnjiDanPrevzema_ = (o) => prejsnjiDelovniDan(oddajaOd(o));
 
 function najkasnejsi(a, b) { return a > b ? a : b; }
 
@@ -318,7 +326,7 @@ function sporocilo(vrsta, o, t) {
   if (vrsta === 'ready') {
     return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
       `Po preteku roka se za vsak delovni dan zaračuna zamudnina v višini ${String(NASTAVITVE.zamudninaNaDan).replace('.', ',')} €. ` +
-      `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (${fmt(oddajaOd(o))}), ` +
+      `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (do ${fmt(zadnjiDanPrevzema_(o))}), ` +
       `bomo podarili v dobrodelne namene.` + konec;
   }
   const zamudninaBesedilo = `za vsak delovni dan zaračuna zamudnina v višini ${String(NASTAVITVE.zamudninaNaDan).replace('.', ',')} €`;
@@ -332,7 +340,7 @@ function sporocilo(vrsta, o, t) {
   return (dni && !o.feeWaived
     ? `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}, zato se ${zamudninaBesedilo}; do danes znaša ${evri(dni * NASTAVITVE.zamudninaNaDan)}. `
     : `Pozdravljeni, ${W.your} ${W.waits} na prevzem. `) +
-    `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(oddajaOd(o))}, bomo podarili v dobrodelne namene.` + konec;
+    `${o.sector === 'narocilo' ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(zadnjiDanPrevzema_(o))}, bomo podarili v dobrodelne namene.` + konec;
 }
 
 function posljiStranki(email, zadeva, besedilo) {
@@ -595,7 +603,7 @@ function shraniOdsotnosti(list) {
 function dniZamude(o, t) {
   let n = 0;
   for (let d = dodajDni(o.deadline, 1); d <= t; d = dodajDni(d, 1)) if (jeDelovniDan(d)) n++;
-  return n;
+  return starapravila_(o) ? n : Math.min(n, NASTAVITVE.oddajaPoDelovnihDneh - NASTAVITVE.rokPrevzemaDelovnihDni);
 }
 function dodajDelovneDni(s, n) {
   let x = s;

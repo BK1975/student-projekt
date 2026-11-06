@@ -29,7 +29,7 @@ potrebna.
 **Roki za prevzem in obvestila strankam** (šteje se samo dneve, ko je poslovalnica odprta: torek–petek,
 brez praznikov in brez dni odsotnosti iz koledarja):
 
-1. **Gotovo** – stranka dobi obvestilo: za prevzem ima **14 delovnih dni**, po roku zamudnina
+1. **Gotovo** – stranka dobi obvestilo: za prevzem ima **8 delovnih dni** (od 9. do 16. delovnega dne zamudnina), po roku zamudnina
    **0,5 € za vsak delovni dan**, neprevzeta oblačila po enem mesecu podarimo v dobrodelne namene
    (zabojnik **Humana**).
 2. **Prvi opomnik** – delovni dan pred iztekom roka, z opozorilom, da se po roku zaračuna zamudnina.

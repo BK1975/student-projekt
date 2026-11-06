@@ -304,10 +304,12 @@ const CONFIG = {
   address: 'Ulica Hermana Potočnika 7, 1000 Ljubljana',
   hours: 'ponedeljek zaprto; torek, četrtek in petek 10.00–14.00; sreda 14.00–18.00',
 
-  pickupWorkDays: 14,   // stranka ima za prevzem toliko delovnih dni od obvestila »gotovo«
-  lateFeePerDay: 0.5,   // zamudnina v € za vsak dan po roku (če stranka ne sporoči drugače)
-  discardAfterMonths: 1, // po toliko mesecih od obvestila »gotovo« neprevzeta oblačila oddamo v zabojnik
-  minOpenDaysAfterDeadline: 3, // oddaja v zabojnik najprej toliko delovnih dni po roku (npr. ob praznikih)
+  pickupWorkDays: 8,    // stranka ima za prevzem toliko delovnih dni od obvestila »gotovo«
+  lateFeePerDay: 0.5,   // zamudnina v € za vsak delovni dan po roku (od 9. do 16. delovnega dne)
+  discardWorkDays: 16,  // po 16. delovnem dnevu (en mesec) neprevzeta oblačila podarimo v dobrodelne namene
+  // Naročila, pripravljena pred tem dnem, ostanejo pri starih pravilih (14 delovnih dni, en mesec).
+  newRulesFrom: '2026-11-06',
+  oldRules: { pickupWorkDays: 14, discardAfterMonths: 1, minOpenDaysAfterDeadline: 3 },
   donation: 'Humana',
 
   // Dnevi, ko je poslovalnica odprta – po njih se štejejo roki (0 = nedelja … 6 = sobota).
@@ -489,9 +491,15 @@ function openOnOrAfter(s) {
   while (!isWorkDay(x)) x = addDays(x, 1);
   return x;
 }
-// Oddaja v zabojnik: en mesec po »gotovo« (prvi odprti dan), a ne prej kot nekaj delovnih dni po roku.
-const discardDue = (o) => maxIso(openOnOrAfter(addMonths(o.readyDate, CONFIG.discardAfterMonths)),
-  addWorkDays(o.deadline, CONFIG.minOpenDaysAfterDeadline));
+const oldRules = (o) => !!o.readyDate && o.readyDate < CONFIG.newRulesFrom;
+const pickupDays = (o) => (oldRules(o) ? CONFIG.oldRules.pickupWorkDays : CONFIG.pickupWorkDays);
+// Dobrodelna oddaja: prvi delovni dan po 16. delovnem dnevu od obvestila »gotovo«
+// (stara pravila: en mesec po »gotovo«, a ne prej kot nekaj delovnih dni po roku).
+const discardDue = (o) => (oldRules(o)
+  ? maxIso(openOnOrAfter(addMonths(o.readyDate, CONFIG.oldRules.discardAfterMonths)), addWorkDays(o.deadline, CONFIG.oldRules.minOpenDaysAfterDeadline))
+  : addWorkDays(o.readyDate, CONFIG.discardWorkDays + 1));
+// Zadnji dan, ko stranka še lahko prevzame (z zamudnino).
+const lastPickupDay = (o) => prevWorkDay(discardDue(o));
 // Drugi opomnik: prvi odprti dan po roku za prevzem (približno teden pred dobrodelno oddajo).
 const secondReminderDue = (o) => openOnOrAfter(addDays(o.deadline, 1));
 const dayWord = (n) => (n === 1 ? 'dan' : n === 2 ? 'dneva' : n < 5 ? 'dnevi' : 'dni');
@@ -502,11 +510,12 @@ function lateDays(o, t = today()) {
   const end = o.handedDate || t;
   let n = 0;
   for (let d = addDays(o.deadline, 1); d <= end; d = addDays(d, 1)) if (isWorkDay(d)) n++;
-  return n;
+  // Nova pravila: zamudnina največ za dni od 9. do 16. delovnega dne.
+  return oldRules(o) ? n : Math.min(n, CONFIG.discardWorkDays - CONFIG.pickupWorkDays);
 }
 // Rok za prevzem se izračuna sproti, da upošteva tudi kasneje vpisane odsotnosti.
 function refreshDeadlines() {
-  orders.forEach((o) => { if (o.status === 'gotovo' && o.readyDate) o.deadline = addWorkDays(o.readyDate, CONFIG.pickupWorkDays); });
+  orders.forEach((o) => { if (o.status === 'gotovo' && o.readyDate) o.deadline = addWorkDays(o.readyDate, pickupDays(o)); });
 }
 const lateFee = (o, t) => (o.feeWaived ? 0 : lateDays(o, t) * CONFIG.lateFeePerDay);
 
@@ -540,7 +549,7 @@ function message(type, o) {
   if (type === 'ready') {
     return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
       `Po preteku roka se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
-      `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (${fmt(discardDue(o))}), ` +
+      `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (do ${fmt(lastPickupDay(o))}), ` +
       `bomo podarili v dobrodelne namene.` + end;
   }
   const feeText = `za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €`;
@@ -554,7 +563,7 @@ function message(type, o) {
   return (late
     ? `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}, zato se ${feeText}; do danes znaša ${money(lateFee(o))}. `
     : `Pozdravljeni, ${W.your} ${W.waits} na prevzem. `) +
-    `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(discardDue(o))}, bomo podarili v dobrodelne namene.` + end;
+    `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(lastPickupDay(o))}, bomo podarili v dobrodelne namene.` + end;
 }
 const MSG_TITLE = { ready: 'Obvestilo: pripravljeno na prevzem', reminder: 'Prvi opomnik', warning: 'Drugi opomnik' };
 // Drugi opomnik se zapiše v polje warnDate (prej »opozorilo pred oddajo«).
@@ -1671,7 +1680,8 @@ function policyHtml() {
     <ul>
       <li>Ko ${nar ? 'je naročilo pripravljeno' : 'so oblačila pripravljena'}, stranko obvestimo.</li>
       <li>Za prevzem ima <b>${CONFIG.pickupWorkDays} delovnih dni</b>. Delovni dnevi so dnevi, ko je poslovalnica odprta (brez praznikov in dni odsotnosti).</li>
-      <li>${nar ? 'Naročila, ki niso prevzeta' : 'Oblačila, ki niso prevzeta'} v enem mesecu, oddamo v dobrodelne namene.</li>
+      <li>Od ${CONFIG.pickupWorkDays + 1}. do ${CONFIG.discardWorkDays}. delovnega dne se za vsak delovni dan zaračuna zamudnina ${money(CONFIG.lateFeePerDay)}.</li>
+      <li>${nar ? 'Naročila, ki niso prevzeta' : 'Oblačila, ki niso prevzeta'} v enem mesecu (${CONFIG.discardWorkDays} delovnih dni), oddamo v dobrodelne namene.</li>
     </ul>`;
 }
 
@@ -1780,7 +1790,7 @@ function openSms(o, c) {
 
 async function markReady(id) {
   const t = today();
-  const o = await busy(() => store.update(id, { status: 'gotovo', readyDate: t, deadline: addWorkDays(t, CONFIG.pickupWorkDays) }));
+  const o = await busy(() => store.update(id, { status: 'gotovo', readyDate: t, deadline: addWorkDays(t, CONFIG.pickupWorkDays) })); // novo naročilo: nova pravila
   render();
   if (o) openNotify(o, 'ready');
 }
@@ -2085,8 +2095,8 @@ function ticketTerms(o) {
   return `${nar ? 'Ko bo vaše naročilo pripravljeno' : 'Ko bodo vaša oblačila pripravljena'}, vas bomo obvestili. ` +
     `Prevzamete ${nar ? 'ga' : 'jih'} lahko v roku ${CONFIG.pickupWorkDays} delovnih dni od prejema obvestila. ` +
     'Če boste v tem času odsotni, nam to prosim sporočite, da se dogovorimo glede prevzema. ' +
-    `Po preteku ${CONFIG.pickupWorkDays} dni se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
-    `${nar ? 'Izdelke' : 'Oblačila'}, ki jih ne boste prevzeli v enem mesecu od prejema obvestila, bomo podarili v dobrodelne namene. ` +
+    `Od ${CONFIG.pickupWorkDays + 1}. do ${CONFIG.discardWorkDays}. delovnega dne se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
+    `${nar ? 'Izdelke' : 'Oblačila'}, ki jih ne boste prevzeli v enem mesecu (${CONFIG.discardWorkDays} delovnih dni) od prejema obvestila, bomo podarili v dobrodelne namene. ` +
     'Ob prevzemu prinesite ta listek.';
 }
 const ticketItems = (o) => (o.items && o.items.length ? o.items.map(itemText) : [orderText(o)].filter(Boolean));
