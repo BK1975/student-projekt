@@ -161,7 +161,7 @@
   .policy { font-size: .88rem; }
   .due-h { font-size: 1rem; margin: 16px 0 6px; display: flex; align-items: center; gap: 8px; }
   details.letter { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; }
-  details.letter > summary { cursor: pointer; list-style: none; font-size: 1.05rem; }
+  details.letter > summary { cursor: pointer; list-style: none; font-size: 1.05rem; margin: 0; }
   details.letter > summary::before { content: '▸ '; color: var(--brand); }
   details.letter[open] > summary::before { content: '▾ '; }
   .report { width: 100%; border-collapse: collapse; font-size: .92rem; }
@@ -1433,22 +1433,37 @@ function renderResults() {
 
 /* ---- V popravilu ---- */
 
-// V popravilu / V izdelavi: naročila po datumu oddaje, vsak datum je spustni seznam.
+// V popravilu / V izdelavi: naročila po datumu oddaje, vsak datum je spustni seznam; iskanje po imenu, telefonu ali številki.
 const openRepairDays = new Set();
+let repairQuery = '';
 function renderInRepair(el) {
-  const list = orders.filter((o) => inSector(o) && o.status === 'sprejeto').sort(byDate((o) => o.received + String(o.num).padStart(10, '0')));
+  el.innerHTML = `${sortSwitch()}
+    <div class="search"><input id="rq" type="search" placeholder="Išči po imenu, telefonu ali številki (npr. P-0012) …" value="${esc(repairQuery)}" autocomplete="off"></div>
+    <div id="repairList"></div>`;
+  const q = $('#rq');
+  q.addEventListener('input', () => { repairQuery = q.value; renderRepairList(); });
+  renderRepairList();
+}
+
+function renderRepairList() {
+  const box = $('#repairList');
+  if (!box) return;
+  const all = orders.filter((o) => inSector(o) && o.status === 'sprejeto');
+  const qn = norm(repairQuery.trim());
+  const qd = digits(repairQuery);
+  const list = all.filter((o) => !qn || norm(o.name).includes(qn) || norm(o.num).includes(qn) || (qd.length >= 3 && digits(o.phone).includes(qd)))
+    .sort(byDate((o) => o.received + String(o.num).padStart(10, '0')));
   const days = new Map();
   list.forEach((o) => days.set(o.received, [...(days.get(o.received) || []), o]));
   const n = (k) => `${k} ${k === 1 ? 'naročilo' : k === 2 ? 'naročili' : k === 3 || k === 4 ? 'naročila' : 'naročil'}`;
-  el.innerHTML = `${sortSwitch()}
-    ${[...days].map(([d, os]) => `
-      <details class="letter" data-rday="${esc(d)}" ${openRepairDays.has(d) || days.size === 1 ? 'open' : ''}>
-        <summary><b>${esc(dayLabel(d))}</b> <span class="hint">· ${n(os.length)}</span>
-          <span class="hint" style="display:block;font-size:.85rem;margin-left:1.2em">${os.map((o) => `${esc(o.num)} ${esc(o.name)}`).join(', ')}</span></summary>
+  box.innerHTML = [...days].map(([d, os]) => `
+      <details class="letter" data-rday="${esc(d)}" ${qn || openRepairDays.has(d) || days.size === 1 ? 'open' : ''}>
+        <summary><b>${esc(dayLabel(d))}</b> <span class="hint">· ${n(os.length)}</span></summary>
         <div class="cards" style="margin-top:8px">${os.map((o) => orderCard(o)).join('')}</div>
-      </details>`).join('')}
-    ${list.length ? '' : `<p class="empty">${SECTORS[SECTOR].empty}</p>`}`;
-  el.querySelectorAll('details[data-rday]').forEach((x) => x.addEventListener('toggle', () => {
+      </details>`).join('') +
+    (all.length ? (list.length ? '' : '<p class="empty">Ni zadetkov.</p>') : `<p class="empty">${SECTORS[SECTOR].empty}</p>`);
+  box.querySelectorAll('details[data-rday]').forEach((x) => x.addEventListener('toggle', () => {
+    if (qn) return;
     if (x.open) openRepairDays.add(x.dataset.rday); else openRepairDays.delete(x.dataset.rday);
   }));
 }

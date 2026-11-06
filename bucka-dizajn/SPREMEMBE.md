@@ -52,3 +52,4 @@
 - Prvi opomnik: delovni dan pred rokom; drugi opomnik: 9. delovni dan.
 - Naročila, ki so bila pripravljena pred 6. 11. 2026, ostanejo pri starih rokih (14 delovnih dni, en mesec),
   ker so stranke že dobile obvestilo s starim rokom.
+- **V popravilu**: iskalno polje (ime, telefon ali številka P-0000); datumi kažejo samo dan in število naročil.
