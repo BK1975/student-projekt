@@ -68,3 +68,4 @@
 ## Listek (21. 11. 2026)
 - Ločeno tiskanje: **Natisni za poslovalnico** (številka, stranka, kosi) in **Natisni za stranko** (podatki poslovalnice in pogoji prevzema).
 - Novo besedilo pogojev prevzema.
+- **Stranke**: pod seznamom so »Zadnje dodane stranke« (zadnje tri); klik stranko takoj poišče.

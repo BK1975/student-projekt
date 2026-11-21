@@ -159,6 +159,7 @@
   .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
   .callout.ok { background: var(--brand-soft); border-color: #b9d1c7; }
   .policy { font-size: .88rem; }
+  .recent-row:last-child { border-bottom: 0 !important; }
   .credit { margin: 48px auto 12px; padding-top: 18px; border-top: 1px solid var(--line); text-align: center; max-width: 420px; }
   .credit span { display: block; font-size: .68rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .credit img { height: 64px; width: auto; display: inline-block; }
@@ -1068,11 +1069,27 @@ function renderCustomerList() {
       <details class="letter" data-letter="${esc(l)}" ${searching || openLetters.has(l) ? 'open' : ''}>
         <summary><b>${esc(l)}</b> <span class="hint">(${cs.length})</span></summary>
         <div class="cards" style="margin-top:8px">${cs.map(customerCard).join('')}</div>
-      </details>`).join('') + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>');
+      </details>`).join('') + (list.length ? '' : '<p class="empty">Ni zadetkov.</p>') + (searching ? '' : recentCustomers(all));
+  $('#cList').querySelectorAll('[data-recent]').forEach((x) => x.addEventListener('click', () => {
+    customerQuery = x.dataset.recent; $('#cq').value = customerQuery; renderCustomerList();
+  }));
   $('#cList').querySelectorAll('details.letter').forEach((d) => d.addEventListener('toggle', () => {
     if (searching) return;
     if (d.open) openLetters.add(d.dataset.letter); else openLetters.delete(d.dataset.letter);
   }));
+}
+
+// Zadnje tri dodane stranke (pod seznamom, za hiter dostop); klik poišče stranko.
+function recentCustomers(all) {
+  const recent = all.filter((c) => c.createdAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
+  if (!recent.length) return '';
+  return `<h2 style="margin-top:22px">Zadnje dodane stranke</h2>
+    <div class="card" style="padding:4px 14px">
+      ${recent.map((c) => `
+        <button type="button" class="recent-row" data-recent="${esc(c.phone)}" style="display:flex;width:100%;justify-content:space-between;gap:8px;padding:9px 0;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:inherit;color:inherit">
+          <span><b>${esc(c.name)}</b> · ${esc(c.phone)}</span><small class="hint">${fmt(c.createdAt.slice(0, 10))}</small>
+        </button>`).join('')}
+    </div>`;
 }
 
 /* ---- Mere (sektor Izdelava po naročilu) – shranjene pri stranki ---- */
