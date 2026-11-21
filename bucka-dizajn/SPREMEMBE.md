@@ -58,3 +58,9 @@
 - **Dnevni pregled**: spustni seznami Oddano, Gotovo in Izdano (ta dan).
 - **Mesečno poročilo** v vrstnem redu: obiskanost, nove stranke, oddano, gotovo, izdano, prihodek, zamudnine,
   oddano v dobrodelne namene, najbolj in najmanj obiskan dan, najpogostejše storitve; brez sivih pojasnil.
+
+## Izdaja in sporočila (21. 11. 2026)
+- Nova kratka besedila: obvestilo o prevzemu, 1. opomnik (dva delovna dneva pred rokom) in 2. opomnik
+  (dva delovna dneva pred zadnjim dnem za prevzem).
+- **Izdaja**: naročila po datumu oddaje v spustnih seznamih (kot V popravilu), iskanje; v vrstici zavihkov
+  število naročil, ki čakajo na izdajo.

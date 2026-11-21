@@ -306,6 +306,7 @@ const CONFIG = {
   phone: '040 428 401',
   address: 'Ulica Hermana Potočnika 7, 1000 Ljubljana',
   hours: 'ponedeljek zaprto; torek, četrtek in petek 10.00–14.00; sreda 14.00–18.00',
+  hoursShort: 'tor, čet in pet 10h–14h, sre 14h–18h', // v SMS sporočilih
 
   pickupWorkDays: 8,    // stranka ima za prevzem toliko delovnih dni od obvestila »gotovo«
   lateFeePerDay: 0.5,   // zamudnina v € za vsak delovni dan po roku (od 9. do 16. delovnega dne)
@@ -487,7 +488,7 @@ function prevWorkDay(s) {
   while (!isWorkDay(x)) x = addDays(x, -1);
   return x;
 }
-const reminderDue = (o) => prevWorkDay(o.deadline);             // opomnik: delovni dan pred rokom
+const reminderDue = (o) => prevWorkDay(prevWorkDay(o.deadline)); // prvi opomnik: dva delovna dneva pred rokom
 // Prvi dan od s naprej, ko je poslovalnica odprta.
 function openOnOrAfter(s) {
   let x = s;
@@ -503,8 +504,8 @@ const discardDue = (o) => (oldRules(o)
   : addWorkDays(o.readyDate, CONFIG.discardWorkDays + 1));
 // Zadnji dan, ko stranka še lahko prevzame (z zamudnino).
 const lastPickupDay = (o) => prevWorkDay(discardDue(o));
-// Drugi opomnik: prvi odprti dan po roku za prevzem (približno teden pred dobrodelno oddajo).
-const secondReminderDue = (o) => openOnOrAfter(addDays(o.deadline, 1));
+// Drugi opomnik: dva delovna dneva pred zadnjim dnem za prevzem (a šele po roku za prevzem).
+const secondReminderDue = (o) => maxIso(prevWorkDay(prevWorkDay(lastPickupDay(o))), openOnOrAfter(addDays(o.deadline, 1)));
 const dayWord = (n) => (n === 1 ? 'dan' : n === 2 ? 'dneva' : n < 5 ? 'dnevi' : 'dni');
 // Zamudnina: koledarski dnevi po roku za prevzem (do danes oziroma do izdaje).
 // Zamudnina: delovni dnevi (ko je poslovalnica odprta) po roku za prevzem – do danes oziroma do izdaje.
@@ -543,30 +544,20 @@ function stage(o, t = today()) {
 /* ---------- Sporočila strankam ---------- */
 
 function message(type, o) {
-  const end = `\n\nDelovni čas: ${CONFIG.hours}.\n${CONFIG.shopName}, ${CONFIG.address}, tel. ${CONFIG.phone}`;
+  const end = `\nOdprto: ${CONFIG.hoursShort}.\n${CONFIG.shopName}, ${CONFIG.phone}`;
   const nar = o.sector === 'narocilo';
-  // Besede za popravila (oblačila, množina) ali naročila (naročilo, ednina).
-  const W = nar
-    ? { your: `vaše naročilo (št. ${o.num})`, yours: `vašega naročila (št. ${o.num})`, isReady: 'je pripravljeno', them: 'ga', waits: 'še vedno čaka', left: 'Izdelke, ki niso prevzeti', leftLow: 'izdelke, ki niso prevzeti' }
-    : { your: `vaša oblačila (št. ${o.num})`, yours: `vaših oblačil (št. ${o.num})`, isReady: 'so pripravljena', them: 'jih', waits: 'še vedno čakajo', left: 'Oblačila, ki niso prevzeta', leftLow: 'oblačila, ki niso prevzeta' };
+  const what = `${nar ? 'naročilo' : 'oblačila'} (št. ${o.num})`;
+  const fee = `${String(CONFIG.lateFeePerDay).replace('.', ',')} €/delovni dan`;
   if (type === 'ready') {
-    return `Pozdravljeni, ${W.your} ${W.isReady} na prevzem. Prevzamete ${W.them} lahko do ${fmt(o.deadline)}. ` +
-      `Po preteku roka se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
-      `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli v enem mesecu od prejema obvestila (do ${fmt(lastPickupDay(o))}), ` +
-      `bomo podarili v dobrodelne namene.` + end;
+    return `Pozdravljeni, ${what} vas ${nar ? 'čaka' : 'čakajo'} na prevzem do ${fmt(o.deadline)}. Če ste odsotni, nas obvestite. ` +
+      `Po tem dnevu se zaračuna zamudnina ${fee}, po ${fmt(lastPickupDay(o))} pa ${nar ? 'naročilo' : 'oblačila'} podarimo v dobrodelne namene.` + end;
   }
-  const feeText = `za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €`;
   if (type === 'reminder') {
-    const when = addDays(today(), 1) === o.deadline ? `jutri (${fmt(o.deadline)})` : dayLabel(o.deadline).toLowerCase();
-    return `Pozdravljeni, opominjamo vas, da je ${when} zadnji dan za prevzem ${W.yours} brez zamudnine. ` +
-      `Po preteku roka se ${feeText}.` + end;
+    return `Pozdravljeni, pošiljamo vam 1. opomnik, da ${what} lahko prevzamete do ${fmt(o.deadline)}. ` +
+      `Po tem dnevu se zaračuna zamudnina ${fee}.` + end;
   }
-  // Drugi opomnik (po roku za prevzem): zamudnina in datum dobrodelne oddaje.
-  const late = lateDays(o) > 0 && !o.feeWaived;
-  return (late
-    ? `Pozdravljeni, rok za prevzem ${W.yours} je potekel ${fmt(o.deadline)}, zato se ${feeText}; do danes znaša ${money(lateFee(o))}. `
-    : `Pozdravljeni, ${W.your} ${W.waits} na prevzem. `) +
-    `${nar ? 'Naročilo, ki ga' : 'Oblačila, ki jih'} ne boste prevzeli do ${fmt(lastPickupDay(o))}, bomo podarili v dobrodelne namene.` + end;
+  return `Pozdravljeni, pošiljamo vam 2. opomnik, da ${what} lahko prevzamete do ${fmt(lastPickupDay(o))}. ` +
+    `Po tem dnevu ${nar ? 'ga' : 'jih'} bomo podarili v dobrodelne namene.` + end;
 }
 const MSG_TITLE = { ready: 'Obvestilo: pripravljeno na prevzem', reminder: 'Prvi opomnik', warning: 'Drugi opomnik' };
 // Drugi opomnik se zapiše v polje warnDate (prej »opozorilo pred oddajo«).
@@ -798,13 +789,14 @@ function renderRepair(app, tab) {
   const S = SECTORS[SECTOR];
   const due = orders.filter((o) => inSector(o) && stage(o).due).length + notes.filter((n) => !n.date || n.date <= today()).length;
   const inRepair = orders.filter((o) => inSector(o) && o.status === 'sprejeto').length;
+  const toIssue = orders.filter((o) => inSector(o) && o.status === 'gotovo').length;
   const tabs = [['stranke', 'Stranke'], ...(SECTOR === 'narocilo' ? [['mere', 'Mere']] : []),
     ['prevzem', S.intakeTab], ['popravilo', S.workTab], ['izdaja', 'Izdaja'], ['pregled', 'Pregled']];
   app.innerHTML = `
     <button class="back" data-nav="#/">‹ Sektorji</button>
     <h1>${S.title}</h1>
     <div class="tabs" role="tablist">
-      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/${SECTOR}/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}${id === 'popravilo' && inRepair ? `<span class="count" style="background:var(--brand)">${inRepair}</span>` : ''}</button>`).join('')}
+      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${tab === id}" data-nav="#/${SECTOR}/${id}">${label}${id === 'pregled' && due ? `<span class="count">${due}</span>` : ''}${id === 'popravilo' && inRepair ? `<span class="count" style="background:var(--brand)">${inRepair}</span>` : ''}${id === 'izdaja' && toIssue ? `<span class="count" style="background:var(--brand)">${toIssue}</span>` : ''}</button>`).join('')}
     </div>
     <div id="tab"></div>`;
   const el = $('#tab');
@@ -1381,59 +1373,23 @@ function sortSwitch() {
 
 /* ---- Izdaja stranki ---- */
 
+// Izdaja: gotova naročila po datumu oddaje (enako kot V popravilu); iskanje najde tudi že izdana naročila.
+const openIssueDays = new Set();
 function renderIssue(el) {
-  el.innerHTML = `
-    <div class="search"><input id="q" type="search" placeholder="Išči po imenu, telefonu ali številki …" value="${esc(searchQuery)}" autocomplete="off"></div>
-    ${sortSwitch()}
+  el.innerHTML = `${sortSwitch()}
+    <div class="search"><input id="q" type="search" placeholder="Išči po imenu, telefonu ali številki (npr. P-0012) …" value="${esc(searchQuery)}" autocomplete="off"></div>
     <div id="results"></div>`;
   const q = $('#q');
   q.addEventListener('input', () => { searchQuery = q.value; renderResults(); });
   renderResults();
-  if (!matchMedia('(pointer: coarse)').matches) q.focus();
 }
 
 function renderResults() {
   const el = $('#results');
-  const q = norm(searchQuery.trim());
-  const qd = digits(searchQuery);
-  const repairs = orders.filter((o) => inSector(o));
-  let list;
-  if (!q) {
-    list = repairs.filter((o) => o.status === 'gotovo');
-  } else {
-    list = repairs.filter((o) =>
-      norm(o.name).includes(q) || norm(o.num).includes(q) || norm(orderText(o)).includes(q) || (qd.length >= 3 && digits(o.phone).includes(qd)));
-  }
-  // Združi po stranki (telefon).
-  const groups = new Map();
-  for (const o of list) {
-    const k = digits(o.phone);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(o);
-  }
-  if (!groups.size) {
-    el.innerHTML = `<p class="empty">${q ? 'Ni zadetkov.' : 'Trenutno ni gotovih oblačil, ki bi čakala na izdajo.'}</p>`;
-    return;
-  }
-  // Datum skupine: zadnji (ali prvi) datum prevzema med naročili stranke.
-  const groupDate = (g) => g.map((o) => o.received).sort()[sortNewest ? g.length - 1 : 0];
-  const sorted = [...groups.values()].sort(byDate(groupDate));
-  let lastHead = '';
-  el.innerHTML = (q ? '' : `<p class="hint" style="margin-bottom:10px">${SECTOR === 'narocilo' ? 'Gotova naročila, ki čakajo na izdajo, razvrščena po datumu naročila' : 'Gotova oblačila, ki čakajo na izdajo, razvrščena po datumu oddaje'}. Za iskanje vpiši ime ali telefon.</p>`) +
-    sorted.map((g) => {
-      g.sort(byDate((o) => o.received));
-      const open = g.filter((o) => o.status === 'sprejeto' || o.status === 'gotovo');
-      const closed = g.filter((o) => !open.includes(o));
-      const d = groupDate(g);
-      const head = d !== lastHead ? `<h2 style="margin-top:18px">${esc(dayLabel(d))}</h2>` : '';
-      lastHead = d;
-      return `${head}
-        <div class="customer">
-          <div class="head"><b>${esc(g[0].name)}</b><a href="tel:${esc(g[0].phone.replace(/[^\d+]/g, ''))}">${esc(g[0].phone)}</a></div>
-          ${open.map((o) => orderCard(o, { hideWho: true })).join('') || '<p class="hint">Ni odprtih naročil.</p>'}
-          ${closed.length ? `<details><summary>Zaključena (${closed.length})</summary>${closed.map((o) => orderCard(o, { hideWho: true })).join('')}</details>` : ''}
-        </div>`;
-    }).join('');
+  if (!el) return;
+  const searching = !!searchQuery.trim();
+  const all = orders.filter((o) => inSector(o) && (searching ? o.status !== 'sprejeto' : o.status === 'gotovo'));
+  renderDayGroups(el, all, searchQuery, openIssueDays, SECTOR === 'narocilo' ? 'Trenutno ni gotovih naročil, ki bi čakala na izdajo.' : 'Trenutno ni gotovih oblačil, ki bi čakala na izdajo.');
 }
 
 /* ---- Pregled ---- */
@@ -1456,22 +1412,27 @@ function renderRepairList() {
   const box = $('#repairList');
   if (!box) return;
   const all = orders.filter((o) => inSector(o) && o.status === 'sprejeto');
-  const qn = norm(repairQuery.trim());
-  const qd = digits(repairQuery);
+  renderDayGroups(box, all, repairQuery, openRepairDays, SECTORS[SECTOR].empty);
+}
+
+// Naročila, razvrščena po datumu oddaje; vsak datum je spustni seznam (odprt pri iskanju ali če je en sam).
+function renderDayGroups(box, all, query, openSet, emptyText) {
+  const qn = norm(query.trim());
+  const qd = digits(query);
   const list = all.filter((o) => !qn || norm(o.name).includes(qn) || norm(o.num).includes(qn) || (qd.length >= 3 && digits(o.phone).includes(qd)))
     .sort(byDate((o) => o.received + String(o.num).padStart(10, '0')));
   const days = new Map();
   list.forEach((o) => days.set(o.received, [...(days.get(o.received) || []), o]));
   const n = (k) => `${k} ${k === 1 ? 'naročilo' : k === 2 ? 'naročili' : k === 3 || k === 4 ? 'naročila' : 'naročil'}`;
   box.innerHTML = [...days].map(([d, os]) => `
-      <details class="letter" data-rday="${esc(d)}" ${qn || openRepairDays.has(d) || days.size === 1 ? 'open' : ''}>
+      <details class="letter" data-rday="${esc(d)}" ${qn || openSet.has(d) || days.size === 1 ? 'open' : ''}>
         <summary><b>${esc(dayLabel(d))}</b> <span class="hint">· ${n(os.length)}</span></summary>
         <div class="cards" style="margin-top:8px">${os.map((o) => orderCard(o)).join('')}</div>
       </details>`).join('') +
-    (all.length ? (list.length ? '' : '<p class="empty">Ni zadetkov.</p>') : `<p class="empty">${SECTORS[SECTOR].empty}</p>`);
+    (all.length ? (list.length ? '' : '<p class="empty">Ni zadetkov.</p>') : `<p class="empty">${emptyText}</p>`);
   box.querySelectorAll('details[data-rday]').forEach((x) => x.addEventListener('toggle', () => {
     if (qn) return;
-    if (x.open) openRepairDays.add(x.dataset.rday); else openRepairDays.delete(x.dataset.rday);
+    if (x.open) openSet.add(x.dataset.rday); else openSet.delete(x.dataset.rday);
   }));
 }
 
