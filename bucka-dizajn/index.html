@@ -1416,7 +1416,7 @@ function sortSwitch() {
 
 /* ---- Izdaja stranki ---- */
 
-// Izdaja: gotova naročila po datumu oddaje (enako kot V popravilu); iskanje najde tudi že izdana naročila.
+// Izdaja: gotova naročila po roku za prevzem (spustni seznami kot V popravilu); iskanje najde tudi že izdana naročila.
 const openIssueDays = new Set();
 function renderIssue(el) {
   el.innerHTML = `${sortSwitch()}
@@ -1432,7 +1432,8 @@ function renderResults() {
   if (!el) return;
   const searching = !!searchQuery.trim();
   const all = orders.filter((o) => inSector(o) && (searching ? o.status !== 'sprejeto' : o.status === 'gotovo'));
-  renderDayGroups(el, all, searchQuery, openIssueDays, SECTOR === 'narocilo' ? 'Trenutno ni gotovih naročil, ki bi čakala na izdajo.' : 'Trenutno ni gotovih oblačil, ki bi čakala na izdajo.');
+  renderDayGroups(el, all, searchQuery, openIssueDays, SECTOR === 'narocilo' ? 'Trenutno ni gotovih naročil, ki bi čakala na izdajo.' : 'Trenutno ni gotovih oblačil, ki bi čakala na izdajo.',
+    (o) => o.deadline || (o.readyDate ? addWorkDays(o.readyDate, pickupDays(o)) : o.received), 'Rok za prevzem:');
 }
 
 /* ---- Pregled ---- */
@@ -1458,18 +1459,18 @@ function renderRepairList() {
   renderDayGroups(box, all, repairQuery, openRepairDays, SECTORS[SECTOR].empty);
 }
 
-// Naročila, razvrščena po datumu oddaje; vsak datum je spustni seznam (odprt pri iskanju ali če je en sam).
-function renderDayGroups(box, all, query, openSet, emptyText) {
+// Naročila, razvrščena po datumu (privzeto datum oddaje); vsak datum je spustni seznam (odprt pri iskanju ali če je en sam).
+function renderDayGroups(box, all, query, openSet, emptyText, dateOf = (o) => o.received, prefix = '') {
   const qn = norm(query.trim());
   const qd = digits(query);
   const list = all.filter((o) => !qn || norm(o.name).includes(qn) || norm(o.num).includes(qn) || (qd.length >= 3 && digits(o.phone).includes(qd)))
-    .sort(byDate((o) => o.received + String(o.num).padStart(10, '0')));
+    .sort(byDate((o) => dateOf(o) + String(o.num).padStart(10, '0')));
   const days = new Map();
-  list.forEach((o) => days.set(o.received, [...(days.get(o.received) || []), o]));
+  list.forEach((o) => days.set(dateOf(o), [...(days.get(dateOf(o)) || []), o]));
   const n = (k) => `${k} ${k === 1 ? 'naročilo' : k === 2 ? 'naročili' : k === 3 || k === 4 ? 'naročila' : 'naročil'}`;
   box.innerHTML = [...days].map(([d, os]) => `
       <details class="letter" data-rday="${esc(d)}" ${qn || openSet.has(d) || days.size === 1 ? 'open' : ''}>
-        <summary><b>${esc(dayLabel(d))}</b> <span class="hint">· ${n(os.length)}</span></summary>
+        <summary>${prefix ? `<span class="hint">${prefix}</span> ` : ''}<b>${esc(dayLabel(d))}</b> <span class="hint">· ${n(os.length)}</span></summary>
         <div class="cards" style="margin-top:8px">${os.map((o) => orderCard(o)).join('')}</div>
       </details>`).join('') +
     (all.length ? (list.length ? '' : '<p class="empty">Ni zadetkov.</p>') : `<p class="empty">${emptyText}</p>`);

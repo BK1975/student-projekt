@@ -75,3 +75,4 @@
 - Nov seznam kosov in storitev: Manjša popravila, Hlače, Krila in obleke, Majice in srajce, Jakne in plašči, Bunde,
   Dom in tekstil (Zavese, Prti, Posteljnina), Drugo; izdelava po naročilu: Oblačila in Dom.
 - Seznam se ob prvem zagonu nove različice samodejno zamenja (urejate ga v Nastavitve → Storitve).
+- **Izdaja**: naročila so razvrščena po **roku za prevzem** (spustni seznam za vsak rok).
