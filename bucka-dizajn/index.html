@@ -638,7 +638,12 @@ const store = {
     refreshDeadlines();
   },
   async saveServices(list) {
-    if (this.remote()) await this.call('saveServices', { services: list });
+    // V preglednico v delih po 20, da gre vsaka zahteva po krajši poti (GET).
+    if (this.remote()) {
+      for (let i = 0; i < Math.max(list.length, 1); i += 20) {
+        await this.call(i ? 'appendServices' : 'saveServices', { services: list.slice(i, i + 20) });
+      }
+    }
     else if (!lsSet(SERVICES_KEY, list)) throw new Error('Shranjevanje ni uspelo');
     serviceList = list;
   },

@@ -130,6 +130,7 @@ function obdelaj_(besedilo) {
     if (req.action === 'list') return json({ ok: true, orders: vsa(sh).map((v) => v.o), services: preberiStoritve(), customers: preberiStranke(), absences: odsotnosti(), notes: preberiZapiske() });
     if (req.action === 'saveAbsences') { shraniOdsotnosti(req.absences || []); return json({ ok: true }); }
     if (req.action === 'saveServices') { shraniStoritve(req.services || []); return json({ ok: true }); }
+    if (req.action === 'appendServices') { dodajStoritve(req.services || []); return json({ ok: true }); }
     if (req.action === 'saveNote') return json({ ok: true, note: shraniZapisek(req.note || {}) });
     if (req.action === 'deleteNote') { izbrisiZapisek(req.id); return json({ ok: true }); }
     let odgovor;
@@ -500,6 +501,14 @@ function shraniStoritve(list) {
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
   const vrstice = list.filter((x) => x.group && x.name).map((x) => [String(x.group), String(x.name)]);
   if (vrstice.length) sh.getRange(2, 1, vrstice.length, 2).setValues(vrstice);
+}
+
+// Nadaljevanje dolgega seznama storitev (aplikacija ga pošlje v delih).
+function dodajStoritve(list) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(LIST_STORITVE);
+  if (!sh) throw new Error('Ni lista Storitve – zaženite funkcijo nastavi');
+  const vrstice = list.filter((x) => x.group && x.name).map((x) => [String(x.group), String(x.name)]);
+  if (vrstice.length) sh.getRange(sh.getLastRow() + 1, 1, vrstice.length, 2).setValues(vrstice);
 }
 
 function zapisi(sh, vrstica, o) {
