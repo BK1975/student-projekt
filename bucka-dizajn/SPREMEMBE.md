@@ -53,3 +53,8 @@
 - Naročila, ki so bila pripravljena pred 6. 11. 2026, ostanejo pri starih rokih (14 delovnih dni, en mesec),
   ker so stranke že dobile obvestilo s starim rokom.
 - **V popravilu**: iskalno polje (ime, telefon ali številka P-0000); datumi kažejo samo dan in število naročil.
+
+## Pregled (21. 11. 2026)
+- **Dnevni pregled**: spustni seznami Oddano, Gotovo in Izdano (ta dan).
+- **Mesečno poročilo** v vrstnem redu: obiskanost, nove stranke, oddano, gotovo, izdano, prihodek, zamudnine,
+  oddano v dobrodelne namene, najbolj in najmanj obiskan dan, najpogostejše storitve; brez sivih pojasnil.

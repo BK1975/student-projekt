@@ -1526,20 +1526,19 @@ function renderReport() {
       <button class="btn small secondary" data-rep="1" aria-label="Naslednji mesec" ${reportMonth >= today().slice(0, 7) ? 'disabled' : ''}>›</button>
     </div>
     <table class="report">
-      ${row(nar ? 'Naročeno' : 'Oddano v popravilo', r.received)}
-      ${row('Pripravljeno za prevzem', r.ready)}
-      ${row('Izdano strankam', r.handed)}
-      ${row('Oddano v dobrodelne namene', r.donated)}
+      <tr><td>Obiskanost</td><td style="text-align:right"><b>${r.visitors}</b></td></tr>
       <tr><td>Nove stranke</td><td style="text-align:right"><b>${r.newCustomers}</b></td></tr>
-      <tr><td>Prihodek ${nar ? 'naročil' : 'popravil'} <small class="hint">(vpisane cene)</small></td><td style="text-align:right"><b>${money(r.prices)}</b></td></tr>
+      ${row(nar ? 'Naročeno' : 'Oddano', r.received)}
+      ${row('Gotovo', r.ready)}
+      ${row('Izdano', r.handed)}
+      <tr><td>Prihodek</td><td style="text-align:right"><b>${money(r.prices)}</b></td></tr>
       <tr><td>Zamudnine</td><td style="text-align:right"><b>${money(r.fees)}</b></td></tr>
-      <tr><td>Obiski <small class="hint">(oddaje in prevzemi)</small></td><td style="text-align:right"><b>${r.visitors}</b></td></tr>
+      ${row('Oddano v dobrodelne namene', r.donated)}
       <tr><td>Najbolj obiskan dan</td><td style="text-align:right">${r.most && r.most[1] ? dayTxt(r.most) : '–'}</td></tr>
       <tr><td>Najmanj obiskan dan</td><td style="text-align:right">${r.least && r.days.length > 1 ? dayTxt(r.least) : '–'}</td></tr>
     </table>
     ${r.top.length ? `<p style="margin:12px 0 4px"><b>${nar ? 'Najpogostejši izdelki' : 'Najpogostejše storitve'}</b></p>
-      <ol class="hint" style="margin:0;padding-left:20px">${r.top.map(([n, c]) => `<li>${esc(n)} – ${c}×</li>`).join('')}</ol>` : ''}
-    <p class="hint" style="margin-top:10px">Prihodek je vsota cen, vpisanih pri izdanih naročilih (cene so sicer v blagajni). Obiski štejejo stranke, ki so ta dan oddale ali prevzele naročilo; upoštevani so dnevi, ko je bila poslovalnica odprta.</p>`;
+      <ol style="margin:0;padding-left:20px">${r.top.map(([n, c]) => `<li>${esc(n)} – ${c}×</li>`).join('')}</ol>` : ''}`;
 }
 
 /* ---- Zapiski (lastni opomniki v »Uredi danes«, npr. »kupi zadrge«) ---- */
@@ -1604,7 +1603,7 @@ function renderOverview(el) {
     ${laterNotes.length ? `<details style="margin:10px 0 18px"><summary class="hint" style="cursor:pointer">Zapiski za kasneje (${laterNotes.length})</summary><div class="cards" style="margin-top:8px">${laterNotes.map(noteCard).join('')}</div></details>` : ''}
     <div class="cols" style="margin-top:22px">
       <div><h2>Koledar odsotnosti</h2><div id="absences" class="card"></div></div>
-      <div><h2>Pregled</h2><div id="stats"></div></div>
+      <div><h2>Dnevni pregled</h2><div id="stats"></div></div>
     </div>
     <h2>Mesečno poročilo</h2><div id="report" class="card"></div>
     <div class="card policy" style="margin-top:20px">${policyHtml()}</div>`;
@@ -1649,14 +1648,13 @@ function renderAbsences() {
     ${inMonth.length ? `<p class="hint">Odsotnost ta mesec: ${inMonth.map((a) => fmt(a)).join(', ')}</p>` : ''}`;
 }
 
-// Evidenca za en dan: stranke, katerih oblačila so bila ta dan oddana, v popravilu ali gotova.
+// Dnevni pregled: stranke, ki so ta dan oddale, katerih oblačila so bila gotova in ki so jih prevzele.
 function dayStats(day) {
   const repairs = orders.filter((o) => inSector(o));
-  const gone = (o) => (o.handedDate && o.handedDate <= day) || (o.discardedDate && o.discardedDate <= day);
   return {
     received: repairs.filter((o) => o.received === day),
-    inRepair: repairs.filter((o) => o.received <= day && (!o.readyDate || o.readyDate > day) && !gone(o)),
     ready: repairs.filter((o) => o.readyDate === day),
+    handed: repairs.filter((o) => o.status === 'izdano' && o.handedDate === day),
   };
 }
 
@@ -1689,9 +1687,9 @@ function renderStats() {
     </div>
     <p style="margin:0 0 8px;font-weight:600">${esc(dayLabel(day))}</p>
     <div style="display:grid;gap:8px">
-      ${box(SECTORS[SECTOR].workTab, st.inRepair)}
-      ${box('Gotovo', st.ready)}
       ${box(SECTORS[SECTOR].receivedBox, st.received)}
+      ${box('Gotovo', st.ready)}
+      ${box('Izdano', st.handed)}
     </div>`;
   $('#statsDay').addEventListener('change', (e) => { if (e.target.value) { statsDay = e.target.value > today() ? today() : e.target.value; renderStats(); } });
 }
