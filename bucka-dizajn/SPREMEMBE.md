@@ -64,3 +64,7 @@
   (dva delovna dneva pred zadnjim dnem za prevzem).
 - **Izdaja**: naročila po datumu oddaje v spustnih seznamih (kot V popravilu), iskanje; v vrstici zavihkov
   število naročil, ki čakajo na izdajo.
+
+## Listek (21. 11. 2026)
+- Ločeno tiskanje: **Natisni za poslovalnico** (številka, stranka, kosi) in **Natisni za stranko** (podatki poslovalnice in pogoji prevzema).
+- Novo besedilo pogojev prevzema.

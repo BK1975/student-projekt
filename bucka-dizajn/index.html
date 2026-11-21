@@ -1952,16 +1952,22 @@ function openDetail(o) {
 /* ---------- Prevzemni listek ---------- */
 
 // Predogled listka v oknu, z gumbom za tiskanje.
+// Predogled: listek za poslovalnico in listek za stranko se tiskata ločeno.
 function previewTicket(o) {
   showModal(`Predogled listka · ${esc(o.num)}`, `
-    <div class="ticket-paper">${ticketHtml(o)}</div>
+    <p class="hint" style="text-align:center;margin:0 0 6px">Za poslovalnico</p>
+    <div class="ticket-paper">${ticketHtml(o, 'staff')}</div>
+    <p class="hint" style="text-align:center;margin:14px 0 6px">Za stranko</p>
+    <div class="ticket-paper">${ticketHtml(o, 'customer')}</div>
     <div class="actions" style="justify-content:center;margin-top:12px">
-      <button class="btn" id="doPrint">Natisni</button>
+      <button class="btn" id="printStaff">Natisni za poslovalnico</button>
+      <button class="btn" id="printCustomer">Natisni za stranko</button>
       <button class="btn secondary" id="closePreview">Zapri</button>
     </div>
     ${iosHomeScreen() ? '<p class="hint" style="text-align:center">Odpre se meni za deljenje – izberi <b>Natisni</b> in nato tiskalnik.</p>' : ''}`);
-  if (iosHomeScreen()) ticketImage(o).then((f) => { ticketFiles[o.id] = f; });
-  $('#doPrint').onclick = () => printTicket(o);
+  if (iosHomeScreen()) ['staff', 'customer'].forEach((part) => ticketImage(o, part).then((f) => { ticketFiles[`${o.id}:${part}`] = f; }));
+  $('#printStaff').onclick = () => printTicket(o, 'staff');
+  $('#printCustomer').onclick = () => printTicket(o, 'customer');
   $('#closePreview').onclick = closeModal;
 }
 
@@ -1975,7 +1981,7 @@ const encodeTicket = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(Obje
 const decodeTicket = (s) => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
 
 // Listek kot slika PNG (širina termo papirja 48 mm pri 8 pik/mm, dvojna ločljivost).
-function ticketImage(o) {
+function ticketImage(o, part = 'both') {
   const W = 768, pad = 16, S = 2;
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
@@ -2000,22 +2006,27 @@ function ticketImage(o) {
   const row = (l, v) => { y += 15 * S; ops.push(['r', l, v, y]); y += 6; };
   const line = (dash) => { y += 10; ops.push(['l', y, dash]); y += 10; };
   const rows = ticketRows(o);
-  text(CONFIG.shopName, 20, { bold: true, align: 'center' });
-  text(CONFIG.address, 14, { align: 'center' });
-  text(`tel. ${CONFIG.phone}`, 14, { align: 'center' });
-  y += 8; text('Delovni čas', 14, { bold: true, align: 'center' });
-  CONFIG.hours.split(';').forEach((h) => text(h.trim(), 14, { align: 'center' }));
-  y += 10; text(sec(o).ticket.toUpperCase(), 14, { bold: true, align: 'center' });
-  text(o.num, 36, { bold: true, align: 'center', gap: 10 });
-  rows.forEach(([l, v]) => row(l, v));
-  line(true);
-  text('Pogoji prevzema', 13, { bold: true });
-  text(ticketTerms(o), 13, { gap: 3 });
-  y += 14; text('✂ - - - - - - - - - - - - - - - - - - -', 13);
-  y += 6; text(o.num, 30, { bold: true, align: 'center', gap: 10 });
-  rows.forEach(([l, v]) => row(l, v));
-  ticketItems(o).forEach((t, i) => text(`${i + 1}. ${t}`, 14, { indent: 0 }));
-  if (o.measures) text(`Mere: ${o.measures}`, 13);
+  if (part !== 'staff') {
+    text(CONFIG.shopName, 20, { bold: true, align: 'center' });
+    text(CONFIG.address, 14, { align: 'center' });
+    text(`tel. ${CONFIG.phone}`, 14, { align: 'center' });
+    y += 8; text('Delovni čas', 14, { bold: true, align: 'center' });
+    CONFIG.hours.split(';').forEach((h) => text(h.trim(), 14, { align: 'center' }));
+    y += 10; text(sec(o).ticket.toUpperCase(), 14, { bold: true, align: 'center' });
+    text(o.num, 36, { bold: true, align: 'center', gap: 10 });
+    rows.forEach(([l, v]) => row(l, v));
+    line(true);
+    text('Pogoji prevzema', 13, { bold: true });
+    text(ticketTerms(o), 13, { gap: 3 });
+  }
+  if (part === 'both') { y += 14; text('✂ - - - - - - - - - - - - - - - - - - -', 13); y += 6; }
+  if (part !== 'customer') {
+    if (part === 'staff') text('ZA POSLOVALNICO', 14, { bold: true, align: 'center' });
+    text(o.num, 30, { bold: true, align: 'center', gap: 10 });
+    rows.forEach(([l, v]) => row(l, v));
+    ticketItems(o).forEach((t, i) => text(`${i + 1}. ${t}`, 14, { indent: 0 }));
+    if (o.measures) text(`Mere: ${o.measures}`, 13);
+  }
   c.width = W; c.height = y + pad * 2;
   g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
   g.fillStyle = '#000'; g.strokeStyle = '#000';
@@ -2036,34 +2047,35 @@ function ticketImage(o) {
   return new Promise((res) => c.toBlob((b) => res(new File([b], `listek-${o.num}.png`, { type: 'image/png' })), 'image/png'));
 }
 
-function printTicket(o) {
+function printTicket(o, part = 'both') {
   if (iosHomeScreen()) {
     // Slika je pripravljena že ob odprtju predogleda, ker mora deljenje slediti dotiku takoj.
-    const file = ticketFiles[o.id];
+    const file = ticketFiles[`${o.id}:${part}`];
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
       navigator.share({ files: [file], title: `Listek ${o.num}` }).catch(() => {});
     } else {
-      window.open(`${location.pathname}#/listek/${encodeTicket(o)}`, '_blank');
+      window.open(`${location.pathname}#/listek/${encodeTicket(o)}~${part}`, '_blank');
     }
     return;
   }
-  $('#print').innerHTML = ticketHtml(o);
+  $('#print').innerHTML = ticketHtml(o, part);
   window.print();
 }
 
 // Samostojna stran z listkom (odpre se v Safariju iz aplikacije na začetnem zaslonu iPhona).
 function renderTicketPage(app) {
   let o;
-  try { o = decodeTicket(route.slice('#/listek/'.length)); } catch (e) { app.innerHTML = '<p class="empty">Listka ni mogoče prebrati.</p>'; return; }
+  const [data, part = 'both'] = route.slice('#/listek/'.length).split('~');
+  try { o = decodeTicket(data); } catch (e) { app.innerHTML = '<p class="empty">Listka ni mogoče prebrati.</p>'; return; }
   o.items = o.items || []; o.services = o.services || [];
   app.innerHTML = `
     <h1>Listek ${esc(o.num)}</h1>
-    <div class="ticket-paper">${ticketHtml(o)}</div>
+    <div class="ticket-paper">${ticketHtml(o, part)}</div>
     <div class="actions" style="justify-content:center;margin-top:14px">
       <button class="btn" id="pagePrint">Natisni</button>
     </div>
     <p class="hint" style="text-align:center">Če se okno za tiskanje ne odpre, tapni <b>Deli</b> (kvadrat s puščico) → <b>Natisni</b>.</p>`;
-  $('#pagePrint').onclick = () => { $('#print').innerHTML = ticketHtml(o); window.print(); };
+  $('#pagePrint').onclick = () => { $('#print').innerHTML = ticketHtml(o, part); window.print(); };
 }
 
 // Vsebina listka (skupna za HTML in sliko za iPhone).
@@ -2073,39 +2085,40 @@ function ticketRows(o) {
 }
 function ticketTerms(o) {
   const nar = o.sector === 'narocilo';
-  return `${nar ? 'Ko bo vaše naročilo pripravljeno' : 'Ko bodo vaša oblačila pripravljena'}, vas bomo obvestili. ` +
-    `Prevzamete ${nar ? 'ga' : 'jih'} lahko v roku ${CONFIG.pickupWorkDays} delovnih dni od prejema obvestila. ` +
-    'Če boste v tem času odsotni, nam to prosim sporočite, da se dogovorimo glede prevzema. ' +
-    `Od ${CONFIG.pickupWorkDays + 1}. do ${CONFIG.discardWorkDays}. delovnega dne se za vsak delovni dan zaračuna zamudnina v višini ${String(CONFIG.lateFeePerDay).replace('.', ',')} €. ` +
-    `${nar ? 'Izdelke' : 'Oblačila'}, ki jih ne boste prevzeli v enem mesecu (${CONFIG.discardWorkDays} delovnih dni) od prejema obvestila, bomo podarili v dobrodelne namene. ` +
-    'Ob prevzemu prinesite ta listek.';
+  return `${nar ? 'O pripravljenem naročilu' : 'O pripravljenih oblačilih'} vas bomo obvestili. ` +
+    `Prosimo, da ${nar ? 'ga' : 'jih'} prevzamete v ${CONFIG.pickupWorkDays} delovnih dneh (če ste odsotni, nas o tem obvestite). ` +
+    `Po ${CONFIG.pickupWorkDays}. delovnem dnevu se zaračuna zamudnina ${String(CONFIG.lateFeePerDay).replace('.', ',')} €/delovni dan. ` +
+    `${nar ? 'Naročila' : 'Oblačila'}, ki ne bodo prevzeta v ${CONFIG.discardWorkDays} delovnih dneh, bodo podarjena v dobrodelne namene.`;
 }
 const ticketItems = (o) => (o.items && o.items.length ? o.items.map(itemText) : [orderText(o)].filter(Boolean));
 
-function ticketHtml(o) {
+// part: 'customer' (listek za stranko), 'staff' (za poslovalnico) ali 'both' (oba, z odrezom).
+function ticketHtml(o, part = 'both') {
   const items = ticketItems(o);
   const hours = CONFIG.hours.split(';').map((h) => esc(h.trim())).join('<br>');
-  return `
-    <div class="ticket">
+  const rows = `<table>${ticketRows(o).map(([l, v]) => `<tr><td>${esc(l)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`;
+  const customer = `
       <div class="t-shop">
         <b>${esc(CONFIG.shopName)}</b><br>${esc(CONFIG.address)}<br>tel. ${esc(CONFIG.phone)}
         <div style="margin-top:1.5mm"><b style="font-size:7.5pt">Delovni čas</b><br>${hours}</div>
       </div>
       <div class="t-title">${sec(o).ticket}</div>
       <div class="t-num">${esc(o.num)}</div>
-      <table>${ticketRows(o).map(([l, v]) => `<tr><td>${esc(l)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
+      ${rows}
       <div class="t-terms">
         <b>Pogoji prevzema</b><br>
         ${esc(ticketTerms(o))}
-      </div>
-      <div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>
+      </div>`;
+  const staff = `
       <div class="t-staff">
+        ${part === 'staff' ? '<div class="t-title" style="margin-top:0">Za poslovalnico</div>' : ''}
         <div class="t-num">${esc(o.num)}</div>
-        <table>${ticketRows(o).map(([l, v]) => `<tr><td>${esc(l)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
+        ${rows}
         <ol>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
         ${o.measures ? `<p style="font-size:7.5pt"><b>Mere:</b> ${esc(o.measures)}</p>` : ''}
-      </div>
-    </div>`;
+      </div>`;
+  return `<div class="ticket">${part === 'staff' ? staff : part === 'customer' ? customer
+    : `${customer}<div class="t-cut">✂ - - - - - - - - - - - - - - - - - - - - -</div>${staff}`}</div>`;
 }
 
 /* ---------- Nastavitve ---------- */
