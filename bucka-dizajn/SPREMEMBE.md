@@ -69,3 +69,9 @@
 - Ločeno tiskanje: **Natisni za poslovalnico** (številka, stranka, kosi) in **Natisni za stranko** (podatki poslovalnice in pogoji prevzema).
 - Novo besedilo pogojev prevzema.
 - **Stranke**: pod seznamom so »Zadnje dodane stranke« (zadnje tri); klik stranko takoj poišče.
+
+## Kosi in storitve (21. 11. 2026)
+- Pri vsakem kosu gumba **− / +** za število enakih kosov (npr. 2× Hlače – Krajšanje).
+- Nov seznam kosov in storitev: Manjša popravila, Hlače, Krila in obleke, Majice in srajce, Jakne in plašči, Bunde,
+  Dom in tekstil (Zavese, Prti, Posteljnina), Drugo; izdelava po naročilu: Oblačila in Dom.
+- Seznam se ob prvem zagonu nove različice samodejno zamenja (urejate ga v Nastavitve → Storitve).

@@ -159,6 +159,10 @@
   .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
   .callout.ok { background: var(--brand-soft); border-color: #b9d1c7; }
   .policy { font-size: .88rem; }
+  .qty { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+  .qty button { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid #f3b6d4; background: #fff; color: var(--brand); font-size: 1.1rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; }
+  .qty button:disabled { opacity: .35; cursor: default; }
+  .qty b { min-width: 2.2em; text-align: center; }
   .recent-row:last-child { border-bottom: 0 !important; }
   .credit { margin: 48px auto 12px; padding-top: 18px; border-top: 1px solid var(--line); text-align: center; max-width: 420px; }
   .credit span { display: block; font-size: .68rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
@@ -325,101 +329,98 @@ const CONFIG = {
 
 // Začetni seznam storitev po ceniku Bucka Dizajn (brez cen – cene so v blagajni). Urejate ga v aplikaciji (Nastavitve → Storitve).
 const DEFAULT_SERVICES = [
-  // Hlače
-  { group: 'Hlače', name: 'Krajšanje hlač strojno' },
-  { group: 'Hlače', name: 'Krajšanje hlač jersey' },
-  { group: 'Hlače', name: 'Krajšanje hlač (razporek, zavihek, trak, elastika)' },
-  { group: 'Hlače', name: 'Krajšanje hlač original rob' },
-  { group: 'Hlače', name: 'Krajšanje hlač skriti rob' },
-  { group: 'Hlače', name: 'Krajšanje hlač nataknjen rob' },
-  { group: 'Hlače', name: 'Ožanje ali širjenje hlač v pasu' },
-  { group: 'Hlače', name: 'Ožanje hlač jeans v pasu' },
-  { group: 'Hlače', name: 'Ožanje ali širjenje hlačnice' },
-  { group: 'Hlače', name: 'Menjava skrite zadrge do 20 cm' },
-  { group: 'Hlače', name: 'Menjava skrite zadrge nad 20 cm' },
-  { group: 'Hlače', name: 'Menjava zadrge' },
-  { group: 'Hlače', name: 'Menjava zadrge jeans' },
-  { group: 'Hlače', name: 'Menjava gumba' },
-  { group: 'Hlače', name: 'Menjava elastike v pasu' },
-  { group: 'Hlače', name: 'Krpanje lukenj' },
-  { group: 'Hlače', name: 'Menjava žepov' },
-  { group: 'Hlače', name: 'Krajšanje pasu' },
-  // Krilo
-  { group: 'Krilo', name: 'Ožanje ali širjenje krila (zadrga, dolžina)' },
-  { group: 'Krilo', name: 'Krajšanje (klasično krilo s podlogo)' },
-  { group: 'Krilo', name: 'Daljšanje (klasično krilo s podlogo)' },
-  { group: 'Krilo', name: 'Krajšanje, brez podloge (strojno)' },
-  { group: 'Krilo', name: 'Daljšanje, brez podloge (strojno)' },
-  { group: 'Krilo', name: 'Krajšanje (plise, več gub)' },
-  { group: 'Krilo', name: 'Menjava podloge (strankina podloga)' },
-  { group: 'Krilo', name: 'Menjava skrite zadrge' },
-  { group: 'Krilo', name: 'Menjava zadrge' },
-  { group: 'Krilo', name: 'Menjava kovinske zadrge' },
-  { group: 'Krilo', name: 'Izdelava podloge (strankina podloga)' },
-  { group: 'Krilo', name: 'Odstranitev pasu' },
-  // Jakna
-  { group: 'Jakna', name: 'Krajšanje dolžine (moška, ženska)' },
-  { group: 'Jakna', name: 'Krajšanje rokavov brez gumbov' },
-  { group: 'Jakna', name: 'Krajšanje rokavov z gumbi' },
-  { group: 'Jakna', name: 'Menjava podloge, brez žepov (strankina podloga)' },
-  { group: 'Jakna', name: 'Menjava podloge z žepi (strankina podloga)' },
-  { group: 'Jakna', name: 'Menjava podloge usnjena jakna (strankina podloga)' },
-  { group: 'Jakna', name: 'Ožanje' },
-  // Plašč
-  { group: 'Plašč', name: 'Krajšanje dolžine' },
-  { group: 'Plašč', name: 'Menjava podloge brez žepov (strankina podloga)' },
-  { group: 'Plašč', name: 'Menjava podloge z žepi (strankina podloga)' },
-  { group: 'Plašč', name: 'Krajšanje rokavov' },
-  { group: 'Plašč', name: 'Krajšanje rokavov z gumbi' },
-  { group: 'Plašč', name: 'Krajšanje balonarja (strojno)' },
-  { group: 'Plašč', name: 'Menjava žepov' },
-  { group: 'Plašč', name: 'Ožanje plašča' },
-  // Srajce in majice
-  { group: 'Srajce in majice', name: 'Obračanje manšete' },
-  { group: 'Srajce in majice', name: 'Obračanje ovratnika' },
-  { group: 'Srajce in majice', name: 'Krajšanje rokavov strojno (jersey)' },
-  { group: 'Srajce in majice', name: 'Srajčni rokav' },
-  { group: 'Srajce in majice', name: 'Srajčni rokav (prestavljanje razporka)' },
-  { group: 'Srajce in majice', name: 'Krajšanje dolžine majice, srajce, bluze' },
-  // Odeje, zavese, prt
-  { group: 'Odeje, zavese, prt', name: 'Šivanje traku na odejo' },
-  { group: 'Odeje, zavese, prt', name: 'Šivanje zaves (tekoči meter)' },
-  { group: 'Odeje, zavese, prt', name: 'Šivanje zaves gubanje' },
-  { group: 'Odeje, zavese, prt', name: 'Šivanje tekačev' },
-  { group: 'Odeje, zavese, prt', name: 'Robljenje prta' },
-  { group: 'Odeje, zavese, prt', name: 'Robljenje prta z okrasnim trakom' },
-  { group: 'Odeje, zavese, prt', name: 'Krajšanje zaves (1 cm rob)' },
-  { group: 'Odeje, zavese, prt', name: 'Krajšanje zaves z okrasnim trakom' },
-  { group: 'Odeje, zavese, prt', name: 'Krajšanje zaves (širok rob)' },
-  // Bunda
-  { group: 'Bunda', name: 'Krajšanje rokavov (elastika)' },
-  { group: 'Bunda', name: 'Krajšanje rokavov (ježek, zapenjanje)' },
-  { group: 'Bunda', name: 'Menjava zadrge (vatirana do 50 cm)' },
-  { group: 'Bunda', name: 'Menjava zadrge (vatirana 50–80 cm)' },
-  { group: 'Bunda', name: 'Menjava zadrge (puh do 50 cm)' },
-  { group: 'Bunda', name: 'Menjava zadrge (puh 50–80 cm)' },
-  { group: 'Bunda', name: 'Menjava zadrge nad 80 cm po naročilu' },
-  { group: 'Bunda', name: 'Kombinezon' },
-  { group: 'Bunda', name: 'Kovinska zadrga (do 50 cm)' },
-  { group: 'Bunda', name: 'Kovinska zadrga (od 50–80 cm)' },
-  { group: 'Bunda', name: 'Kovinska zadrga po naročilu' },
-  { group: 'Bunda', name: 'Ožanje bunde' },
   // Manjša popravila
-  { group: 'Manjša popravila', name: 'Krpanje, obšivanje lukenj' },
+  { group: 'Manjša popravila', name: 'Prišitje ali prestavitev gumba' },
+  { group: 'Manjša popravila', name: 'Popravilo šiva' },
+  { group: 'Manjša popravila', name: 'Krpanje luknje' },
+  { group: 'Manjša popravila', name: 'Našitje zaplate' },
+  { group: 'Manjša popravila', name: 'Menjava žepa' },
+  { group: 'Manjša popravila', name: 'Menjava drsnika' },
+  { group: 'Manjša popravila', name: 'Luknjanje pasu' },
+  { group: 'Manjša popravila', name: 'Kimono' },
   { group: 'Manjša popravila', name: 'Režijska ura' },
-  // Izdelava po naročilu (izdelki za sektor »Izdelava po naročilu«)
-  { group: 'Izdelava po naročilu', name: 'Izdelava hlač' },
-  { group: 'Izdelava po naročilu', name: 'Hlače na elastiko' },
-  { group: 'Izdelava po naročilu', name: 'Izdelava hlač z žepi' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje klasičnega krila' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje krila z žepi' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje ženske jakne s podlogo' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje ženske jakne' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje podložene obleke' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje obleke jersey' },
-  { group: 'Izdelava po naročilu', name: 'Šivanje maje' },
-  { group: 'Izdelava po naročilu', name: 'Izdelava bluze, srajce' },
+  // Hlače
+  { group: 'Hlače', name: 'Krajšanje' },
+  { group: 'Hlače', name: 'Krajšanje original rob' },
+  { group: 'Hlače', name: 'Krajšanje skriti šiv' },
+  { group: 'Hlače', name: 'Krajšanje posebnosti' },
+  { group: 'Hlače', name: 'Daljšanje' },
+  { group: 'Hlače', name: 'Ožanje v pasu' },
+  { group: 'Hlače', name: 'Ožanje hlačnic' },
+  { group: 'Hlače', name: 'Širjenje v pasu' },
+  { group: 'Hlače', name: 'Širjenje hlačnic' },
+  { group: 'Hlače', name: 'Znižanje pasu' },
+  { group: 'Hlače', name: 'Menjava zadrge' },
+  { group: 'Hlače', name: 'Menjava elastike v pasu' },
+  // Krila in obleke
+  { group: 'Krila in obleke', name: 'Krajšanje brez podloge' },
+  { group: 'Krila in obleke', name: 'Krajšanje s podlogo' },
+  { group: 'Krila in obleke', name: 'Daljšanje brez podloge' },
+  { group: 'Krila in obleke', name: 'Daljšanje s podlogo' },
+  { group: 'Krila in obleke', name: 'Ožanje krila' },
+  { group: 'Krila in obleke', name: 'Širjenje krila' },
+  { group: 'Krila in obleke', name: 'Ožanje obleke' },
+  { group: 'Krila in obleke', name: 'Menjava zadrge' },
+  { group: 'Krila in obleke', name: 'Znižanje pasu' },
+  { group: 'Krila in obleke', name: 'Menjava elastike v pasu' },
+  { group: 'Krila in obleke', name: 'Menjava ali izdelava podloge' },
+  // Majice in srajce
+  { group: 'Majice in srajce', name: 'Krajšanje dolžine' },
+  { group: 'Majice in srajce', name: 'Krajšanje rokavov' },
+  { group: 'Majice in srajce', name: 'Ožanje majice' },
+  { group: 'Majice in srajce', name: 'Ožanje srajce' },
+  { group: 'Majice in srajce', name: 'Obračanje ovratnika' },
+  { group: 'Majice in srajce', name: 'Obračanje manšet' },
+  { group: 'Majice in srajce', name: 'Odstranitev ovratnika' },
+  // Jakne in plašči
+  { group: 'Jakne in plašči', name: 'Krajšanje dolžine brez podloge' },
+  { group: 'Jakne in plašči', name: 'Krajšanje dolžine s podlogo' },
+  { group: 'Jakne in plašči', name: 'Krajšanje rokavov' },
+  { group: 'Jakne in plašči', name: 'Ožanje' },
+  { group: 'Jakne in plašči', name: 'Menjava podloge brez žepov' },
+  { group: 'Jakne in plašči', name: 'Menjava podloge z žepi' },
+  // Bunde
+  { group: 'Bunde', name: 'Krajšanje rokavov' },
+  { group: 'Bunde', name: 'Krajšanje dolžine' },
+  { group: 'Bunde', name: 'Ožanje' },
+  { group: 'Bunde', name: 'Širjenje' },
+  { group: 'Bunde', name: 'Menjava zadrge' },
+  { group: 'Bunde', name: 'Menjava kovinske zadrge' },
+  { group: 'Bunde', name: 'Menjava dvojne zadrge' },
+  // Zavese
+  { group: 'Zavese', name: 'Krajšanje (rob 1 cm)' },
+  { group: 'Zavese', name: 'Krajšanje (okrasni trak)' },
+  { group: 'Zavese', name: 'Krajšanje (široki rob)' },
+  { group: 'Zavese', name: 'Šivanje zaves' },
+  { group: 'Zavese', name: 'Šivanje zaves z gubanjem' },
+  { group: 'Zavese', name: 'Prišitje drsnikov' },
+  // Prti
+  { group: 'Prti', name: 'Robljenje' },
+  { group: 'Prti', name: 'Robljenje z okrasnim trakom' },
+  // Posteljnina
+  { group: 'Posteljnina', name: 'Krajšanje prevleke' },
+  { group: 'Posteljnina', name: 'Menjava zadrge' },
+  { group: 'Posteljnina', name: 'Krajšanje rjuhe' },
+  { group: 'Posteljnina', name: 'Prišitje traku na odejo' },
+  // Izdelava po naročilu – oblačila
+  { group: 'Izdelava po naročilu – oblačila', name: 'Majica' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Srajca' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Hlače z elastiko v pasu' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Hlače' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Hlače z žepi' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Klasično krilo' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Krilo z žepi' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Obleka iz jerseyja' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Obleka s podlogo' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Ženski suknjič' },
+  { group: 'Izdelava po naročilu – oblačila', name: 'Ženski suknjič s podlogo' },
+  // Izdelava po naročilu – dom
+  { group: 'Izdelava po naročilu – dom', name: 'Prevleka za vzglavnik' },
+  { group: 'Izdelava po naročilu – dom', name: 'Prevleka za odejo' },
+  { group: 'Izdelava po naročilu – dom', name: 'Rjuha' },
 ];
+// Skupine »Dom in tekstil« so v izbiri kosov združene pod enim naslovom.
+const HOME_GROUPS = ['Zavese', 'Prti', 'Posteljnina'];
 
 /* ================================================================ */
 
@@ -626,6 +627,10 @@ const store = {
       absences = lsGet(ABSENCES_KEY, []);
       notes = lsGet(NOTES_KEY, []);
     }
+    if (!serviceList.some((x) => x.group === 'Krila in obleke')) {
+      serviceList = DEFAULT_SERVICES;
+      this.saveServices(DEFAULT_SERVICES).catch(() => {});
+    }
     orders.forEach((o) => {
       if (!Array.isArray(o.services)) o.services = [];
       if (!Array.isArray(o.items)) o.items = [];
@@ -828,7 +833,7 @@ function recentIntakes() {
 }
 
 function renderIntake(el) {
-  if (lastCreated) {
+  if (lastCreated && inSector(lastCreated)) {
     const o = lastCreated;
     el.innerHTML = `
       <div class="card done">
@@ -873,7 +878,7 @@ function renderIntake(el) {
   if (ed) {
     intakeKey = digits(ed.phone);
     // Starejša naročila brez kosov: kosi iz storitev (po skupinah).
-    intakeItems = ed.items && ed.items.length ? ed.items.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note || '' }))
+    intakeItems = ed.items && ed.items.length ? ed.items.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note || '', qty: Number(it.qty) || 1 }))
       : [...new Set((ed.services || []).map((x) => x.group))].map((g) => ({ garment: g, services: ed.services.filter((x) => x.group === g).map((x) => x.name), note: '' }));
     $('#cancelEdit').onclick = () => { editingOrder = null; intakeKey = null; nav(`#/${SECTOR}/popravilo`); };
   } else intakeItems = [];
@@ -1219,12 +1224,19 @@ async function saveMeasures(c) {
 // Kosi pri prevzemu: { garment, services: [ime storitve], note }
 let intakeItems = [];
 let editingOrder = null; // naročilo, ki ga urejamo v obrazcu za oddajo
-const EXTRA_GROUP = 'Manjša popravila'; // storitve te skupine so na voljo pri vsakem kosu
-const CUSTOM_GROUPS = ['Izdelava po naročilu', 'Šivanje po meri']; // izdelki sektorja »Izdelava po naročilu«
-function customProducts() {
-  const list = serviceList.filter((x) => CUSTOM_GROUPS.includes(x.group)).map((x) => x.name);
-  return list.length ? list : DEFAULT_SERVICES.filter((x) => CUSTOM_GROUPS.includes(x.group)).map((x) => x.name);
+// Izdelki sektorja »Izdelava po naročilu« (skupine z začetkom »Izdelava po naročilu« ali »Šivanje po meri«).
+const isCustomGroup = (g) => /^(Izdelava po naročilu|Šivanje po meri)/.test(g);
+// [[naslov skupine, [izdelki]]], npr. [['Oblačila', ['Majica', …]], ['Dom', […]]]
+function customProductGroups() {
+  const src = serviceList.some((x) => isCustomGroup(x.group)) ? serviceList : DEFAULT_SERVICES;
+  const m = new Map();
+  src.filter((x) => isCustomGroup(x.group)).forEach((x) => {
+    const label = x.group.replace(/^(Izdelava po naročilu|Šivanje po meri)\s*[–-]?\s*/, '') || 'Izdelki';
+    m.set(label, [...(m.get(label) || []), x.name]);
+  });
+  return [...m].map(([l, ns]) => [l.charAt(0).toUpperCase() + l.slice(1), ns]);
 }
+const customProducts = () => customProductGroups().flatMap(([, ns]) => ns);
 
 function serviceGroups() {
   const m = new Map();
@@ -1234,16 +1246,25 @@ function serviceGroups() {
 // »Drugo« je vedno zadnja izbira – za kose, ki jih ni na seznamu (storitev se vpiše v vrstico »Dodatno«).
 const OTHER_GARMENT = 'Drugo';
 const garmentTypes = () => {
-  const list = serviceGroups().map(([g]) => g).filter((g) => g !== EXTRA_GROUP && !CUSTOM_GROUPS.includes(g) && g !== OTHER_GARMENT);
+  const list = serviceGroups().map(([g]) => g).filter((g) => !isCustomGroup(g) && g !== OTHER_GARMENT);
   return [...list, OTHER_GARMENT];
 };
-function servicesFor(garment) {
-  const own = serviceList.filter((x) => x.group === garment).map((x) => x.name);
-  const extra = serviceList.filter((x) => x.group === EXTRA_GROUP && x.group !== garment).map((x) => x.name);
-  return [...own, ...extra.filter((n) => !own.includes(n))];
+const servicesFor = (garment) => serviceList.filter((x) => x.group === garment).map((x) => x.name);
+// Možnosti za izbiro kosa; skupine »Dom in tekstil« so pod skupnim naslovom.
+function garmentOptions(selected) {
+  const opt = (g) => `<option ${g === selected ? 'selected' : ''}>${esc(g)}</option>`;
+  const all = garmentTypes();
+  const home = all.filter((g) => HOME_GROUPS.includes(g));
+  return all.filter((g) => !HOME_GROUPS.includes(g) && g !== OTHER_GARMENT).map(opt).join('') +
+    (home.length ? `<optgroup label="Dom in tekstil">${home.map(opt).join('')}</optgroup>` : '') + opt(OTHER_GARMENT);
 }
 const svcName = (x) => (x.group ? `${x.group} – ${x.name}` : x.name);
-const itemText = (it) => `${it.garment}${it.services.length ? ` – ${it.services.join(', ')}` : ''}${it.note ? ` (${it.note})` : ''}`;
+// Število enakih kosov (+ / −) pri kosu v obrazcu za oddajo.
+const qtyControl = (i, it) => `<span class="qty">
+  <button type="button" data-qty="${i}" data-d="-1" aria-label="En kos manj" ${(Number(it.qty) || 1) <= 1 ? 'disabled' : ''}>−</button>
+  <b>${Number(it.qty) || 1}×</b>
+  <button type="button" data-qty="${i}" data-d="1" aria-label="En enak kos več">+</button></span>`;
+const itemText = (it) => `${Number(it.qty) > 1 ? `${it.qty}× ` : ''}${it.garment}${it.services.length ? ` – ${it.services.join(', ')}` : ''}${it.note ? ` (${it.note})` : ''}`;
 const servicesText = (o) => (o.services || []).map((x) => (x.qty > 1 ? `${x.qty} × ` : '') + svcName(x)).join(', ');
 const orderText = (o) => (o.items && o.items.length
   ? o.items.map(itemText).join('; ')
@@ -1256,12 +1277,12 @@ function renderItems() {
     box.innerHTML = intakeItems.map((it, i) => `
       <div class="card" style="margin-top:8px;padding:10px 12px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <b>Kos ${i + 1}</b>
+          <b>Kos ${i + 1}</b>${qtyControl(i, it)}
           <button type="button" class="close" style="font-size:1.3rem" data-removeitem="${i}" aria-label="Odstrani kos">×</button>
         </div>
         <select data-product="${i}" aria-label="Izdelek" style="margin-top:6px">
           <option value="">– izberi izdelek –</option>
-          ${customProducts().map((n) => `<option ${n === it.garment ? 'selected' : ''}>${esc(n)}</option>`).join('')}
+          ${customProductGroups().map(([l, ns]) => `<optgroup label="${esc(l)}">${ns.map((n) => `<option ${n === it.garment ? 'selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}
         </select>
         <input data-itemnote="${i}" value="${esc(it.note)}" placeholder="Opomba (mere, material, barva …)" style="margin-top:8px">
       </div>`).join('') || '<p class="hint">Dodaj vsaj en kos.</p>';
@@ -1270,12 +1291,12 @@ function renderItems() {
   box.innerHTML = intakeItems.map((it, i) => `
     <div class="card" style="margin-top:8px;padding:10px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <b>Kos ${i + 1}</b>
+        <b>Kos ${i + 1}</b>${qtyControl(i, it)}
         <button type="button" class="close" style="font-size:1.3rem" data-removeitem="${i}" aria-label="Odstrani kos">×</button>
       </div>
       <select data-garment="${i}" aria-label="Vrsta kosa" style="margin-top:6px">
         <option value="">– izberi kos –</option>
-        ${garmentTypes().map((g) => `<option ${g === it.garment ? 'selected' : ''}>${esc(g)}</option>`).join('')}
+        ${garmentOptions(it.garment)}
       </select>
       ${it.garment ? `
         <div class="chips" style="margin-top:8px">
@@ -1336,7 +1357,7 @@ async function saveIntake() {
   const custom = SECTOR === 'narocilo';
   const bad = intakeItems.findIndex((it) => !it.garment || (!custom && !it.services.length && !it.note.trim()));
   if (bad >= 0) return err(custom ? `Pri kosu ${bad + 1} izberi izdelek.` : `Pri kosu ${bad + 1} izberi vrsto in vsaj eno storitev (ali vpiši opombo).`);
-  const items = intakeItems.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note.trim() }));
+  const items = intakeItems.map((it) => ({ garment: it.garment, services: [...it.services], note: it.note.trim(), qty: Number(it.qty) || 1 }));
   const o = {
     sector: SECTOR,
     measures: SECTOR === 'narocilo' ? measuresText(c) : '',
@@ -1344,9 +1365,9 @@ async function saveIntake() {
     name: c.name,
     phone: c.phone,
     email: c.email || '',
-    pieces: items.length,
+    pieces: items.reduce((n, it) => n + it.qty, 0),
     items,
-    services: items.flatMap((it) => it.services.map((name) => ({ group: it.garment, name, qty: 1 }))),
+    services: items.flatMap((it) => it.services.map((name) => ({ group: it.garment, name, qty: it.qty }))),
     description: '',
     price: '',
     dueDate: f.dueDate || '',
@@ -1479,7 +1500,7 @@ function monthReport(month) {
   // Najpogostejše storitve (popravila) oziroma izdelki (naročila).
   const count = {};
   received.forEach((o) => (o.items || []).forEach((it) => {
-    (SECTOR === 'narocilo' || !it.services.length ? [it.garment] : it.services).forEach((x) => { if (x) count[x] = (count[x] || 0) + 1; });
+    (SECTOR === 'narocilo' || !it.services.length ? [it.garment] : it.services).forEach((x) => { if (x) count[x] = (count[x] || 0) + (Number(it.qty) || 1); });
   }));
   const top = Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 5);
   const prices = handed.reduce((n, o) => n + (Number(String(o.price).replace(',', '.')) || 0), 0);
@@ -2388,7 +2409,7 @@ async function busy(fn, rethrow = false) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-addsvc], [data-absent], [data-cal], [data-rep], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
+  const t = e.target.closest('[data-additem], [data-removeitem], [data-itemsvc], [data-addsvc], [data-qty], [data-absent], [data-cal], [data-rep], [data-print], [data-day], [data-sort], [data-nav], [data-open], [data-act], [data-pick], [data-newfor], [data-ordersfor], [data-newcustomer], [data-editcustomer], [data-removecustomer], [data-notedone], [data-noteedit], #addNote, [data-measure], [data-addextra], [data-removeextra], [data-sms], [data-smscust], #newIntake, #saveIntake');
   if (!t) return;
   if (t.dataset.print) { const o = orders.find((x) => x.id === t.dataset.print); if (o) previewTicket(o); return; }
   if (t.dataset.day) {
@@ -2403,8 +2424,13 @@ document.addEventListener('click', (e) => {
     if (location.hash === t.dataset.nav) return render();
     return nav(t.dataset.nav);
   }
-  if ('additem' in t.dataset) { intakeItems.push({ garment: '', services: [], note: '' }); renderItems(); $(`[data-garment="${intakeItems.length - 1}"]`)?.focus(); return; }
+  if ('additem' in t.dataset) { intakeItems.push({ garment: '', services: [], note: '', qty: 1 }); renderItems(); $(`[data-garment="${intakeItems.length - 1}"]`)?.focus(); return; }
   if (t.dataset.removeitem) { intakeItems.splice(Number(t.dataset.removeitem), 1); return renderItems(); }
+  if (t.dataset.qty) {
+    const it = intakeItems[Number(t.dataset.qty)];
+    it.qty = Math.max(1, Math.min(99, (Number(it.qty) || 1) + Number(t.dataset.d)));
+    return renderItems();
+  }
   if (t.dataset.addsvc) return addExtraService(Number(t.dataset.addsvc));
   if (t.dataset.itemsvc) {
     const it = intakeItems[Number(t.dataset.itemsvc)];
